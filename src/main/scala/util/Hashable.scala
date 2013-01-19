@@ -29,7 +29,6 @@ trait LowPriorityHashableInstances{
 }
 
 trait HashableInstances extends HashFuncs with LowPriorityHashableInstances{
-
   implicit def intHashable128 = new Hashable[Int, (Long, Long)]{
     def digest(a: Int, seed: Long @@ HashSeed): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
@@ -66,6 +65,34 @@ trait HashableInstances extends HashFuncs with LowPriorityHashableInstances{
   }
 }
 
+trait HashCodeConverter[A, B]{
+  def convert(hc: A @@ HashCode): Seq[B @@ HashCode]
+  def convertSeq(hcs: Seq[A @@ HashCode]): Stream[B @@ HashCode] =
+    Tag subst (convert(hcs.head).toStream ++ convertSeq(hcs.tail))
+}
+
+trait HashCodeConverterInstances{
+  implicit val hashCodeLongToInt = new HashCodeConverter[Long, Int]{
+    def convert(hc: Long @@ HashCode): Seq[Int @@ HashCode] =
+      Tag subst Seq(math.abs(hc >> 32).toInt, math.abs((hc << 32) >> 32).toInt)
+
+  }
+
+  implicit val hashCodeLongLongToLong = new HashCodeConverter[(Long,Long), Long]{
+    def convert(hc: (Long, Long) @@ HashCode): Seq[Long @@ HashCode] =
+      Tag subst Seq(hc._1, hc._2)
+  }
+
+  implicit val hashCodeLongLongToInt = new HashCodeConverter[(Long,Long), Long]{
+    def convert(hc: (Long, Long) @@ HashCode): Seq[Long @@ HashCode] = {
+      Tag subst Seq(math.abs(hc._1 >> 32).toInt, math.abs((hc._1 << 32) >> 32).toInt,
+                    math.abs(hc._2 >> 32).toInt, math.abs((hc._2 << 32) >> 32).toInt)
+    }
+  }
+}
+
+
+
 trait HashableFunctions{
 
   def hash[A,B](a: A, seed: Long @@ HashSeed = HashSeed(0L))(implicit h: Hashable[A,B]): B @@ HashCode =
@@ -73,9 +100,13 @@ trait HashableFunctions{
 
   def multiHash[A,B](a: A, seed: Long @@ HashSeed)(implicit h: Hashable[A,B]): Stream[B @@ HashCode] =
     h.multiDigest(a, seed)
+
 }
 
-object hashable extends HashableInstances with HashableFunctions
+object hashable extends HashableInstances with HashableFunctions{
+  type LHashSeed = Long @@ HashSeed
+  type LHashCode = Long @@ HashCode
+}
 
 
 
