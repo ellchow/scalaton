@@ -1,8 +1,8 @@
 import AssemblyKeys._
 
-organization := "singlepass"
+organization := "scalaton"
 
-name := "singlepass"
+name := "scalaton"
 
 version := "0.1-SNAPSHOT"
 
@@ -12,18 +12,19 @@ checksums in update := Nil
 
 libraryDependencies ++= Seq(
   "org.scalaz" % "scalaz-core_2.10.0-M7" % "7.0.0-M3",
-  "org.specs2" %% "specs2" % "1.13" % "test"
+  "org.specs2" %% "specs2" % "1.13" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.10.0" % "test"
 )
 
 scalacOptions ++= Seq("-deprecation")
 
 resolvers ++= Seq(
-                  "snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
-                  "releases"  at "http://oss.sonatype.org/content/repositories/releases",
-                  "scala tools" at "http://scala-tools.org/repo-releases",
-                  "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
-                  "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
-                )
+  "snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
+  "releases"  at "http://oss.sonatype.org/content/repositories/releases",
+  "scala tools" at "http://scala-tools.org/repo-releases",
+  "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
+  "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
+)
 
 // "Cloudera Maven Repository" at "https://repository.cloudera.com/content/repositories/releases/",
 
@@ -39,5 +40,5 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
       else oldstrat
     }
   }
-                                                         }
+}
 
