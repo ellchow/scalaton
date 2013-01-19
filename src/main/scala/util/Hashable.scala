@@ -30,37 +30,37 @@ trait LowPriorityHashableInstances{
 
 trait HashableInstances extends HashFuncs with LowPriorityHashableInstances{
 
-  implicit def intHashable = new Hashable[Int, (Long, Long)]{
+  implicit def intHashable128 = new Hashable[Int, (Long, Long)]{
     def digest(a: Int, seed: Long @@ HashSeed): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
   }
 
-  implicit def charHashable = new Hashable[Char, (Long, Long)]{
+  implicit def charHashable128 = new Hashable[Char, (Long, Long)]{
     def digest(a: Char, seed: Long @@ HashSeed): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
   }
 
-  implicit def shortHashable = new Hashable[Short, (Long, Long)]{
+  implicit def shortHashable128 = new Hashable[Short, (Long, Long)]{
     def digest(a: Short, seed: Long @@ HashSeed): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
   }
 
-  implicit def floatHashable = new Hashable[Float, (Long, Long)]{
+  implicit def floatHashable128 = new Hashable[Float, (Long, Long)]{
     def digest(a: Float, seed: Long @@ HashSeed): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
   }
 
-  implicit def longHashable = new Hashable[Long, (Long, Long)]{
+  implicit def longHashable128 = new Hashable[Long, (Long, Long)]{
     def digest(a: Long, seed: Long @@ HashSeed): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
   }
 
-  implicit def doubleHashable = new Hashable[Double, (Long, Long)]{
+  implicit def doubleHashable128 = new Hashable[Double, (Long, Long)]{
     def digest(a: Double, seed: Long @@ HashSeed): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
   }
 
-  implicit def stringHashable = new Hashable[String, (Long, Long)]{
+  implicit def stringHashable128 = new Hashable[String, (Long, Long)]{
     def digest(a: String, seed: Long @@ HashSeed): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
   }
