@@ -22,7 +22,7 @@ object bloomfilter extends BloomFilterProperties{
                                hconv: HashCodeConverter[B, Int]) =
     new Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]]{
       def equal(bf1: BloomFilter[A,B], bf2: BloomFilter[A,B]) =
-        bf1.hasSameParameters(bf2) && (bf1.bits equals bf2.bits)
+        bf1.hasSameParameters(bf2) && (bf1.bits == bf2.bits)
 
       def zero = BFZero[A,B](numHashes, width)(h, hconv)
 
