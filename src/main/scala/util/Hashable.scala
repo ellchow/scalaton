@@ -69,6 +69,7 @@ trait HashableInstances extends HashFuncs with LowPriorityHashableInstances with
 
 trait HashCodeConverter[A, B] extends HashingTags{
   def convert(hc: A @@ HashCode): Seq[B @@ HashCode]
+
   def convertSeq(hcs: Seq[A @@ HashCode]): Iterable[B @@ HashCode]=
     new Iterable[B @@ HashCode]{
       def iterator = new Iterator[B @@ HashCode]{
@@ -89,6 +90,10 @@ trait HashCodeConverter[A, B] extends HashingTags{
 }
 
 trait HashCodeConverterInstances extends HashingTags{
+  implicit def hashCodeIdentity[A] = new HashCodeConverter[A, A]{
+    def convert(hc: A @@ HashCode): Seq[A @@ HashCode] = Seq(hc)
+  }
+
   implicit val hashCodeLongToInt = new HashCodeConverter[Long, Int]{
     def convert(hc: Long @@ HashCode): Seq[Int @@ HashCode] =
       Tag subst Seq(math.abs(hc >> 32).toInt, math.abs((hc << 32) >> 32).toInt)

@@ -15,9 +15,9 @@ object bloomfilter{
 
   val emptyBitSet = BitSet.empty
 
-  def bloomFilterInstance[A,B](numHashes: Int, width: Int)
-                              (implicit h: Hashable[A, B],
-                               hconv: HashCodeConverter[B, Int]) =
+  def bfmInstance[A,B](numHashes: Int, width: Int)
+                                    (implicit h: Hashable[A, B],
+                                     hconv: HashCodeConverter[B, Int]) =
     new Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]]{
       def equal(bf1: BloomFilter[A,B], bf2: BloomFilter[A,B]) =
         bf1.hasSameParameters(bf2) && (bf1.bits == bf2.bits)
@@ -53,9 +53,9 @@ object bloomfilter{
   extends BloomFilter[A, B]{
     val bits = emptyBitSet
 
-    def + (item: A): BloomFilter[A, B] = {
+    def + (item: A): BloomFilter[A, B] =
       BFInstance(numHashes,width,s=s)(h,hconv) + item
-    }
+
 
     def ++ (other: BloomFilter[A, B]) = {
       require(hasSameParameters(other))
@@ -111,7 +111,7 @@ object bloomfilter{
   object BloomFilter{
 
     def apply[A, B](numEntries: Int, fpProb: Double,
-                    seed: Long = 0L, items: Iterable[A] = Seq.empty)
+                    seed: Long = 0L)(items: A*)
                (implicit h: Hashable[A, B],
                 hconv: HashCodeConverter[B, Int]): BloomFilter[A,B] = {
       val width = optimalWidth(numEntries, fpProb)
