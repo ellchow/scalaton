@@ -28,7 +28,8 @@ trait Hashable[A,B] extends HashingTags{
 
 trait LowPriorityHashableInstances extends HashingTags{
   implicit def anyHashable[A] = new Hashable[A, Long]{
-    def digest(a: A, seed: Long @@ HashSeed = HashSeed(0L)): Long @@ HashCode = HashCode(a.hashCode.toLong)
+    def digest(a: A, seed: Long @@ HashSeed = HashSeed(0L)): Long @@ HashCode =
+      HashCode(a.hashCode.toLong)
   }
 }
 
@@ -77,11 +78,12 @@ trait HashCodeConverter[A, B] extends HashingTags{
       def iterator = new Iterator[B @@ HashCode]{
         private val buf: mutable.Queue[B @@ HashCode] = mutable.Queue.empty
 
-        def hasNext = buf.nonEmpty || hcs.nonEmpty
+        def hasNext = Tags.Disjunction(buf.nonEmpty) |+| Tags.Disjunction(hcs.nonEmpty)
 
         def next = {
           if(buf.isEmpty)
             convert(hcs.head) foreach {e => buf enqueue e}
+
           buf dequeue
         }
       }
@@ -119,10 +121,12 @@ trait HashCodeConverterInstances extends HashingTags{
 
 trait HashableFunctions extends HashingTags{
 
-  def hash[A,B](a: A, seed: Long @@ HashSeed = HashSeed(0L))(implicit h: Hashable[A,B]): B @@ HashCode =
+  def hash[A,B](a: A, seed: Long @@ HashSeed = HashSeed(0L))
+               (implicit h: Hashable[A,B]): B @@ HashCode =
     h.digest(a, seed)
 
-  def multiHash[A,B](a: A, seed: Long @@ HashSeed)(implicit h: Hashable[A,B]): Stream[B @@ HashCode] =
+  def multiHash[A,B](a: A, seed: Long @@ HashSeed)
+                    (implicit h: Hashable[A,B]): Stream[B @@ HashCode] =
     h.multiDigest(a, seed)
 
 }

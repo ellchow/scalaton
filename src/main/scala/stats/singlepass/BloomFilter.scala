@@ -26,8 +26,9 @@ object bloomfilter{
                       (implicit h: Hashable[A, B],
                        hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] =
     new Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]]{
+
       def equal(bf1: BloomFilter[A,B], bf2: BloomFilter[A,B]) =
-        bf1.hasSameParameters(bf2) && (bf1.bits == bf2.bits)
+        Tags.Conjunction(bf1.hasSameParameters(bf2)) |+|  Tags.Conjunction(bf1.bits == bf2.bits)
 
       def zero = BFZero[A,B](numHashes, width)(h, hconv)
 
@@ -42,7 +43,7 @@ object bloomfilter{
     val bits: BitSet
 
     def hasSameParameters(other: BloomFilter[A,B]) =
-      (numHashes == other.numHashes) && (width == other.width) && (s == other.s)
+      (numHashes === other.numHashes) && (width === other.width) && (s === other.s)
 
     def + (item: A): BloomFilter[A, B]
 
