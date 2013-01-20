@@ -1,5 +1,7 @@
 package scalaton.stats.singlepass
 
+import scala.language.postfixOps
+
 import scala.collection.BitSet
 
 import scalaz._
@@ -8,16 +10,12 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashable._
 
-
-
-trait BloomFilterProperties{
-
-}
-
 // case class BloomFilterStats[A, B]
-object bloomfilter extends BloomFilterProperties{
+object bloomfilter{
 
-  def bloomfilterInstance[A,B](numHashes: Int, width: Int)
+  val emptyBitSet = BitSet.empty
+
+  def bloomFilterInstance[A,B](numHashes: Int, width: Int)
                               (implicit h: Hashable[A, B],
                                hconv: HashCodeConverter[B, Int]) =
     new Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]]{
@@ -37,10 +35,12 @@ object bloomfilter extends BloomFilterProperties{
     val bits: BitSet
 
     def hasSameParameters(other: BloomFilter[A,B]) =
-    (numHashes == other.numHashes) && (width == other.width) && (s == other.s)
+      (numHashes == other.numHashes) && (width == other.width) && (s == other.s)
 
     def + (item: A): BloomFilter[A, B]
+
     def ++ (other: BloomFilter[A, B]): BloomFilter[A,B]
+
     def contains(item: A): Boolean
   }
 
@@ -51,19 +51,24 @@ object bloomfilter extends BloomFilterProperties{
                          hconv: HashCodeConverter[B, Int])
 
   extends BloomFilter[A, B]{
-    val bits = BitSet.empty
+    val bits = emptyBitSet
 
-    def + (item: A): BloomFilter[A, B] = BFInstance(numHashes,width,s=s)(h,hconv) + item
+    def + (item: A): BloomFilter[A, B] = {
+      println("@@@")
+      BFInstance(numHashes,width,s=s)(h,hconv) + item
+    }
+
     def ++ (other: BloomFilter[A, B]) = {
       require(hasSameParameters(other))
       other
     }
+
     def contains(item: A): Boolean = false
   }
 
   case class BFInstance[A, B](val numHashes: Int,
                               val width: Int,
-                              val bits: BitSet = BitSet.empty,
+                              val bits: BitSet = emptyBitSet,
                               val s: Long = 0L // cannot put Long @@ HashSeed for some reason...
                             )
                              (implicit h: Hashable[A, B],
@@ -74,8 +79,9 @@ object bloomfilter extends BloomFilterProperties{
     def seed: Long @@ HashSeed = HashSeed(s)
 
     def hashItem(item: A): Seq[Int @@ HashCode] = {
-      (multiHash(item, seed)(h) take numHashes) |>
-      hconv.convertSeq map { _ % width |> HashCode.apply }
+      val hcs = (multiHash(item, seed)(h) |> hconv.convertSeq) take numHashes
+
+      hcs.toSeq map { _ % width |> HashCode }
     }
 
     def + (item: A): BloomFilter[A, B] = {
@@ -101,7 +107,30 @@ object bloomfilter extends BloomFilterProperties{
 
     private def construct(b: BitSet): BloomFilter[A, B] =
       BFInstance(numHashes, width, b, s)(h, hconv)
+  }
+
+  object BloomFilter{
+
+    def apply[A, B](numEntries: Int, fpProb: Double,
+                    seed: Long = 0L, items: Iterable[A] = Seq.empty)
+               (implicit h: Hashable[A, B],
+                hconv: HashCodeConverter[B, Int]): BloomFilter[A,B] = {
+      val width = optimalWidth(numEntries, fpProb)
+
+      val numHashes = optimalNumHashes(numEntries, width)
+
+      val z: BloomFilter[A,B] = BFZero(numHashes, width, seed)(h, hconv)
+
+      items.foldLeft(z)((acc, x) => acc + x)
+    }
+
+    def optimalNumHashes(numEntries: Int, width: Int): Int =
+      math.ceil(width / numEntries * math.log(2)).toInt
+
+    def optimalWidth(numEntries: Int, fpProb: Double): Int =
+      (math.ceil(-1 * numEntries * math.log(fpProb) / math.log(2) / math.log(2)).toInt) + 1
 
   }
+
 }
 
