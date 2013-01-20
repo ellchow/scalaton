@@ -10,27 +10,38 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashable._
 
-// case class BloomFilterStats[A, B]
 object bloomfilter{
 
   val emptyBitSet = BitSet.empty
-
-  def bfmInstance[A,B](numItems: Int, fpProb: Double)
+  /*
+  def bfmInstance[A,B](numItems: Int, fpProb: Double, s: Long = 0L)
                       (implicit h: Hashable[A, B],
                        hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] = {
     val (numHashes, width) = BloomFilter.optimalParameters(numItems, fpProb)
-    bfmInstance(numHashes, width)(h, hconv)
+    bfmInstance(numHashes, width, s)(h, hconv)
   }
+  */
 
-  def bfmInstance[A,B](numHashes: Int, width: Int)
+  def bfmInstance[A,B](numHashes: Int, width: Int, s: Long = 0L)
                       (implicit h: Hashable[A, B],
                        hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] =
     new Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]]{
 
-      def equal(bf1: BloomFilter[A,B], bf2: BloomFilter[A,B]) =
-        Tags.Conjunction(bf1.hasSameParameters(bf2)) |+|  Tags.Conjunction(bf1.bits == bf2.bits)
+      def equal(bf1: BloomFilter[A,B], bf2: BloomFilter[A,B]) = {
+        require(zero.hasSameParameters(bf2),
+                "bloom filter equality must use Equal with same parameters")
+        require(bf1.hasSameParameters(bf2),
+                "bloom filters not comparable if parameters are different")
 
-      def zero = BFZero[A,B](numHashes, width)(h, hconv)
+        Tags.Conjunction((bf1, bf2) match {
+          case (x1: BFZero[A,B], x2: BFZero[A,B]) => true
+          case (x1: BFInstance[A,B], x2: BFInstance[A,B]) => x1.bits == x2.bits
+          case (x1: BFZero[A,B], x2: BFInstance[A,B]) => x2.bits.isEmpty
+          case (x1: BFInstance[A,B], x2: BFZero[A,B]) => x1.bits.isEmpty
+          case _ => false
+        })
+      }
+      def zero: BloomFilter[A,B] = BFZero[A,B](numHashes, width, s)(h, hconv)
 
       def append(bf1: BloomFilter[A,B], bf2: => BloomFilter[A,B]): BloomFilter[A,B] =
         bf1 ++ bf2
@@ -40,7 +51,6 @@ object bloomfilter{
     val numHashes: Int
     val width: Int
     val s: Long
-    val bits: BitSet
 
     def hasSameParameters(other: BloomFilter[A,B]) =
       (numHashes === other.numHashes) && (width === other.width) && (s === other.s)
@@ -66,7 +76,8 @@ object bloomfilter{
 
 
     def ++ (other: BloomFilter[A, B]) = {
-      require(hasSameParameters(other))
+      require(hasSameParameters(other),
+              "cannot combine bloom filters with different parameters")
       other
     }
 
