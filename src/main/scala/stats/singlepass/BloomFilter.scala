@@ -54,7 +54,6 @@ object bloomfilter{
     val bits = emptyBitSet
 
     def + (item: A): BloomFilter[A, B] = {
-      println("@@@")
       BFInstance(numHashes,width,s=s)(h,hconv) + item
     }
 
