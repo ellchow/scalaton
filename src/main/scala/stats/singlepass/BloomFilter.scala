@@ -19,9 +19,9 @@ import scalaton.util.hashable._
 object BloomFilter{
 
   def apply[A, B](numItems: Int, fpProb: Double,
-                        seed: Long = 0L)(items: A*)
-                                        (implicit h: Hashable[A, B],
-                                         hconv: HashCodeConverter[B, Int]): BloomFilter[A,B] = {
+                  seed: Long = 0L)(items: A*)
+                                  (implicit h: Hashable[A, B],
+                                   hconv: HashCodeConverter[B, Int]): BloomFilter[A,B] = {
     val (numHashes, width) = optimalParameters(numItems, fpProb)
 
     val z: BloomFilter[A,B] = BFZero(numHashes, width, seed)(h, hconv)
@@ -65,10 +65,21 @@ object BloomFilter{
           case _ => false
         })
       }
-      def zero: BloomFilter[A,B] = BFZero[A,B](numHashes, width, seed)(h, hconv)
 
-      def append(bf1: BloomFilter[A,B], bf2: => BloomFilter[A,B]): BloomFilter[A,B] =
-        bf1 ++ bf2
+      override val zero: BloomFilter[A,B] = BFZero[A,B](numHashes, width, seed)(h, hconv)
+
+      def append(bf1: BloomFilter[A,B], bf2: => BloomFilter[A,B]): BloomFilter[A,B] = {
+        require(bf1.hasSameParameters(bf2),
+                "cannot combine bloom filters with different parameters")
+
+        (bf1, bf2) match {
+          case (x1: BFZero[A,B], x2: BFZero[A,B]) => zero
+          case (x1: BFZero[A,B], x2: BFInstance[A,B]) => x2
+          case (x1: BFInstance[A,B], x2: BFZero[A,B]) => x1
+          case (x1: BFInstance[A,B], x2: BFInstance[A,B]) =>
+            BFInstance(numHashes, width, x1.bits ++ x2.bits, seed)(h, hconv)
+        }
+      }
     }
   }
 }
@@ -101,9 +112,6 @@ sealed trait BloomFilter[A,B]{
   /** Add item to this bloom filter **/
   def + (item: A): BloomFilter[A, B]
 
-  /** Combine with another bloom filter **/
-  def ++ (other: BloomFilter[A, B]): BloomFilter[A,B]
-
   /** Test for (probabilistic) existence of an item **/
   def contains(item: A): Boolean
 }
@@ -121,13 +129,6 @@ case class BFZero[A,B](val numHashes: Int,
   def + (item: A): BloomFilter[A, B] =
     BFInstance(numHashes,width,hashItem(item),seed)(h,hconv)
 
-
-  def ++ (other: BloomFilter[A, B]) = {
-    require(hasSameParameters(other),
-            "cannot combine bloom filters with different parameters")
-    other
-  }
-
   def contains(item: A): Boolean = false
 }
 
@@ -141,26 +142,14 @@ case class BFInstance[A, B](val numHashes: Int,
                           )
                            (implicit h: Hashable[A, B],
                             hconv: HashCodeConverter[B, Int])
-     extends BloomFilter[A, B]
-{
+     extends BloomFilter[A, B]{
 
   def + (item: A): BloomFilter[A, B] =
-    construct(bits ++ hashItem(item))
-
-
-  def ++ (other: BloomFilter[A, B]) = other match {
-    case z : BFZero[A,B] => this
-    case bf: BFInstance[A,B] => {
-      require(hasSameParameters(other))
-      construct(bits ++ bf.bits)
-    }
-  }
+    BFInstance(numHashes, width, bits ++ hashItem(item), seed)(h, hconv)
 
   def contains(item: A): Boolean = {
     val itemBits = hashItem(item)
                            (bits & itemBits) == itemBits
   }
 
-  private def construct(b: BitSet): BloomFilter[A, B] =
-    BFInstance(numHashes, width, b, seed)(h, hconv)
 }
