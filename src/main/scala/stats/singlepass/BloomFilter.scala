@@ -73,8 +73,10 @@ object bloomfilter extends BloomFilterProperties{
 
     def seed: Long @@ HashSeed = HashSeed(s)
 
-    def hashItem(item: A): Seq[Int @@ HashCode] =
-      hconv.convertSeq(multiHash(item, seed)(h).take(numHashes))
+    def hashItem(item: A): Seq[Int @@ HashCode] = {
+      (multiHash(item, seed)(h) take numHashes) |>
+      hconv.convertSeq map { _ % width |> HashCode.apply }
+    }
 
     def + (item: A): BloomFilter[A, B] = {
       val hcs = hashItem(item)
