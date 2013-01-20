@@ -10,6 +10,12 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashable._
 
+/**
+ * Immutable bloom Filter implementation
+ *
+ * http://en.wikipedia.org/wiki/Bloom_filter
+ */
+
 object BloomFilter{
 
   def apply[A, B](numItems: Int, fpProb: Double,
@@ -30,9 +36,11 @@ object BloomFilter{
     (numItems, width)
   }
 
+  /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
   def optimalNumHashes(numItems: Int, width: Int): Int =
     math.ceil(width / numItems * math.log(2)).toInt + 1
 
+  /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
   def optimalWidth(numItems: Int, fpProb: Double): Int =
     math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)).toInt + 1
 
@@ -66,28 +74,43 @@ object BloomFilter{
 }
 
 sealed trait BloomFilter[A,B]{
+
+  /** Number of hashes in this bloom filter **/
   val numHashes: Int
 
+  /** Number of bits in this bloom filter **/
   val width: Int
 
+  /** Hash seed for this bloom filter **/
   val seed: Long
 
+  /**
+   * Check if parameters are equal - compatibility check
+   * Would be nice to make this type safe instead
+   **/
   def hasSameParameters(other: BloomFilter[A,B]) =
   (numHashes === other.numHashes) && (width === other.width) && (seed === other.seed)
 
+  /** Compute hash of an item for this bloom filter **/
   def hashItem(item: A)(implicit h: Hashable[A, B],
                         hconv: HashCodeConverter[B, Int]): BitSet = {
     val hcs = (multiHash(item, seed)(h) |> hconv.convertSeq) take numHashes
     BitSet(hcs.toSeq map { _ % width |> HashCode } : _*)
   }
 
+  /** Add item to this bloom filter **/
   def + (item: A): BloomFilter[A, B]
 
+  /** Combine with another bloom filter **/
   def ++ (other: BloomFilter[A, B]): BloomFilter[A,B]
 
+  /** Test for (probabilistic) existence of an item **/
   def contains(item: A): Boolean
 }
 
+/**
+ * Representation of an empty bloom filter
+ **/
 case class BFZero[A,B](val numHashes: Int,
                        val width: Int,
                        val seed: Long = 0L)
@@ -108,6 +131,9 @@ case class BFZero[A,B](val numHashes: Int,
   def contains(item: A): Boolean = false
 }
 
+/**
+ * Representation of a (possibly) nonempty bloom filter
+ **/
 case class BFInstance[A, B](val numHashes: Int,
                             val width: Int,
                             val bits: BitSet,
@@ -138,13 +164,3 @@ case class BFInstance[A, B](val numHashes: Int,
   private def construct(b: BitSet): BloomFilter[A, B] =
     BFInstance(numHashes, width, b, seed)(h, hconv)
 }
-
-
-// trait BloomFilterMonoidInstances extends BloomFilterImpl{
-
-
-
-// }
-
-
-

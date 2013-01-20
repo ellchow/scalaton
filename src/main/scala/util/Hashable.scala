@@ -7,14 +7,20 @@ import collection.mutable
 import scalaz._
 import Scalaz._
 
-sealed trait HashCode
 
+/**
+ * Hashable type class, implicits,  and related things
+ */
+
+
+sealed trait HashCode
 trait HashingTags{
   def HashCode [A](a: A) = Tag[A,HashCode](a)
-
 }
 
-
+/**
+ * Hashable type class
+ */
 trait Hashable[A,B] extends HashingTags{
   def digest(a: A, seed: Long): B @@ HashCode
 
@@ -67,6 +73,10 @@ trait HashableInstances extends HashFuncs with LowPriorityHashableInstances with
   }
 }
 
+
+/**
+ * HashCode Converter type class for converting between types (e.g. Long to Int)
+ */
 trait HashCodeConverter[A, B] extends HashingTags{
   def convert(hc: A @@ HashCode): Seq[B @@ HashCode]
 
@@ -113,8 +123,6 @@ trait HashCodeConverterInstances extends HashingTags{
   }
 
 }
-
-
 
 trait HashableFunctions extends HashingTags{
 
