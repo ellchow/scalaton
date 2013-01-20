@@ -6,7 +6,8 @@ import scalaz.{BloomFilter => _, _}
 import Scalaz._
 
 import scalaton.util.hashable._
-import scalaton.stats.singlepass.bloomfilter._
+import scalaton.stats.singlepass.BloomFilter
+import scalaton.stats.singlepass.BloomFilter._
 
 class BloomFilterSpec extends Specification{
 

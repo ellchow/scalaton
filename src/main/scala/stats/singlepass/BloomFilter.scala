@@ -10,9 +10,9 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashable._
 
-object bloomfilter{
+object BloomFilter{
 
-  def BloomFilter[A, B](numItems: Int, fpProb: Double,
+  def apply[A, B](numItems: Int, fpProb: Double,
                         seed: Long = 0L)(items: A*)
                                         (implicit h: Hashable[A, B],
                                          hconv: HashCodeConverter[B, Int]): BloomFilter[A,B] = {
