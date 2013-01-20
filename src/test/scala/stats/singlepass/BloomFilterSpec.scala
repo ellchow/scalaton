@@ -12,7 +12,7 @@ class BloomFilterSpec extends Specification{
 
   "an empty bloom filter" should {
 
-    implicit val bfmon = BloomFilterMonoid[String,(Long,Long)](5,625)
+    implicit val bfmon = BloomFilterMonoid[String,(Long,Long)]((5,625))
     val bfz: BloomFilter[String,(Long,Long)]= BFZero[String,(Long,Long)](5, 625)
 
     "not contain anything" in {
@@ -40,7 +40,7 @@ class BloomFilterSpec extends Specification{
     }
     /*
     "is only equal to empty bloom filters with same parameters and without any bits set" in {
-      implicit val bfmon = BloomFilterMonoid[String,(Long,Long)](1,2,3)
+      implicit val bfmon = BloomFilterMonoid[String,(Long,Long)]((1,2),3)
 
       val bfz1: BloomFilter[String,(Long,Long)] =
         BFZero(1, 2, 3)

@@ -37,9 +37,10 @@ object bloomfilter{
     math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)).toInt + 1
 
 
-  def BloomFilterMonoid[A,B](numHashes: Int, width: Int, seed: Long = 0L)
+  def BloomFilterMonoid[A,B](parameters: (Int, Int), seed: Long = 0L)
                             (implicit h: Hashable[A, B],
-                             hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] =
+                             hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] = {
+    val (numHashes, width) = parameters
     new Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]]{
 
       def equal(bf1: BloomFilter[A,B], bf2: BloomFilter[A,B]) = {
@@ -61,7 +62,7 @@ object bloomfilter{
       def append(bf1: BloomFilter[A,B], bf2: => BloomFilter[A,B]): BloomFilter[A,B] =
         bf1 ++ bf2
     }
-
+  }
 }
 
 sealed trait BloomFilter[A,B]{
@@ -140,14 +141,7 @@ case class BFInstance[A, B](val numHashes: Int,
 
 
 // trait BloomFilterMonoidInstances extends BloomFilterImpl{
-//   /*
-//    def bfmInstance[A,B](numItems: Int, fpProb: Double, s: Long = 0L)
-//    (implicit h: Hashable[A, B],
-//    hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] = {
-//    val (numHashes, width) = BloomFilter.optimalParameters(numItems, fpProb)
-//    bfmInstance(numHashes, width, s)(h, hconv)
-//    }
-//    */
+
 
 
 // }
