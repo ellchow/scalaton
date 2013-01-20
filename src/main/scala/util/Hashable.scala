@@ -1,5 +1,7 @@
 package scalaton.util
 
+import scala.language.postfixOps
+
 import collection.mutable
 
 import scalaz._
@@ -73,16 +75,14 @@ trait HashCodeConverter[A, B] extends HashingTags{
   def convertSeq(hcs: Seq[A @@ HashCode]): Iterable[B @@ HashCode]=
     new Iterable[B @@ HashCode]{
       def iterator = new Iterator[B @@ HashCode]{
-        private val buf: mutable.ArrayBuffer[B @@ HashCode] = mutable.ArrayBuffer.empty
+        private val buf: mutable.Queue[B @@ HashCode] = mutable.Queue.empty
 
         def hasNext = buf.nonEmpty || hcs.nonEmpty
 
         def next = {
           if(buf.isEmpty)
-            buf ++= convert(hcs.head)
-          val x = buf.head
-          buf.drop(1)
-          x
+            convert(hcs.head) foreach {e => buf enqueue e}
+          buf dequeue
         }
       }
     }
@@ -105,12 +105,14 @@ trait HashCodeConverterInstances extends HashingTags{
       Tag subst Seq(hc._1, hc._2)
   }
 
+
   implicit val hashCodeLongLongToInt = new HashCodeConverter[(Long,Long), Int]{
     def convert(hc: (Long, Long) @@ HashCode): Seq[Int @@ HashCode] = {
       Tag subst Seq(math.abs(hc._1 >> 32).toInt, math.abs((hc._1 << 32) >> 32).toInt,
                     math.abs(hc._2 >> 32).toInt, math.abs((hc._2 << 32) >> 32).toInt)
     }
   }
+
 }
 
 

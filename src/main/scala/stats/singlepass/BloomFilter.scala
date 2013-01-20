@@ -15,9 +15,16 @@ object bloomfilter{
 
   val emptyBitSet = BitSet.empty
 
+  def bfmInstance[A,B](numItems: Int, fpProb: Double)
+                      (implicit h: Hashable[A, B],
+                       hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] = {
+    val (numHashes, width) = BloomFilter.optimalParameters(numItems, fpProb)
+    bfmInstance(numHashes, width)(h, hconv)
+  }
+
   def bfmInstance[A,B](numHashes: Int, width: Int)
-                                    (implicit h: Hashable[A, B],
-                                     hconv: HashCodeConverter[B, Int]) =
+                      (implicit h: Hashable[A, B],
+                       hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] =
     new Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]]{
       def equal(bf1: BloomFilter[A,B], bf2: BloomFilter[A,B]) =
         bf1.hasSameParameters(bf2) && (bf1.bits == bf2.bits)
@@ -79,7 +86,6 @@ object bloomfilter{
 
     def hashItem(item: A): Seq[Int @@ HashCode] = {
       val hcs = (multiHash(item, seed)(h) |> hconv.convertSeq) take numHashes
-
       hcs.toSeq map { _ % width |> HashCode }
     }
 
@@ -110,24 +116,30 @@ object bloomfilter{
 
   object BloomFilter{
 
-    def apply[A, B](numEntries: Int, fpProb: Double,
+    def apply[A, B](numItems: Int, fpProb: Double,
                     seed: Long = 0L)(items: A*)
                (implicit h: Hashable[A, B],
                 hconv: HashCodeConverter[B, Int]): BloomFilter[A,B] = {
-      val width = optimalWidth(numEntries, fpProb)
-
-      val numHashes = optimalNumHashes(numEntries, width)
+      val (numHashes, width) = optimalParameters(numItems, fpProb)
 
       val z: BloomFilter[A,B] = BFZero(numHashes, width, seed)(h, hconv)
 
       items.foldLeft(z)((acc, x) => acc + x)
     }
 
-    def optimalNumHashes(numEntries: Int, width: Int): Int =
-      math.ceil(width / numEntries * math.log(2)).toInt
+    def optimalParameters(numItems: Int, fpProb: Double) = {
+      val width = optimalWidth(numItems, fpProb)
+      val numHashes = optimalNumHashes(numItems, width)
 
-    def optimalWidth(numEntries: Int, fpProb: Double): Int =
-      (math.ceil(-1 * numEntries * math.log(fpProb) / math.log(2) / math.log(2)).toInt) + 1
+      (numItems, width)
+    }
+
+
+    def optimalNumHashes(numItems: Int, width: Int): Int =
+      math.ceil(width / numItems * math.log(2)).toInt + 1
+
+    def optimalWidth(numItems: Int, fpProb: Double): Int =
+      math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)).toInt + 1
 
   }
 
