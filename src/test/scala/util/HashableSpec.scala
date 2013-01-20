@@ -24,7 +24,7 @@ class HashableSpec extends Specification {
 
     "have different hash codes given different seeds" in {
       val n = 100L
-      val seeds: Seq[Long @@ HashSeed] = Tag subst(0L until n)
+      val seeds: Seq[Long] = 0L until n
       val hcs = seeds map {i => hash("hello", i)} toSet
 
       hcs.size must_== n
@@ -32,7 +32,7 @@ class HashableSpec extends Specification {
 
     "can be hashed multiple times" in {
       val n = 100
-      val hcs = multiHash("hello", HashSeed(0L)) take n
+      val hcs = multiHash("hello", 0L) take n
 
       hcs.size must_== n
     }
