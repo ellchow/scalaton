@@ -39,7 +39,7 @@ class BloomFilterSpec extends Specification{
 
       ((bfz |+| bf) === bf) must beTrue
     }
-    /*
+
     "is only equal to empty bloom filters with same parameters and without any bits set" in {
       implicit val bfmon = BloomFilterMonoid[String,(Long,Long)]((1,2),3)
 
@@ -56,26 +56,28 @@ class BloomFilterSpec extends Specification{
         BFZero(1, 2, 0)
 
       val bf1: BloomFilter[String,(Long,Long)] =
-        BFInstance[String,(Long,Long)](1,2,s=3)
+        BFInstance[String,(Long,Long)](1,2,collection.BitSet.empty,3)
 
       val bf2: BloomFilter[String,(Long,Long)] =
-        BFInstance[String,(Long,Long)](1,2,collection.BitSet(1),s=3)
+        BFInstance[String,(Long,Long)](1,2,collection.BitSet(1),3)
 
       (bfz1 === bfz1) must beTrue
       (bfz1 === bf1) must beTrue
 
-      (bfz1 === bfz2) must beFalse
-      (bfz1 === bfz3) must beFalse
-      (bfz1 === bfz4) must beFalse
       (bfz1 === bf2) must beFalse
+
+      (bfz1 === bfz2) must throwA[IllegalArgumentException]
+      (bfz1 === bfz3) must throwA[IllegalArgumentException]
+      (bfz1 === bfz4) must throwA[IllegalArgumentException]
     }
-    */
 
   }
 
   "a nonempty bloom filter" should {
-    /*
+
     "is only equal to another nonempty bloom filter with same parameters and same bits set" in {
+      implicit val bfmon = BloomFilterMonoid[String,(Long,Long)]((1,2),3)
+
       val bf1: BloomFilter[String,(Long,Long)] =
         BFInstance[String,(Long,Long)](1,2,collection.BitSet(1),3)
 
@@ -92,14 +94,13 @@ class BloomFilterSpec extends Specification{
           BFInstance[String,(Long,Long)](1,2,collection.BitSet(1,2),3)
 
       (bf1 === bf1) must beTrue
-
-      (bf1 === bf2) must beFalse
-      (bf1 === bf3) must beFalse
-      (bf1 === bf4) must beFalse
       (bf1 === bf5) must beFalse
 
+      (bf1 === bf2) must throwA[IllegalArgumentException]
+      (bf1 === bf3) must throwA[IllegalArgumentException]
+      (bf1 === bf4) must throwA[IllegalArgumentException]
     }
-    */
+
     "should contain all true positives" in {
       util.Random.setSeed(0)
 
