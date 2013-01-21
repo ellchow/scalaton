@@ -13,7 +13,8 @@ checksums in update := Nil
 libraryDependencies ++= Seq(
   "org.scalaz" % "scalaz-core_2.10.0-M7" % "7.0.0-M3",
   "org.specs2" %% "specs2" % "1.13" % "test",
-  "org.scalacheck" %% "scalacheck" % "1.10.0" % "test"
+  "org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
+  "org.apache.commons" % "commons-io" % "1.3.2"
 )
 
 scalacOptions ++= Seq("-deprecation", "-feature")

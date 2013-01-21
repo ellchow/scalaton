@@ -36,7 +36,12 @@ trait LowPriorityHashableInstances extends HashingTags{
   }
 }
 
-trait HashableInstances extends HashFuncs with LowPriorityHashableInstances with HashingTags{
+trait HashableInstances
+extends HashFuncs
+with HashableTupleInstances
+with LowPriorityHashableInstances
+with HashingTags{
+
   implicit def intHashable128 = new Hashable[Int, (Long, Long)]{
     def digest(a: Int, seed: Long): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
@@ -71,18 +76,6 @@ trait HashableInstances extends HashFuncs with LowPriorityHashableInstances with
     def digest(a: String, seed: Long): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a))
   }
-
-  implicit def tuple2Hashable128[A1,A2](implicit h1: Hashable[A1, (Long,Long)], h2: Hashable[A2, (Long,Long)]) = new Hashable[(A1,A2), (Long, Long)]{
-
-    def digest(a: Tuple2[A1,A2], seed: Long): (Long, Long) @@ HashCode = {
-      var current: (Long, Long) = (1L, 1L)
-      current = combine128Hashes(current, h1.digest(a._1, seed))
-      current = combine128Hashes(current, h2.digest(a._2, seed))
-
-      HashCode(current)
-    }
-  }
-
 }
 
 
