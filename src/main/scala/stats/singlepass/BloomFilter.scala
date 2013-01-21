@@ -44,7 +44,6 @@ object BloomFilter{
   def optimalWidth(numItems: Int, fpProb: Double): Int =
     math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)).toInt + 1
 
-
   def BloomFilterMonoid[A,B](parameters: (Int, Int), seed: Long = 0L)
                             (implicit h: Hashable[A, B],
                              hconv: HashCodeConverter[B, Int]): Monoid[BloomFilter[A,B]] with Equal[BloomFilter[A,B]] = {
@@ -112,6 +111,9 @@ sealed trait BloomFilter[A,B]{
   /** Add item to this bloom filter **/
   def + (item: A): BloomFilter[A, B]
 
+  /** Remove item (probabilistic) from this bloom filter **/
+  def - (item: A): BloomFilter[A, B]
+
   /** Test for (probabilistic) existence of an item **/
   def contains(item: A): Boolean
 }
@@ -129,6 +131,8 @@ case class BFZero[A,B](val numHashes: Int,
   def + (item: A): BloomFilter[A, B] =
     BFInstance(numHashes,width,hashItem(item),seed)(h,hconv)
 
+  def - (item: A): BloomFilter[A, B] = this
+
   def contains(item: A): Boolean = false
 }
 
@@ -144,12 +148,15 @@ case class BFInstance[A, B](val numHashes: Int,
                             hconv: HashCodeConverter[B, Int])
      extends BloomFilter[A, B]{
 
-  def + (item: A): BloomFilter[A, B] =
-    BFInstance(numHashes, width, bits ++ hashItem(item), seed)(h, hconv)
+  def + (item: A): BloomFilter[A, B] = construct(bits ++ hashItem(item))
+
+  def - (item: A): BloomFilter[A, B] = construct(bits -- hashItem(item))
 
   def contains(item: A): Boolean = {
     val itemBits = hashItem(item)
                            (bits & itemBits) == itemBits
   }
 
+  private def construct(b: BitSet) =
+    BFInstance(numHashes, width, b, seed)(h, hconv)
 }

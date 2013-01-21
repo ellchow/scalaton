@@ -25,12 +25,10 @@ class BloomFilterSpec extends Specification{
     }
 
     "be empty when added with another empty bloom filter" in {
-
       ((bfz |+| bfz) === bfz) must beTrue
     }
 
     "contain the item after adding it" in {
-
       (bfz + "a" contains "a") must beTrue
     }
 
@@ -111,6 +109,15 @@ class BloomFilterSpec extends Specification{
 
         items foreach { i => bf contains i must beTrue }
       }
+    }
+
+    "be empty after removing an item" in {
+      implicit val bfmon = BloomFilterMonoid[String,(Long,Long)](optimalParameters(100, 0.05))
+      val BF = BloomFilter[String, (Long,Long)](100, 0.05) _
+      val bfz = BF(Seq.empty)
+      val bf = BF(Seq("a"))
+
+      ((bf - "a") === bfz) must beTrue
     }
 
     "should be below false-positive rate with high confidence" in {
