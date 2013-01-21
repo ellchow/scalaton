@@ -16,26 +16,18 @@ import scalaton.util.hashable._
  * http://en.wikipedia.org/wiki/Bloom_filter
  */
 
-trait BloomFilter[A,B]{
-
-  /** Number of hashes in this bloom filter **/
-  val numHashes: Int
+trait BloomFilter[A,B] extends HashedCollection[A,B,Int]{
 
   /** Number of bits/cells in this bloom filter **/
   val width: Int
 
-  /** Hash seed for this bloom filter **/
-  val seed: Long
+  override def hashItem(item: A)(implicit h: Hashable[A, B],
+                        hconv: HashCodeConverter[B, Int]): Iterable[Int @@ HashCode] =
+    super.hashItem(item)(h,hconv) map { _ % width |> HashCode }
+
 
   require(numHashes gt 0, "number of hashes needs to be > 0")
   require(width gt 0, "width needs to be > 0")
-
-  /** Compute hash of an item for this bloom filter **/
-  def hashItem(item: A)(implicit h: Hashable[A, B],
-                        hconv: HashCodeConverter[B, Int]): Seq[Int @@ HashCode] = {
-    val hcs = (multiHash(item, seed)(h) |> hconv.convertSeq) take numHashes
-    hcs.toSeq map { _ % width |> HashCode }
-  }
 
   /** Add item to this bloom filter **/
   def + (item: A): BloomFilter[A, B]

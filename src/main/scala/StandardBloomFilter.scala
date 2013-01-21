@@ -67,13 +67,13 @@ object StandardBloomFilter{
         require(hasSameParameters(bf1, bf2),
                 "bloom filters not comparable if parameters are different")
 
-        Tags.Conjunction((bf1, bf2) match {
+        (bf1, bf2) match {
           case (x1: BFZero[A,B], x2: BFZero[A,B]) => true
           case (x1: BFInstance[A,B], x2: BFInstance[A,B]) => x1.bits == x2.bits
           case (x1: BFZero[A,B], x2: BFInstance[A,B]) => x2.bits.isEmpty
           case (x1: BFInstance[A,B], x2: BFZero[A,B]) => x1.bits.isEmpty
           case _ => false
-        })
+        }
       }
 
       override val zero: StandardBloomFilter[A,B] = BFZero[A,B](numHashes, width, seed)(h, hconv)
@@ -93,7 +93,7 @@ object StandardBloomFilter{
     }
   }
 
-  def toBitSet(seq: Seq[Int @@ HashCode]) = BitSet(seq : _*)
+  def toBitSet(seq: Iterable[Int @@ HashCode]) = BitSet(seq.toSeq : _*)
 
 }
 
@@ -135,7 +135,8 @@ case class BFInstance[A, B](val numHashes: Int,
 
   def contains(item: A): Boolean = {
     val itemBits = StandardBloomFilter.toBitSet(hashItem(item))
-                           (bits & itemBits) == itemBits
+
+    (bits & itemBits) == itemBits
   }
 
   private def construct(b: BitSet): StandardBloomFilter[A, B] =
