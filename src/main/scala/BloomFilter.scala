@@ -27,6 +27,9 @@ trait BloomFilter[A,B]{
   /** Hash seed for this bloom filter **/
   val seed: Long
 
+  require(numHashes gt 0, "number of hashes needs to be > 0")
+  require(width gt 0, "width needs to be > 0")
+
   /** Compute hash of an item for this bloom filter **/
   def hashItem(item: A)(implicit h: Hashable[A, B],
                         hconv: HashCodeConverter[B, Int]): Seq[Int @@ HashCode] = {

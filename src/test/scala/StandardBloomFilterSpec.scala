@@ -1,5 +1,7 @@
 package scalaton
 
+import scala.util.{Random => SRandom}
+
 import org.specs2.mutable._
 
 import scalaz.{BloomFilter => _, _}
@@ -16,10 +18,10 @@ class StandardBloomFilterSpec extends Specification{
     val bfz: StandardBloomFilter[String,(Long,Long)] = BFZero[String,(Long,Long)](5, 625)
 
     "not contain anything" in {
-      util.Random.setSeed(0)
+      SRandom.setSeed(0)
 
       0 to 1000 foreach { i =>
-        bfz contains (util.Random nextDouble() toString) must beFalse
+        bfz contains (SRandom nextDouble() toString) must beFalse
       }
     }
 
@@ -44,13 +46,13 @@ class StandardBloomFilterSpec extends Specification{
         BFZero(1, 2, 3)
 
       val bfz2: StandardBloomFilter[String,(Long,Long)] =
-        BFZero(0, 2, 3)
+        BFZero(100, 2, 3)
 
       val bfz3: StandardBloomFilter[String,(Long,Long)] =
-        BFZero(1, 0, 3)
+        BFZero(1, 100, 3)
 
       val bfz4: StandardBloomFilter[String,(Long,Long)] =
-        BFZero(1, 2, 0)
+        BFZero(1, 2, 100)
 
       val bf1: StandardBloomFilter[String,(Long,Long)] =
         BFInstance[String,(Long,Long)](1,2,collection.BitSet.empty,3)
@@ -79,13 +81,13 @@ class StandardBloomFilterSpec extends Specification{
         BFInstance[String,(Long,Long)](1,2,collection.BitSet(1),3)
 
       val bf2: StandardBloomFilter[String,(Long,Long)] =
-          BFInstance[String,(Long,Long)](0,2,collection.BitSet(1),3)
+          BFInstance[String,(Long,Long)](100,2,collection.BitSet(1),3)
 
       val bf3: StandardBloomFilter[String,(Long,Long)] =
-          BFInstance[String,(Long,Long)](1,0,collection.BitSet(1),3)
+          BFInstance[String,(Long,Long)](1,100,collection.BitSet(1),3)
 
       val bf4: StandardBloomFilter[String,(Long,Long)] =
-          BFInstance[String,(Long,Long)](1,2,collection.BitSet(1),0)
+          BFInstance[String,(Long,Long)](1,2,collection.BitSet(1),100)
 
       val bf5: StandardBloomFilter[String,(Long,Long)] =
           BFInstance[String,(Long,Long)](1,2,collection.BitSet(1,2),3)
@@ -99,11 +101,11 @@ class StandardBloomFilterSpec extends Specification{
     }
 
     "should contain all true positives" in {
-      util.Random.setSeed(0)
+      SRandom.setSeed(0)
 
       val BF = StandardBloomFilter[String, (Long,Long)](100, 0.05) _
       0 to 10 foreach { i =>
-        val items = 0 to 10 map { _ => util.Random nextDouble() toString }
+        val items = 0 to 10 map { _ => SRandom nextDouble() toString }
         val bf = BF(items)
 
         items foreach { i => bf contains i must beTrue }
@@ -111,20 +113,20 @@ class StandardBloomFilterSpec extends Specification{
     }
 
     "should be below false-positive rate with high confidence" in {
-      util.Random.setSeed(0)
+      SRandom.setSeed(0)
 
       Seq((0.1, 0.15), (0.05, 0.075),
           (0.01,0.015), (0.005, 0.01)
         ) foreach{ case (fpProb, maxFp) =>
         val fps = 0 until 15000 map { _ =>
           val numItems = 20
-          // val items = 0 until numItems map { _ => util.Random nextDouble() toString }
-          // val test = util.Random nextDouble() toString
+          // val items = 0 until numItems map { _ => SRandom nextDouble() toString }
+          // val test = SRandom nextDouble() toString
           // val bf = StandardBloomFilter[String, (Long,Long)](numItems, fpProb)(items : _*)
 
-          val items = 0 until numItems map { _ => (util.Random nextDouble() toString,
-                                                   util.Random nextDouble() toString) }
-          val test = (util.Random nextDouble() toString, util.Random nextDouble() toString)
+          val items = 0 until numItems map { _ => (SRandom nextDouble() toString,
+                                                   SRandom nextDouble() toString) }
+          val test = (SRandom nextDouble() toString, SRandom nextDouble() toString)
           val bf = StandardBloomFilter[(String, String), (Long,Long)](numItems, fpProb)(items : _*)
 
           if(bf contains test) 1.0 else 0.0
