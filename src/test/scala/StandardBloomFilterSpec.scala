@@ -1,4 +1,4 @@
-package scalaton.stats.singlepass
+package scalaton
 
 import org.specs2.mutable._
 
@@ -6,9 +6,9 @@ import scalaz.{BloomFilter => _, _}
 import Scalaz._
 
 import scalaton.util.hashable._
-import scalaton.stats.singlepass.StandardBloomFilter
+import scalaton.StandardBloomFilter
 
-class BloomFilterSpec extends Specification{
+class StandardBloomFilterSpec extends Specification{
 
   "an empty bloom filter" should {
 

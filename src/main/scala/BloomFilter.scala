@@ -1,4 +1,4 @@
-package scalaton.stats.singlepass
+package scalaton
 
 import scala.language.postfixOps
 
