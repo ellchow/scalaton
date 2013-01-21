@@ -101,8 +101,6 @@ sealed trait StandardBloomFilter[A,B] extends BloomFilter[A,B]{
 
   override def + (item: A): StandardBloomFilter[A, B]
 
-  override def - (item: A): StandardBloomFilter[A, B]
-
 }
 /**
  * Representation of an empty bloom filter
@@ -116,8 +114,6 @@ case class BFZero[A,B](val numHashes: Int,
 
   def + (item: A): StandardBloomFilter[A, B] =
     BFInstance(numHashes,width,StandardBloomFilter.toBitSet(hashItem(item)),seed)(h,hconv)
-
-  def - (item: A): StandardBloomFilter[A, B] = this
 
   def contains(item: A): Boolean = false
 }
@@ -136,9 +132,6 @@ case class BFInstance[A, B](val numHashes: Int,
 
   def + (item: A): StandardBloomFilter[A, B] =
     construct(bits ++ StandardBloomFilter.toBitSet(hashItem(item)))
-
-  def - (item: A): StandardBloomFilter[A, B] =
-    construct(bits -- StandardBloomFilter.toBitSet(hashItem(item)))
 
   def contains(item: A): Boolean = {
     val itemBits = StandardBloomFilter.toBitSet(hashItem(item))

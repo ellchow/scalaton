@@ -37,9 +37,6 @@ trait BloomFilter[A,B]{
   /** Add item to this bloom filter **/
   def + (item: A): BloomFilter[A, B]
 
-  /** Remove item (probabilistic) from this bloom filter **/
-  def - (item: A): BloomFilter[A, B]
-
   /** Test for (probabilistic) existence of an item **/
   def contains(item: A): Boolean
 }

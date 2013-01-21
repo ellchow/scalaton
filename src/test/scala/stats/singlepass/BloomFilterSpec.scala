@@ -110,15 +110,6 @@ class BloomFilterSpec extends Specification{
       }
     }
 
-    "be empty after removing an item" in {
-      implicit val bfmon = StandardBloomFilter.monoid[String,(Long,Long)](StandardBloomFilter.optimalParameters(100, 0.05))
-      val BF = StandardBloomFilter[String, (Long,Long)](100, 0.05) _
-      val bfz = BF(Seq.empty)
-      val bf = BF(Seq("a"))
-
-      ((bf - "a") === bfz) must beTrue
-    }
-
     "should be below false-positive rate with high confidence" in {
       util.Random.setSeed(0)
 
