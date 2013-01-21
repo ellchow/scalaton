@@ -123,8 +123,10 @@ class BloomFilterSpec extends Specification{
     "should be below false-positive rate with high confidence" in {
       util.Random.setSeed(0)
 
-      Seq(0.1, 0.05, 0.01) foreach{ fpProb =>
-        val fps = 0 until 10000 map { _ =>
+      Seq((0.1, 0.15), (0.05, 0.075),
+          (0.01,0.015), (0.001, 0.003)
+        ) foreach{ case (fpProb, maxFp) =>
+        val fps = 0 until 15000 map { _ =>
           val numItems = 20
           // val items = 0 until numItems map { _ => util.Random nextDouble() toString }
           // val test = util.Random nextDouble() toString
@@ -139,7 +141,7 @@ class BloomFilterSpec extends Specification{
         }
         val observed = fps.sum / fps.size
 
-        observed must beLessThan(1.5 * fpProb)
+        observed must beLessThan(maxFp)
       }
     }
   }
