@@ -3,6 +3,9 @@ package scalaton.util
 trait HashFuncs{
   import java.nio._
 
+  def combine128Hashes(x: (Long, Long), y: (Long,Long)): (Long, Long) =
+    (31L * x._1 + y._1, 31L * x._2 + y._2)
+
   case class MurmurHash(seed : Long) {
     def apply(buffer : ByteBuffer, offset : Int, length : Int) : (Long,Long) = {
       val longs = CassandraMurmurHash.hash3_x64_128(buffer, offset, length, seed)

@@ -126,9 +126,14 @@ class BloomFilterSpec extends Specification{
       Seq(0.1, 0.05, 0.01) foreach{ fpProb =>
         val fps = 0 until 10000 map { _ =>
           val numItems = 20
-          val items = 0 until numItems map { _ => util.Random nextDouble() toString }
-          val test = util.Random nextDouble() toString
-          val bf = BloomFilter[String, (Long,Long)](numItems, fpProb)(items : _*)
+          // val items = 0 until numItems map { _ => util.Random nextDouble() toString }
+          // val test = util.Random nextDouble() toString
+          // val bf = BloomFilter[String, (Long,Long)](numItems, fpProb)(items : _*)
+
+          val items = 0 until numItems map { _ => (util.Random nextDouble() toString,
+                                                   util.Random nextDouble() toString) }
+          val test = (util.Random nextDouble() toString, util.Random nextDouble() toString)
+          val bf = BloomFilter[(String, String), (Long,Long)](numItems, fpProb)(items : _*)
 
           if(bf contains test) 1.0 else 0.0
         }
