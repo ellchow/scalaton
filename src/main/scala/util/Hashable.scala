@@ -85,16 +85,20 @@ with HashingTags{
 trait HashCodeConverter[A, B] extends HashingTags{
   def convert(hc: A @@ HashCode): Seq[B @@ HashCode]
 
-  def convertSeq(hcs: Seq[A @@ HashCode]): Iterable[B @@ HashCode]=
+  def convertSeq(hcs: Stream[A @@ HashCode]): Iterable[B @@ HashCode]=
     new Iterable[B @@ HashCode]{
       def iterator = new Iterator[B @@ HashCode]{
+        private var cur = hcs
+
         private val buf: mutable.Queue[B @@ HashCode] = mutable.Queue.empty
 
-        def hasNext = Tags.Disjunction(buf.nonEmpty) |+| Tags.Disjunction(hcs.nonEmpty)
+        def hasNext = Tags.Disjunction(buf.nonEmpty) |+| Tags.Disjunction(cur.nonEmpty)
 
         def next = {
-          if(buf.isEmpty)
-            convert(hcs.head) foreach {e => buf enqueue e}
+          if(buf.isEmpty){
+            convert(cur.head) foreach {e => buf enqueue e}
+            cur = cur.tail
+          }
 
           buf dequeue
         }
@@ -121,10 +125,10 @@ trait HashCodeConverterInstances extends HashingTags{
 
 
   implicit val hashCodeLongLongToInt = new HashCodeConverter[(Long,Long), Int]{
-    def convert(hc: (Long, Long) @@ HashCode): Seq[Int @@ HashCode] = {
+    def convert(hc: (Long, Long) @@ HashCode): Seq[Int @@ HashCode] =
       Tag subst Seq(math.abs(hc._1 >> 32).toInt, math.abs((hc._1 << 32) >> 32).toInt,
                     math.abs(hc._2 >> 32).toInt, math.abs((hc._2 << 32) >> 32).toInt)
-    }
+
   }
 
 }
