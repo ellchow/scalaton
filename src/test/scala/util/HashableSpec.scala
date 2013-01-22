@@ -12,14 +12,14 @@ class HashableSpec extends Specification {
     "can use default hashable instance" in {
       val hc: Long @@ HashCode = hash("hello")
 
-      hc must_== 99162322L
+      hc mustEqual 99162322L
     }
 
     "is hashed by MurmurHash3" in {
       val hc = hash("hello")
-      (hc: (Long, Long)).productArity must_== 2
+      (hc: (Long, Long)).productArity mustEqual 2
 
-      hc must_== (-4758432102323878981L,1262627326183304356L)
+      hc mustEqual (-4758432102323878981L,1262627326183304356L)
     }
 
     "have different hash codes given different seeds" in {
@@ -27,15 +27,23 @@ class HashableSpec extends Specification {
       val seeds: Seq[Long] = 0L until n
       val hcs = seeds map {i => hash("hello", i)} toSet
 
-      hcs.size must_== n
+      hcs.size mustEqual n
     }
 
     "can be hashed multiple times" in {
       val n = 100
       val hcs = multiHash("hello", 0L) take n
 
-      hcs.size must_== n
+      hcs.size mustEqual n
     }
+
+    "yields mostly distinct values when hashing many times" in {
+      val n = 1000
+      val hcs = multiHash("hello", 0L) take n distinct
+
+      hcs.size must beGreaterThan((0.99 * n) toInt)
+    }
+
   }
 
 
