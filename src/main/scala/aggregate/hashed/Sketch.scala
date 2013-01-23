@@ -21,7 +21,7 @@ import scalaton.util.hashable._
 
 trait Sketch[A,B,T,R,F]
 extends HashedCollection[A,B,Int,F]
-with MakesSingleton[A,B,Int,F]
+with MakesSingleton[A,B,Int,T,F]
 with MapLike[A,B,Int,T,R,F]
 with Sized[F]
 
@@ -41,12 +41,13 @@ extends Sketch[A,B,T,R,(Vector[Vector[T]],Long) @@ CSK]{
   /** Given the values R saved in the sketch, produce an estimate**/
   protected def estimate(rs: Iterable[R]): R
 
-  /** Given an item and its current value, update **/
-  protected def updateValue(t: T, item: A): T
+  protected def updateValue(t: T, item: A)
+                           (implicit mon: Monoid[T]): T
 
   /** Update the element's value **/
   def insert(data: (Vector[Vector[T]], Long) @@ CSK, item: A)
-            (implicit h: Hashable[A, B],
+            (implicit mon: Monoid[T],
+             h: Hashable[A, B],
              hconv: HashCodeConverter[B, Int]): (Vector[Vector[T]], Long) @@ CSK = {
     val table = data._1
     val size = data._2
@@ -82,9 +83,11 @@ sealed trait CountMinSketch[A,B]
 extends CountSketch[A,B,Long,Long]
 with Equal[(Vector[Vector[Long]], Long) @@ CSK]{
 
+
   protected def estimate(rs: Iterable[Long]): Long = rs min
 
-  protected def updateValue(t: Long, item: A): Long = t + 1
+  def updateValue(t: Long, item: A)
+                 (implicit mon: Monoid[Long]): Long = t |+| 1
 
 }
 

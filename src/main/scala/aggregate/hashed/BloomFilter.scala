@@ -19,7 +19,7 @@ import scalaton.util.hashable._
  */
 trait BloomFilter[A,B,F]
 extends HashedCollection[A,B,Int,F]
-with MakesSingleton[A,B,Int,F]
+with MakesSingleton[A,B,Int,Boolean @@ Tags.Disjunction,F]
 with SetLike[A,B,Int,F]
 with MapLike[A,B,Int,Boolean,Boolean,F]
 with Sized[F] {
@@ -59,8 +59,9 @@ with Equal[BitSet @@ BF] {
           hconv: HashCodeConverter[B, Int]): Boolean =
     contains(bits, item)(h,hconv)
 
-  def insert(bits: BitSet @@ BF, item: A)(implicit h: Hashable[A, B],
-                                           hconv: HashCodeConverter[B, Int]): BitSet @@ BF =
+  def insert(bits: BitSet @@ BF, item: A)(implicit mon: Monoid[Boolean @@ Tags.Disjunction],
+                                          h: Hashable[A, B],
+                                          hconv: HashCodeConverter[B, Int]): BitSet @@ BF =
     Tag[BitSet, BF](bits ++ toBitSet(hashItem(item)))
 
   /**

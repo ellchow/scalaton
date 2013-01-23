@@ -32,14 +32,19 @@ trait Hashes[A,B,C]{
 }
 
 /** Collections in which you can insert hashed items **/
-trait HashedCollection[A,B,C,F] extends Hashes[A,B,C]{
-  def insert(collection: F, item: A)(implicit h: Hashable[A, B],
+trait HashedCollection[A,B,C,F] extends Hashes[A,B,C]
+
+trait Insertable[A,B,C,T,F] extends HashedCollection[A,B,C,F]{
+  def insert(collection: F, item: A)(implicit mon: Monoid[T],
+                                     h: Hashable[A, B],
                                      hconv: HashCodeConverter[B, C]): F
 }
 
 /** Can instantiate with a single item **/
-trait MakesSingleton[A,B,C,F] extends HashedCollection[A,B,C,F] with Monoid[F] {
-  def singleton(item: A)(implicit h: Hashable[A, B],
+trait MakesSingleton[A,B,C,T,F] extends HashedCollection[A,B,C,F] with Insertable[A,B,C,T,F]with Monoid[F] {
+  def singleton(item: A)(implicit i: Insertable[A,B,C,T,F],
+                         mon: Monoid[T],
+                         h: Hashable[A, B],
                          hconv: HashCodeConverter[B, C]): F =
     insert(zero, item)
 }
@@ -69,18 +74,20 @@ trait Sized[F]{
  **/
 
 trait HashedCollectionFunctions{
-  def insert[A,B,C,F](collection: F, item: A)(implicit i: HashedCollection[A,B,C,F],
-                                               h: Hashable[A, B],
-                                               hconv: HashCodeConverter[B, C]) =
+  def insert[A,B,C,T,F](collection: F, item: A)(implicit i: Insertable[A,B,C,T,F],
+                                                mon: Monoid[T],
+                                                h: Hashable[A, B],
+                                                hconv: HashCodeConverter[B, C]) =
     i.insert(collection, item)
 }
 
 
 
 trait MakesSingletonFunctions{
-  def singleton[A,B,C,F](item: A)(implicit ms: MakesSingleton[A,B,C,F],
-                                  h: Hashable[A, B],
-                                  hconv: HashCodeConverter[B, C]): F =
+  def singleton[A,B,C,T,F](item: A)(implicit ms: MakesSingleton[A,B,C,T,F],
+                                    mon: Monoid[T],
+                                    h: Hashable[A, B],
+                                    hconv: HashCodeConverter[B, C]): F =
     ms.singleton(item)
 }
 
