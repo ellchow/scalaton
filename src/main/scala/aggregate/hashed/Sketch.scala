@@ -85,9 +85,6 @@ with Equal[(Vector[Vector[Long]], Long) @@ CSK]{
 
   protected def estimate(rs: Iterable[Long]): Long = rs min
 
-  def updateValue(t: Long, item: A)
-                 (implicit mon: Monoid[Long]): Long = t |+| 1
-
 }
 
 object sketch
