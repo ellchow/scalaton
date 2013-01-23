@@ -95,6 +95,8 @@ with SetLikeFunctions
 with MapLikeFunctions
 with SizedFunctions{
 
+  type CMS = (Vector[Vector[Long]], Long) @@ CSK
+
   object CountMinSketch{
 
     def apply[A,B](params: (Int, Int), s: Long = 0L) = new CountMinSketch[A,B]{

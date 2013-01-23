@@ -16,7 +16,7 @@ class StandardBloomFilterSpec extends Specification{
 
   "an empty bloom filter" should {
 
-    implicit val BF = StandardBloomFilter[String,(Long,Long)]((5,625), 0L)
+    implicit val bfinstance = StandardBloomFilter[String,(Long,Long)]((5,625), 0L)
 
     "not contain anything" in {
       SRandom.setSeed(0)
@@ -28,7 +28,7 @@ class StandardBloomFilterSpec extends Specification{
     }
 
     "is only equal to another empty bloom filter" in {
-      val bfz = Tag[BitSet,SBF](BitSet.empty)
+      val bfz = Tag[BitSet,BF](BitSet.empty)
       (StandardBloomFilter.empty === bfz) must beTrue
 
       0 to 1000 foreach { i =>
@@ -103,7 +103,7 @@ class StandardBloomFilterSpec extends Specification{
     "should should return cardinality of -1 if all bloom filter is full" in {
       implicit val sbfinstance = StandardBloomFilter[String,(Long,Long)](StandardBloomFilter.optimalParameters(10,0.05),0)
 
-      val bf: BitSet @@ SBF = Tag[BitSet,SBF](BitSet((0 until sbfinstance.width) : _*))
+      val bf: SBF = Tag[BitSet,BF](BitSet((0 until sbfinstance.width) : _*))
 
       (cardinality(bf) === -1L) must beTrue
     }

@@ -35,42 +35,40 @@ with Sized[F] {
   }
 }
 
-
+sealed trait BF
 
 /**
  * Standard Bloom Filter
  **/
-sealed trait SBF
-
 trait StandardBloomFilter[A,B]
-extends BloomFilter[A,B,BitSet @@ SBF]
-with Equal[BitSet @@ SBF] {
+extends BloomFilter[A,B,BitSet @@ BF]
+with Equal[BitSet @@ BF] {
 
   def toBitSet(iter: Iterable[Int @@ HashCode]) = BitSet(iter.toSeq : _*)
 
-  def contains(bits: BitSet @@ SBF, item: A)(implicit h: Hashable[A, B],
+  def contains(bits: BitSet @@ BF, item: A)(implicit h: Hashable[A, B],
                                              hconv: HashCodeConverter[B, Int]): Boolean = {
     val itemBits = toBitSet(hashItem(item))
 
     (bits & itemBits) == itemBits
   }
 
-  def get(bits: BitSet @@ SBF, item: A)
+  def get(bits: BitSet @@ BF, item: A)
          (implicit v: Value[Boolean,Boolean],
           h: Hashable[A, B],
           hconv: HashCodeConverter[B, Int]): Boolean =
     contains(bits, item)(h,hconv)
 
-  def insert(bits: BitSet @@ SBF, item: A)(implicit h: Hashable[A, B],
-                                           hconv: HashCodeConverter[B, Int]): BitSet @@ SBF =
-    Tag[BitSet, SBF](bits ++ toBitSet(hashItem(item)))
+  def insert(bits: BitSet @@ BF, item: A)(implicit h: Hashable[A, B],
+                                           hconv: HashCodeConverter[B, Int]): BitSet @@ BF =
+    Tag[BitSet, BF](bits ++ toBitSet(hashItem(item)))
 
   /**
    * MLE of number of elements inserted given t bits turned on.
    * NOTE: If bloom filter is full, -1 returned.
    * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
   **/
-  def cardinality(bits: BitSet @@ SBF):Long = {
+  def cardinality(bits: BitSet @@ BF):Long = {
     val t = bits.size
     if(t >= width)
       -1L
@@ -89,9 +87,11 @@ with SetLikeFunctions
 with MapLikeFunctions
 with SizedFunctions{
 
+  type SBF = BitSet @@ BF
+
   object StandardBloomFilter{
 
-    val empty: BitSet @@ SBF = Tag[BitSet, SBF](BitSet.empty)
+    val empty: SBF = Tag[BitSet, BF](BitSet.empty)
 
     def apply[A,B](params: (Int, Int), s: Long = 0L) = new StandardBloomFilter[A,B]{
 
@@ -99,13 +99,13 @@ with SizedFunctions{
 
       val seed: Long = s
 
-      val zero: BitSet @@ SBF = empty
+      val zero: SBF = empty
 
-      def equal(sbf1: BitSet @@ SBF, sbf2: BitSet @@ SBF): Boolean =
+      def equal(sbf1: SBF, sbf2: SBF): Boolean =
         sbf1 == sbf2
 
-      def append(sbf1: BitSet @@ SBF, sbf2: => BitSet @@ SBF): BitSet @@ SBF =
-        Tag[BitSet, SBF](sbf1 ++ sbf2)
+      def append(sbf1: SBF, sbf2: => SBF): SBF =
+        Tag[BitSet, BF](sbf1 ++ sbf2)
 
     }
 
