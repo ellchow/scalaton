@@ -79,7 +79,8 @@ extends Sketch[A,B,T,R,(Vector[Vector[T]],Long) @@ CSK]{
 
 
 sealed trait CountMinSketch[A,B]
-extends CountSketch[A,B,Long,Long]{
+extends CountSketch[A,B,Long,Long]
+with Equal[(Vector[Vector[Long]], Long) @@ CSK]{
 
   protected def estimate(rs: Iterable[Long]): Long = rs min
 
@@ -101,6 +102,11 @@ with SizedFunctions{
       val (numHashes, width) = params
 
       val seed = s
+
+      def equal(cms1: (Vector[Vector[Long]], Long) @@ CSK,
+                cms2: (Vector[Vector[Long]], Long) @@ CSK) =
+        (cms1._1 == cms2._1) && (cms1._2 == cms2._2)
+
 
       val zero: (Vector[Vector[Long]], Long) @@ CSK =
         Tag[(Vector[Vector[Long]], Long), CSK]((Vector.fill[Long](numHashes, width)(0L), 0L))
