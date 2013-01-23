@@ -1,2 +1,2 @@
-singlepass
+scalaton
 ==========
