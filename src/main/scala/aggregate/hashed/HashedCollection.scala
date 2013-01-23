@@ -40,13 +40,15 @@ trait HashedCollection[A,B,C,F] extends Hashes[A,B,C]{
 /** Can instantiate with a single item **/
 trait MakesSingleton[A,B,C,F] extends HashedCollection[A,B,C,F] with Monoid[F] {
   def singleton(item: A)(implicit h: Hashable[A, B],
-                         hconv: HashCodeConverter[B, C]): F
+                         hconv: HashCodeConverter[B, C]): F =
+    insert(zero, item)
 }
 
 /** Can check for existence of an item **/
-trait MapLike[A,B,C,D,F] extends HashedCollection[A,B,C,F]{
-  def get(collection: F, item: A)(implicit h: Hashable[A, B],
-                                  hconv: HashCodeConverter[B, C]): D
+trait MapLike[A,B,C,T,R,F] extends HashedCollection[A,B,C,F]{
+  def get(collection: F, item: A)(implicit v: Value[T,R],
+                                  h: Hashable[A, B],
+                                  hconv: HashCodeConverter[B, C]): R
 }
 
 /** Can check for existence of an item **/
@@ -88,6 +90,14 @@ trait SetLikeFunctions{
                                                 h: Hashable[A, B],
                                                 hconv: HashCodeConverter[B, C]) =
     c.contains(collection, item)
+}
+
+trait MapLikeFunctions{
+  def get[A,B,C,T,R,F](collection: F, item: A)(implicit m: MapLike[A,B,C,T,R,F],
+                                               v: Value[T,R],
+                                               h: Hashable[A, B],
+                                               hconv: HashCodeConverter[B, C]) =
+    m.get(collection, item)
 }
 
 trait SizedFunctions{

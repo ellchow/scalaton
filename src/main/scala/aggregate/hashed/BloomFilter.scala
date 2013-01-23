@@ -21,11 +21,10 @@ trait BloomFilter[A,B,F]
 extends HashedCollection[A,B,Int,F]
 with MakesSingleton[A,B,Int,F]
 with SetLike[A,B,Int,F]
-with MapLike[A,B,Int,Boolean,F]
+with MapLike[A,B,Int,Boolean,Boolean,F]
 with Sized[F] {
 
   val width: Int
-
 
   /** could possibly use double hashing **/
   override def hashItem(item: A)(implicit h: Hashable[A, B],
@@ -34,8 +33,6 @@ with Sized[F] {
     // (0 until numHashes) map { i => HashCode(math.abs(hcs(0) + i * hcs(1) + i * i).toInt % width) }
     super.hashItem(item)(h,hconv) map { _ % width |> HashCode}
   }
-
-
 }
 
 
@@ -58,17 +55,15 @@ with Equal[BitSet @@ SBF] {
     (bits & itemBits) == itemBits
   }
 
-  def get(bits: BitSet @@ SBF, item: A)(implicit h: Hashable[A, B],
-                                        hconv: HashCodeConverter[B, Int]): Boolean =
+  def get(bits: BitSet @@ SBF, item: A)
+         (implicit v: Value[Boolean,Boolean],
+          h: Hashable[A, B],
+          hconv: HashCodeConverter[B, Int]): Boolean =
     contains(bits, item)(h,hconv)
 
   def insert(bits: BitSet @@ SBF, item: A)(implicit h: Hashable[A, B],
                                            hconv: HashCodeConverter[B, Int]): BitSet @@ SBF =
     Tag[BitSet, SBF](bits ++ toBitSet(hashItem(item)))
-
-  def singleton(item: A)(implicit h: Hashable[A, B],
-                         hconv: HashCodeConverter[B, Int]) =
-    insert(zero, item)
 
   /**
    * MLE of number of elements inserted given t bits turned on.
@@ -91,6 +86,7 @@ object bloomfilter
 extends HashedCollectionFunctions
 with MakesSingletonFunctions
 with SetLikeFunctions
+with MapLikeFunctions
 with SizedFunctions{
 
   object StandardBloomFilter{
@@ -110,6 +106,7 @@ with SizedFunctions{
 
       def append(sbf1: BitSet @@ SBF, sbf2: => BitSet @@ SBF): BitSet @@ SBF =
         Tag[BitSet, SBF](sbf1 ++ sbf2)
+
     }
 
     /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
