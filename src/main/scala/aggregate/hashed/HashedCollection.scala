@@ -3,8 +3,6 @@ package scalaton.aggregate.hashed
 import scala.language.higherKinds
 import scala.language.postfixOps
 
-import scala.collection.{SortedSet, BitSet}
-
 import scalaz.{BloomFilter => _, _}
 import Scalaz._
 
@@ -33,8 +31,7 @@ trait Hashes[A,B,C]{
 
 }
 
-
-/** Collections in which you can insert items **/
+/** Collections in which you can insert hashed items **/
 trait HashedCollection[A,B,C,F] extends Hashes[A,B,C]{
   def insert(collection: F, item: A)(implicit h: Hashable[A, B],
                                      hconv: HashCodeConverter[B, C]): F
