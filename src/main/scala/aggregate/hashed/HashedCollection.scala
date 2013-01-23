@@ -32,18 +32,16 @@ trait Hashes[A,B,C]{
 }
 
 /** Collections in which you can insert hashed items **/
-trait HashedCollection[A,B,C,F] extends Hashes[A,B,C]
+trait HashedCollection[A,B,C,F] extends Hashes[A,B,C] with Monoid[F]
 
-trait Insertable[A,B,C,T,F] extends HashedCollection[A,B,C,F]{
-  def insert(collection: F, item: A)(implicit mon: Monoid[T],
-                                     h: Hashable[A, B],
+trait Insertable[A,B,C,F] extends HashedCollection[A,B,C,F]{
+  def insert(collection: F, item: A)(implicit h: Hashable[A, B],
                                      hconv: HashCodeConverter[B, C]): F
 }
 
 /** Can instantiate with a single item **/
-trait MakesSingleton[A,B,C,T,F] extends HashedCollection[A,B,C,F] with Insertable[A,B,C,T,F]with Monoid[F] {
-  def singleton(item: A)(implicit i: Insertable[A,B,C,T,F],
-                         mon: Monoid[T],
+trait MakesSingleton[A,B,C,F] extends HashedCollection[A,B,C,F] with Insertable[A,B,C,F] {
+  def singleton(item: A)(implicit i: Insertable[A,B,C,F],
                          h: Hashable[A, B],
                          hconv: HashCodeConverter[B, C]): F =
     insert(zero, item)
@@ -54,6 +52,11 @@ trait MapLike[A,B,C,T,R,F] extends HashedCollection[A,B,C,F]{
   def get(collection: F, item: A)(implicit v: Value[T,R],
                                   h: Hashable[A, B],
                                   hconv: HashCodeConverter[B, C]): R
+
+  /** take item A, find its T in F, update and insert**/
+  def update(collection: F, item: A, u: T)(implicit mon: Monoid[T],
+                                           h: Hashable[A, B],
+                                           hconv: HashCodeConverter[B, C]): F
 }
 
 /** Can check for existence of an item **/
@@ -74,8 +77,7 @@ trait Sized[F]{
  **/
 
 trait HashedCollectionFunctions{
-  def insert[A,B,C,T,F](collection: F, item: A)(implicit i: Insertable[A,B,C,T,F],
-                                                mon: Monoid[T],
+  def insert[A,B,C,T,F](collection: F, item: A)(implicit i: Insertable[A,B,C,F],
                                                 h: Hashable[A, B],
                                                 hconv: HashCodeConverter[B, C]) =
     i.insert(collection, item)
@@ -84,10 +86,9 @@ trait HashedCollectionFunctions{
 
 
 trait MakesSingletonFunctions{
-  def singleton[A,B,C,T,F](item: A)(implicit ms: MakesSingleton[A,B,C,T,F],
-                                    mon: Monoid[T],
-                                    h: Hashable[A, B],
-                                    hconv: HashCodeConverter[B, C]): F =
+  def singleton[A,B,C,F](item: A)(implicit ms: MakesSingleton[A,B,C,F],
+                                  h: Hashable[A, B],
+                                  hconv: HashCodeConverter[B, C]): F =
     ms.singleton(item)
 }
 
@@ -105,6 +106,12 @@ trait MapLikeFunctions{
                                                h: Hashable[A, B],
                                                hconv: HashCodeConverter[B, C]) =
     m.get(collection, item)
+
+  def update[A,B,C,T,R,F](collection: F, item: A, u: T)(implicit m: MapLike[A,B,C,T,R,F],
+                                                        mon: Monoid[T],
+                                                        h: Hashable[A, B],
+                                                        hconv: HashCodeConverter[B, C]) =
+    m.update(collection, item, u)
 }
 
 trait SizedFunctions{

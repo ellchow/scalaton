@@ -85,7 +85,7 @@ class StandardBloomFilterSpec extends Specification{
         }
         val observed = fps.sum / fps.size
 
-        observed must beLessThan(1.25 * fpProb)
+        observed must beLessThan(1.5 * fpProb)
       }
     }
 

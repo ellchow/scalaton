@@ -21,7 +21,6 @@ import scalaton.util.hashable._
 
 trait Sketch[A,B,T,R,F]
 extends HashedCollection[A,B,Int,F]
-with MakesSingleton[A,B,Int,T,F]
 with MapLike[A,B,Int,T,R,F]
 with Sized[F]
 
@@ -41,11 +40,11 @@ extends Sketch[A,B,T,R,(Vector[Vector[T]],Long) @@ CSK]{
   /** Given the values R saved in the sketch, produce an estimate**/
   protected def estimate(rs: Iterable[R]): R
 
-  protected def updateValue(t: T, item: A)
-                           (implicit mon: Monoid[T]): T
+  protected def updateValue(t: T, u: T)
+                           (implicit mon: Monoid[T]): T = t |+| u
 
   /** Update the element's value **/
-  def insert(data: (Vector[Vector[T]], Long) @@ CSK, item: A)
+  def update(data: (Vector[Vector[T]], Long) @@ CSK, item: A, u: T)
             (implicit mon: Monoid[T],
              h: Hashable[A, B],
              hconv: HashCodeConverter[B, Int]): (Vector[Vector[T]], Long) @@ CSK = {
@@ -55,7 +54,7 @@ extends Sketch[A,B,T,R,(Vector[Vector[T]],Long) @@ CSK]{
     val idxs = hashItem(item) zipWithIndex
 
     val newTable = idxs map { case (col, row) =>
-                              table(row).updated(col, updateValue(table(row)(col), item)) } toVector
+                              table(row).updated(col, updateValue(table(row)(col), u)) } toVector
 
     Tag[(Vector[Vector[T]],Long), CSK]((newTable, size + 1))
   }
