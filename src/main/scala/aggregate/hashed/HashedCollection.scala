@@ -59,6 +59,13 @@ trait MapLike[A,B,C,T,R,F] extends HashedCollection[A,B,C,F]{
                                            hconv: HashCodeConverter[B, C]): F
 }
 
+trait MakesSingletonM[A,B,C,T,R,F] extends MapLike[A,B,C,T,R,F] {
+  def singleton(item: A, u: T)(implicit mon: Monoid[T],
+                               h: Hashable[A, B],
+                               hconv: HashCodeConverter[B, C]): F =
+    update(zero, item, u)
+}
+
 /** Can check for existence of an item **/
 trait SetLike[A,B,C,F] extends HashedCollection[A,B,C,F]{
   def contains(collection: F, item: A)(implicit h: Hashable[A, B],
@@ -92,6 +99,13 @@ trait MakesSingletonFunctions{
     ms.singleton(item)
 }
 
+trait MakesSingletonMFunctions{
+  def singleton[A,B,C,T,R,F](item: A, u: T)(implicit ms: MakesSingletonM[A,B,C,T,R,F],
+                                            mon: Monoid[T],
+                                            h: Hashable[A, B],
+                                            hconv: HashCodeConverter[B, C]): F =
+    ms.singleton(item, u)
+}
 
 trait SetLikeFunctions{
   def contains[A,B,C,F](collection: F, item: A)(implicit c: SetLike[A,B,C,F],

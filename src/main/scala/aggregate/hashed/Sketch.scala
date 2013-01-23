@@ -21,7 +21,7 @@ import scalaton.util.hashable._
 
 trait Sketch[A,B,T,R,F]
 extends HashedCollection[A,B,Int,F]
-with MapLike[A,B,Int,T,R,F]
+with MakesSingletonM[A,B,Int,T,R,F]
 with Sized[F]
 
 
@@ -92,7 +92,7 @@ with Equal[(Vector[Vector[Long]], Long) @@ CSK]{
 
 object sketch
 extends HashedCollectionFunctions
-with MakesSingletonFunctions
+with MakesSingletonMFunctions
 with SetLikeFunctions
 with MapLikeFunctions
 with SizedFunctions{
@@ -100,6 +100,8 @@ with SizedFunctions{
   type CMS = (Vector[Vector[Long]], Long) @@ CSK
 
   object CountMinSketch{
+
+    def empty[A,B](implicit c: CountMinSketch[A,B]) = c.zero
 
     def apply[A,B](params: (Int, Int), s: Long = 0L) = new CountMinSketch[A,B]{
 
