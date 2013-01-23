@@ -19,7 +19,9 @@ import scalaton.util.hashable._
  */
 trait BloomFilter[A,B,G[_],F <: G[_]]
 extends MakesSingleton[A,B,Int,F]
-with Contains[A,B,Int,F]{
+with Contains[A,B,Int,F]
+with Sizes[F]
+{
 
   val width: Int
 
@@ -36,7 +38,10 @@ with Contains[A,B,Int,F]{
  **/
 sealed trait SBF
 
-trait StandardBloomFilter[A,B] extends BloomFilter[A,B,SortedSet,BitSet @@ SBF] with Monoid[BitSet @@ SBF] with Equal[BitSet @@ SBF] {
+trait StandardBloomFilter[A,B]
+extends BloomFilter[A,B,SortedSet,BitSet @@ SBF]
+with Monoid[BitSet @@ SBF]
+with Equal[BitSet @@ SBF] {
 
   def toBitSet(iter: Iterable[Int @@ HashCode]) = BitSet(iter.toSeq : _*)
 
@@ -54,6 +59,21 @@ trait StandardBloomFilter[A,B] extends BloomFilter[A,B,SortedSet,BitSet @@ SBF] 
   def singleton(item: A)(implicit h: Hashable[A, B],
                          hconv: HashCodeConverter[B, Int]) =
     insert(zero, item)
+
+  /**
+   * MLE of number of elements inserted given t bits turned on.
+   * NOTE: If bloom filter is full, -1 returned.
+   * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
+  **/
+  def cardinality(bits: BitSet @@ SBF):Long = {
+    val t = bits.size
+    if(t >= width)
+      -1L
+    else{
+      val (m,k) = (width.toDouble, numHashes.toDouble)
+      math.round(math.log(1 - t.toDouble / m) / (k * math.log(1 - 1 / m))).toLong
+    }
+  }
 }
 
 

@@ -75,7 +75,7 @@ class StandardBloomFilterSpec extends Specification{
 
         implicit val BF = StandardBloomFilter[(String, String), (Long,Long)](params, 0L)
 
-        val fps = 0 until 15000 map { _ =>
+        val fps = 0 until 10000 map { _ =>
           val items = 0 until numItems map { _ => (SRandom nextDouble() toString,
                                                    SRandom nextDouble() toString) }
           val test = (SRandom nextDouble() toString, SRandom nextDouble() toString)
@@ -89,5 +89,23 @@ class StandardBloomFilterSpec extends Specification{
       }
     }
 
+    "should estimate size well for elements less than the intended number of elements" in {
+      implicit val sbfinstance = StandardBloomFilter[String,(Long,Long)](StandardBloomFilter.optimalParameters(100,0.05),0)
+
+      var bf = StandardBloomFilter.empty
+      for(i <- 1 to 100){
+        bf = insert(bf, scala.util.Random.nextDouble.toString)
+
+        math.abs(cardinality(bf) - i) must beLessThan(math.max(math.round(1.05 * i), 1).toLong)
+      }
+    }
+
+    "should should return cardinality of -1 if all bloom filter is full" in {
+      implicit val sbfinstance = StandardBloomFilter[String,(Long,Long)](StandardBloomFilter.optimalParameters(10,0.05),0)
+
+      val bf: BitSet @@ SBF = Tag[BitSet,SBF](BitSet((0 until sbfinstance.width) : _*))
+
+      (cardinality(bf) === -1L) must beTrue
+    }
   }
 }

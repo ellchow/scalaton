@@ -54,7 +54,7 @@ trait Contains[A,B,C,F] extends Hashes[A,B,C]{
 
 /** Collections in which you can check the size/cardinality **/
 trait Sizes[F]{
-  def size(collection: F): Long
+  def cardinality(collection: F): Long
 }
 
 
@@ -86,8 +86,8 @@ trait ContainsFunctions{
 }
 
 trait SizesFunctions{
-  def size[F](collection: F)(implicit s: Sizes[F]) =
-    s.size(collection)
+  def cardinality[F](collection: F)(implicit s: Sizes[F]): Long =
+    s.cardinality(collection)
 }
 
 
