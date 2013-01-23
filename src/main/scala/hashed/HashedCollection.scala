@@ -1,4 +1,4 @@
-package scalaton.hashed
+package scalaton.aggregate.hashed
 
 import scala.language.higherKinds
 import scala.language.postfixOps
@@ -35,25 +35,31 @@ trait Hashes[A,B,C]{
 
 
 /** Collections in which you can insert items **/
-trait Inserts[A,B,C,F] extends Hashes[A,B,C]{
+trait HashedCollection[A,B,C,F] extends Hashes[A,B,C]{
   def insert(collection: F, item: A)(implicit h: Hashable[A, B],
                                      hconv: HashCodeConverter[B, C]): F
 }
 
-/** Collections in which you can instantiate with a single item **/
-trait MakesSingleton[A,B,C,F] extends Inserts[A,B,C,F] with Monoid[F] {
+/** Can instantiate with a single item **/
+trait MakesSingleton[A,B,C,F] extends HashedCollection[A,B,C,F] with Monoid[F] {
   def singleton(item: A)(implicit h: Hashable[A, B],
                          hconv: HashCodeConverter[B, C]): F
 }
 
-/** Collections in which you can check for existence of an item **/
-trait Contains[A,B,C,F] extends Hashes[A,B,C]{
+/** Can check for existence of an item **/
+trait MapLike[A,B,C,D,F] extends HashedCollection[A,B,C,F]{
+  def get(collection: F, item: A)(implicit h: Hashable[A, B],
+                                  hconv: HashCodeConverter[B, C]): D
+}
+
+/** Can check for existence of an item **/
+trait SetLike[A,B,C,F] extends HashedCollection[A,B,C,F]{
   def contains(collection: F, item: A)(implicit h: Hashable[A, B],
                                        hconv: HashCodeConverter[B, C]): Boolean
 }
 
-/** Collections in which you can check the size/cardinality **/
-trait Sizes[F]{
+/** Can check the size/cardinality **/
+trait Sized[F]{
   def cardinality(collection: F): Long
 }
 
@@ -63,12 +69,14 @@ trait Sizes[F]{
  * Functions for operating on hashed collections
  **/
 
-trait InsertsFunctions{
-  def insert[A,B,C,F](collection: F, item: A)(implicit i: Inserts[A,B,C,F],
+trait HashedCollectionFunctions{
+  def insert[A,B,C,F](collection: F, item: A)(implicit i: HashedCollection[A,B,C,F],
                                                h: Hashable[A, B],
                                                hconv: HashCodeConverter[B, C]) =
     i.insert(collection, item)
 }
+
+
 
 trait MakesSingletonFunctions{
   def singleton[A,B,C,F](item: A)(implicit ms: MakesSingleton[A,B,C,F],
@@ -78,15 +86,15 @@ trait MakesSingletonFunctions{
 }
 
 
-trait ContainsFunctions{
-  def contains[A,B,C,F](collection: F, item: A)(implicit c: Contains[A,B,C,F],
+trait SetLikeFunctions{
+  def contains[A,B,C,F](collection: F, item: A)(implicit c: SetLike[A,B,C,F],
                                                 h: Hashable[A, B],
                                                 hconv: HashCodeConverter[B, C]) =
     c.contains(collection, item)
 }
 
-trait SizesFunctions{
-  def cardinality[F](collection: F)(implicit s: Sizes[F]): Long =
+trait SizedFunctions{
+  def cardinality[F](collection: F)(implicit s: Sized[F]): Long =
     s.cardinality(collection)
 }
 

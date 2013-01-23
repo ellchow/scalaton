@@ -1,4 +1,4 @@
-package scalaton.hashed
+package scalaton.aggregate.hashed
 
 import scala.language.higherKinds
 import scala.language.postfixOps
@@ -18,10 +18,11 @@ import scalaton.util.hashable._
  * http://en.wikipedia.org/wiki/Bloom_filter
  */
 trait BloomFilter[A,B,G[_],F <: G[_]]
-extends MakesSingleton[A,B,Int,F]
-with Contains[A,B,Int,F]
-with Sizes[F]
-{
+extends HashedCollection[A,B,Int,F]
+with MakesSingleton[A,B,Int,F]
+with SetLike[A,B,Int,F]
+with MapLike[A,B,Int,Boolean,F]
+with Sized[F] {
 
   val width: Int
 
@@ -40,7 +41,6 @@ sealed trait SBF
 
 trait StandardBloomFilter[A,B]
 extends BloomFilter[A,B,SortedSet,BitSet @@ SBF]
-with Monoid[BitSet @@ SBF]
 with Equal[BitSet @@ SBF] {
 
   def toBitSet(iter: Iterable[Int @@ HashCode]) = BitSet(iter.toSeq : _*)
@@ -51,6 +51,10 @@ with Equal[BitSet @@ SBF] {
 
     (bits & itemBits) == itemBits
   }
+
+  def get(bits: BitSet @@ SBF, item: A)(implicit h: Hashable[A, B],
+                                        hconv: HashCodeConverter[B, Int]): Boolean =
+    contains(bits, item)(h,hconv)
 
   def insert(bits: BitSet @@ SBF, item: A)(implicit h: Hashable[A, B],
                                            hconv: HashCodeConverter[B, Int]): BitSet @@ SBF =
@@ -78,10 +82,10 @@ with Equal[BitSet @@ SBF] {
 
 
 object bloomfilter
-extends InsertsFunctions
+extends HashedCollectionFunctions
 with MakesSingletonFunctions
-with ContainsFunctions
-with SizesFunctions{
+with SetLikeFunctions
+with SizedFunctions{
 
   object StandardBloomFilter{
 

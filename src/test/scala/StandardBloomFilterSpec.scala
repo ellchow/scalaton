@@ -1,4 +1,4 @@
-package scalaton.hashed
+package scalaton.aggregate.hashed
 
 import scala.collection.BitSet
 
@@ -10,7 +10,7 @@ import scalaz.{BloomFilter => _, _}
 import Scalaz._
 
 import scalaton.util.hashable._
-import scalaton.hashed.bloomfilter._
+import scalaton.aggregate.hashed.bloomfilter._
 
 class StandardBloomFilterSpec extends Specification{
 
