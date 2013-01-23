@@ -10,9 +10,10 @@ class HashableSpec extends Specification {
 
   "The string 'hello'" should {
     "can use default hashable instance" in {
-      val hc: Long @@ HashCode = hash("hello")
+      implicit val hashAnything = anyHashable[String]
+      val hc: (Long,Long) @@ HashCode = hash("hello")
 
-      hc mustEqual 99162322L
+      hc mustEqual (5620873505596599413L, 2937734076964678877L)
     }
 
     "is hashed by MurmurHash3" in {

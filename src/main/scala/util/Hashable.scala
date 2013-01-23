@@ -30,7 +30,7 @@ trait Hashable[A,B] extends HashingTags{
 }
 
 trait LowPriorityHashableInstances extends HashFuncs with HashingTags{
-  implicit def anyHashable[A] = new Hashable[A, (Long, Long)]{
+  def anyHashable[A] = new Hashable[A, (Long, Long)]{
     def digest(a: A, seed: Long = 0L): (Long, Long) @@ HashCode =
       HashCode(MurmurHash(seed)(a.hashCode))
   }
