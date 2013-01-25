@@ -85,25 +85,8 @@ with HashingTags{
 trait HashCodeConverter[A, B] extends HashingTags{
   def convert(hc: A @@ HashCode): Seq[B @@ HashCode]
 
-  def convertSeq(hcs: Stream[A @@ HashCode]): Iterable[B @@ HashCode]=
-    new Iterable[B @@ HashCode]{
-      def iterator = new Iterator[B @@ HashCode]{
-        private var cur = hcs
-
-        private val buf: mutable.Queue[B @@ HashCode] = mutable.Queue.empty
-
-        def hasNext = Tags.Disjunction(buf.nonEmpty) |+| Tags.Disjunction(cur.nonEmpty)
-
-        def next = {
-          if(buf.isEmpty){
-            convert(cur.head) foreach {e => buf enqueue e}
-            cur = cur.tail
-          }
-
-          buf dequeue
-        }
-      }
-    }
+  def convertSeq(hcs: Stream[A @@ HashCode]): Iterable[B @@ HashCode] =
+    hcs flatMap{ hc => convert(hc) }
 
 }
 
