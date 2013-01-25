@@ -11,17 +11,17 @@ scalaVersion := "2.10.0"
 checksums in update := Nil
 
 libraryDependencies ++= Seq(
-  "org.scalaz" % "scalaz-core_2.10.0-M7" % "7.0.0-M3",
-  "org.specs2" %% "specs2" % "1.13" % "test",
-  "org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
+  "org.scalaz" % "scalaz-core_2.10" % "7.0.0-M7",
+  "org.scalaz" % "scalaz-iteratee_2.10" % "7.0.0-M7",
+  "org.specs2" %% "specs2" % "1.12.3" % "test",
   "org.apache.commons" % "commons-io" % "1.3.2"
 )
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
 resolvers ++= Seq(
-  "snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
-  "releases"  at "http://oss.sonatype.org/content/repositories/releases",
+  "sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
+  "sonatype releases"  at "http://oss.sonatype.org/content/repositories/releases",
   "scala tools" at "http://scala-tools.org/repo-releases",
   "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
   "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"

@@ -3,7 +3,7 @@ package scalaton.aggregate.hashed
 import scala.language.higherKinds
 import scala.language.postfixOps
 
-import scalaz.{BloomFilter => _, _}
+import scalaz._
 import Scalaz._
 
 

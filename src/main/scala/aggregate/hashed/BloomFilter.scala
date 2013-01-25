@@ -5,7 +5,7 @@ import scala.language.postfixOps
 
 import scala.collection.{SortedSet, BitSet}
 
-import scalaz.{BloomFilter => _, _}
+import scalaz._
 import Scalaz._
 
 import scalaton.util._

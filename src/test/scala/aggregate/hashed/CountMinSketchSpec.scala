@@ -1,10 +1,12 @@
 package scalaton.aggregate.hashed
 
+import scala.language.postfixOps
+
 import scala.util.{Random => SRandom}
 
 import org.specs2.mutable._
 
-import scalaz.{BloomFilter => _, _}
+import scalaz._
 import Scalaz._
 
 import scalaton.util.hashable._
