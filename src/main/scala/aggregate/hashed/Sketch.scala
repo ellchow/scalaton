@@ -91,10 +91,11 @@ with SetLikeFunctions
 with MapLikeFunctions
 with SizedFunctions{
 
-  type CMS = (Vector[Vector[Long]], Long) @@ CSK
-  def CMS(x: (Vector[Vector[Long]], Long)) = Tag[(Vector[Vector[Long]], Long), CSK](x)
-
   object CountMinSketch{
+
+    type CMS = (Vector[Vector[Long]], Long) @@ CSK
+
+    def CMS(x: (Vector[Vector[Long]], Long)) = Tag[(Vector[Vector[Long]], Long), CSK](x)
 
     def empty[A,B](implicit c: CountMinSketch[A,B]) = c.zero
 
