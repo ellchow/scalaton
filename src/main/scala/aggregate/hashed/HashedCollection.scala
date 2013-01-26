@@ -25,22 +25,27 @@ trait Hashes[A,B,C]{
 
   /** Compute hash of an item **/
   def hashItem(item: A)(implicit h: Hashable[A, B],
-                        hconv: HashCodeConverter[B, C]): Iterable[C @@ HashCode] = {
-    (multiHash(item, seed)(h) |> hconv.convertSeq take numHashes)
-  }
+                        hconv: HashCodeConverter[B, C]): Iterable[C @@ HashCode] =
+    hconv.convertSeq(multiHash(item, seed)) take numHashes
+
 
 }
 
 /** Collections in which you can insert hashed items **/
-trait HashedCollection[A,B,C,F] extends Hashes[A,B,C] with Monoid[F]
+trait HashedCollection[A,B,C,F]
+extends Hashes[A,B,C]
+with Monoid[F]
 
-trait Insertable[A,B,C,F] extends HashedCollection[A,B,C,F]{
+trait Insertable[A,B,C,F]
+extends HashedCollection[A,B,C,F]{
   def insert(collection: F, item: A)(implicit h: Hashable[A, B],
                                      hconv: HashCodeConverter[B, C]): F
 }
 
 /** Can instantiate with a single item **/
-trait MakesSingleton[A,B,C,F] extends HashedCollection[A,B,C,F] with Insertable[A,B,C,F] {
+trait MakesSingleton[A,B,C,F]
+extends HashedCollection[A,B,C,F]
+with Insertable[A,B,C,F] {
   def singleton(item: A)(implicit i: Insertable[A,B,C,F],
                          h: Hashable[A, B],
                          hconv: HashCodeConverter[B, C]): F =
@@ -48,7 +53,8 @@ trait MakesSingleton[A,B,C,F] extends HashedCollection[A,B,C,F] with Insertable[
 }
 
 /** Can check for existence of an item **/
-trait MapLike[A,B,C,T,R,F] extends HashedCollection[A,B,C,F]{
+trait MapLike[A,B,C,T,R,F]
+extends HashedCollection[A,B,C,F]{
   def get(collection: F, item: A)(implicit v: Value[T,R],
                                   h: Hashable[A, B],
                                   hconv: HashCodeConverter[B, C]): R
@@ -59,7 +65,8 @@ trait MapLike[A,B,C,T,R,F] extends HashedCollection[A,B,C,F]{
                                            hconv: HashCodeConverter[B, C]): F
 }
 
-trait MakesSingletonM[A,B,C,T,R,F] extends MapLike[A,B,C,T,R,F] {
+trait MakesSingletonM[A,B,C,T,R,F]
+extends MapLike[A,B,C,T,R,F] {
   def singleton(item: A, u: T)(implicit mon: Monoid[T],
                                h: Hashable[A, B],
                                hconv: HashCodeConverter[B, C]): F =
@@ -67,7 +74,8 @@ trait MakesSingletonM[A,B,C,T,R,F] extends MapLike[A,B,C,T,R,F] {
 }
 
 /** Can check for existence of an item **/
-trait SetLike[A,B,C,F] extends HashedCollection[A,B,C,F]{
+trait SetLike[A,B,C,F]
+extends HashedCollection[A,B,C,F]{
   def contains(collection: F, item: A)(implicit h: Hashable[A, B],
                                        hconv: HashCodeConverter[B, C]): Boolean
 }

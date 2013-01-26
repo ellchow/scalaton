@@ -30,7 +30,7 @@ with Sized[F] {
                                  hconv: HashCodeConverter[B, Int]): Iterable[Int @@ HashCode] = {
     // val hcs = super.hashItem(item)(h,hconv) take 2 toSeq
     // (0 until numHashes) map { i => HashCode(math.abs(hcs(0) + i * hcs(1) + i * i).toInt % width) }
-    super.hashItem(item)(h,hconv) map { _ % width |> HashCode}
+    super.hashItem(item) map { _ % width |> HashCode}
   }
 }
 
@@ -47,7 +47,7 @@ with Equal[BitSet @@ BF] {
 
   def contains(bits: BitSet @@ BF, item: A)(implicit h: Hashable[A, B],
                                              hconv: HashCodeConverter[B, Int]): Boolean = {
-    val itemBits = toBitSet(hashItem(item))
+    val itemBits = (hashItem _ map toBitSet)(item)
 
     (bits & itemBits) == itemBits
   }
@@ -55,7 +55,7 @@ with Equal[BitSet @@ BF] {
 
   def insert(bits: BitSet @@ BF, item: A)(implicit h: Hashable[A, B],
                                           hconv: HashCodeConverter[B, Int]): BitSet @@ BF =
-    Tag[BitSet, BF](bits ++ toBitSet(hashItem(item)))
+    Tag[BitSet, BF](bits ++ (hashItem _ map toBitSet)(item))
 
   /**
    * MLE of number of elements inserted given t bits turned on.

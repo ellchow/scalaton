@@ -35,7 +35,7 @@ extends Sketch[A,B,T,R,(Vector[Vector[T]],Long) @@ CSK]{
   /** could possibly use double hashing - see BloomFilter.scala **/
   override def hashItem(item: A)(implicit h: Hashable[A, B],
                                  hconv: HashCodeConverter[B, Int]): Iterable[Int @@ HashCode] =
-    super.hashItem(item)(h,hconv) map { _ % width |> HashCode}
+    super.hashItem(item) map { _ % width |> HashCode}
 
   /** Given the values R saved in the sketch, produce an estimate**/
   protected def estimate(rs: Iterable[R]): R
