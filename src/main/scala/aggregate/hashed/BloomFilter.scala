@@ -39,13 +39,14 @@ sealed trait BF
 /**
  * Standard Bloom Filter
  **/
+/*
 trait StandardBloomFilter[A,B]
 extends BloomFilter[A,B,BitSet @@ BF]
-with Equal[BitSet @@ BF] {
+with Equal[bloomfilter.SBF] {
 
   def toBitSet(iter: Iterable[Int @@ HashCode]) = BitSet(iter.toSeq : _*)
 
-  def contains(bits: BitSet @@ BF, item: A)(implicit h: Hashable[A, B],
+  def contains(bits: bloomfilter.SBF, item: A)(implicit h: Hashable[A, B],
                                              hconv: HashCodeConverter[B, Int]): Boolean = {
     val itemBits = (hashItem _ map toBitSet)(item)
 
@@ -53,8 +54,8 @@ with Equal[BitSet @@ BF] {
   }
 
 
-  def insert(bits: BitSet @@ BF, item: A)(implicit h: Hashable[A, B],
-                                          hconv: HashCodeConverter[B, Int]): BitSet @@ BF =
+  def insert(bits: bloomfilter.SBF, item: A)(implicit h: Hashable[A, B],
+                                          hconv: HashCodeConverter[B, Int]): bloomfilter.SBF =
     Tag[BitSet, BF](bits ++ (hashItem _ map toBitSet)(item))
 
   /**
@@ -62,7 +63,7 @@ with Equal[BitSet @@ BF] {
    * NOTE: If bloom filter is full, -1 returned.
    * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
   **/
-  def cardinality(bits: BitSet @@ BF):Long = {
+  def cardinality(bits: bloomfilter.SBF):Long = {
     val t = bits.size
     if(t >= width)
       -1L
@@ -72,7 +73,7 @@ with Equal[BitSet @@ BF] {
     }
   }
 }
-
+*/
 
 object bloomfilter
 extends HashedCollectionFunctions
@@ -83,25 +84,54 @@ with SizedFunctions{
 
   type SBF = BitSet @@ BF
 
+  def SBF(x: BitSet) = Tag[BitSet, BF](x)
+
   object StandardBloomFilter{
 
     val empty: SBF = Tag[BitSet, BF](BitSet.empty)
 
-    def apply[A,B](params: (Int, Int), s: Long = 0L) = new StandardBloomFilter[A,B]{
+    def apply[A,B](params: (Int, Int), s: Long = 0L) =
+      new BloomFilter[A,B,SBF] with Equal[SBF]{
+        val (numHashes, width) = params
 
-      val (numHashes, width) = params
+        val seed: Long = s
 
-      val seed: Long = s
+        val zero: SBF = empty
 
-      val zero: SBF = empty
+        def equal(sbf1: SBF, sbf2: SBF): Boolean =
+          sbf1 == sbf2
 
-      def equal(sbf1: SBF, sbf2: SBF): Boolean =
-        sbf1 == sbf2
+        def append(sbf1: SBF, sbf2: => SBF): SBF =
+          SBF(sbf1 ++ sbf2)
 
-      def append(sbf1: SBF, sbf2: => SBF): SBF =
-        Tag[BitSet, BF](sbf1 ++ sbf2)
+        def toBitSet(iter: Iterable[Int @@ HashCode]) = BitSet(iter.toSeq : _*)
 
-    }
+        def contains(bits: bloomfilter.SBF, item: A)(implicit h: Hashable[A, B],
+                                                     hconv: HashCodeConverter[B, Int]): Boolean = {
+          val itemBits = (hashItem _ map toBitSet)(item)
+
+          (bits & itemBits) == itemBits
+        }
+
+        def insert(bits: bloomfilter.SBF, item: A)(implicit h: Hashable[A, B],
+                                                   hconv: HashCodeConverter[B, Int]): bloomfilter.SBF =
+          Tag[BitSet, BF](bits ++ (hashItem _ map toBitSet)(item))
+
+        /**
+         * MLE of number of elements inserted given t bits turned on.
+         * NOTE: If bloom filter is full, -1 returned.
+         * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
+         **/
+        def cardinality(bits: bloomfilter.SBF):Long = {
+          val t = bits.size
+          if(t >= width)
+            -1L
+          else{
+            val (m,k) = (width.toDouble, numHashes.toDouble)
+            math.round(math.log(1 - t.toDouble / m) / (k * math.log(1 - 1 / m))).toLong
+          }
+        }
+      }
 
     /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
     def optimalNumHashes(numItems: Int, width: Int): Int =

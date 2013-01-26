@@ -53,8 +53,8 @@ extends Sketch[A,B,T,R,(Vector[Vector[T]],Long) @@ CSK]{
 
     val idxs = hashItem(item) zipWithIndex
 
-    val newTable = idxs map { case (col, row) =>
-                              table(row).updated(col, updateValue(table(row)(col), u)) } toVector
+    val newTable = idxs.view map { case (col, row) =>
+                                   table(row).updated(col, updateValue(table(row)(col), u)) } toVector
 
     Tag[(Vector[Vector[T]],Long), CSK]((newTable, size + 1))
   }
@@ -80,7 +80,7 @@ extends Sketch[A,B,T,R,(Vector[Vector[T]],Long) @@ CSK]{
 
 sealed trait CountMinSketch[A,B]
 extends CountSketch[A,B,Long,Long]
-with Equal[(Vector[Vector[Long]], Long) @@ CSK]{
+with Equal[sketch.CMS]{
 
 
   protected def estimate(rs: Iterable[Long]): Long = rs min
@@ -95,6 +95,7 @@ with MapLikeFunctions
 with SizedFunctions{
 
   type CMS = (Vector[Vector[Long]], Long) @@ CSK
+  def CMS(x: (Vector[Vector[Long]], Long)) = Tag[(Vector[Vector[Long]], Long), CSK](x)
 
   object CountMinSketch{
 
@@ -106,21 +107,18 @@ with SizedFunctions{
 
       val seed = s
 
-      def equal(cms1: (Vector[Vector[Long]], Long) @@ CSK,
-                cms2: (Vector[Vector[Long]], Long) @@ CSK) =
+      def equal(cms1: CMS, cms2: CMS) =
         (cms1._1 == cms2._1) && (cms1._2 == cms2._2)
 
+      val zero: CMS =
+        CMS((Vector.fill[Long](numHashes, width)(0L), 0L))
 
-      val zero: (Vector[Vector[Long]], Long) @@ CSK =
-        Tag[(Vector[Vector[Long]], Long), CSK]((Vector.fill[Long](numHashes, width)(0L), 0L))
+      def append(cms1: CMS,
+                 cms2: => CMS): CMS = {
+        val newTable = Vector.tabulate(numHashes, width)((i,j) =>
+          updateValue(cms1._1(i)(j), cms2._1(i)(j)) )
 
-      def append(cms1: (Vector[Vector[Long]], Long) @@ CSK,
-                 cms2: => (Vector[Vector[Long]], Long) @@ CSK): (Vector[Vector[Long]], Long) @@ CSK = {
-        val newTable = (0 until numHashes) map { i =>
-          (0 until width) map { j => cms1._1(i)(j) + cms2._1(i)(j) } toVector
-        } toVector
-
-        Tag[(Vector[Vector[Long]], Long), CSK]((newTable, cms1._2 + cms2._2))
+        CMS((newTable, cms1._2 + cms2._2))
       }
     }
 
