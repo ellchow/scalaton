@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-io" % "1.3.2"
 )
 
-scalacOptions ++= Seq("-deprecation", "-feature")
+scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps", "-language:higherKinds")
 
 resolvers ++= Seq(
   "sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",

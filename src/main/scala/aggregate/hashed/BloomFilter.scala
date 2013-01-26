@@ -1,8 +1,5 @@
 package scalaton.aggregate.hashed
 
-import scala.language.higherKinds
-import scala.language.postfixOps
-
 import scala.collection.{SortedSet, BitSet}
 
 import scalaz._

@@ -1,7 +1,5 @@
 package scalaton.util
 
-import scala.language.postfixOps
-
 import collection.mutable
 
 import scalaz._

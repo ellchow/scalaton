@@ -1,7 +1,5 @@
 package scalaton.util
 
-import scala.language.postfixOps
-
 import org.specs2.mutable._
 import scalaz._
 import Scalaz._

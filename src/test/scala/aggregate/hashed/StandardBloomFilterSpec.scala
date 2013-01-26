@@ -1,7 +1,5 @@
 package scalaton.aggregate.hashed
 
-import scala.language.postfixOps
-
 import scala.collection.BitSet
 
 import scala.util.{Random => SRandom}
