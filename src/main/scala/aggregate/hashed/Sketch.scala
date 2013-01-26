@@ -75,14 +75,6 @@ extends Sketch[A,B,T,R,(Vector[Vector[T]],Long) @@ CSK]{
 }
 
 
-sealed trait CountMinSketch[A,B]
-extends CountSketch[A,B,Long,Long]
-with Equal[sketch.CMS]{
-
-
-  protected def estimate(rs: Iterable[Long]): Long = rs min
-
-}
 
 object sketch
 extends HashedCollectionFunctions
@@ -97,37 +89,41 @@ with SizedFunctions{
 
     def CMS(x: (Vector[Vector[Long]], Long)) = Tag[(Vector[Vector[Long]], Long), CSK](x)
 
-    def empty[A,B](implicit c: CountMinSketch[A,B]) = c.zero
+    // def empty[A,B](implicit c: CountMinSketch[A,B]) = c.zero
 
-    def apply[A,B](params: (Int, Int), s: Long = 0L) = new CountMinSketch[A,B]{
+    def apply[A,B](params: (Int, Int), s: Long = 0L) =
+      new CountSketch[A,B,Long,Long] with Equal[CMS]{
 
-      val (numHashes, width) = params
 
-      val seed = s
+        val (numHashes, width) = params
 
-      def equal(cms1: CMS, cms2: CMS) =
+        val seed = s
+
+        def equal(cms1: CMS, cms2: CMS) =
         (cms1._1 == cms2._1) && (cms1._2 == cms2._2)
 
-      val zero: CMS =
-        CMS((Vector.fill[Long](numHashes, width)(0L), 0L))
+        val zero: CMS =
+          CMS((Vector.fill[Long](numHashes, width)(0L), 0L))
 
-      def append(cms1: CMS,
-                 cms2: => CMS): CMS = {
-        val newTable = Vector.tabulate(numHashes, width)((i,j) =>
-          updateValue(cms1._1(i)(j), cms2._1(i)(j)) )
+        def append(cms1: CMS,
+                   cms2: => CMS): CMS = {
+          val newTable = Vector.tabulate(numHashes, width)((i,j) =>
+            updateValue(cms1._1(i)(j), cms2._1(i)(j)) )
 
-        CMS((newTable, cms1._2 + cms2._2))
+          CMS((newTable, cms1._2 + cms2._2))
+        }
+
+        protected def estimate(rs: Iterable[Long]): Long = rs min
       }
-    }
 
     def optimalParameters(eps: Double, delta: Double) =
-      (optimalNumHashes(delta), optimalWidth(eps))
+    (optimalNumHashes(delta), optimalWidth(eps))
 
     def optimalNumHashes(delta: Double) =
       math.log(1.0 / delta).toInt
 
     def optimalWidth(eps: Double) =
-      (math.exp(1) / eps).toInt
+    (math.exp(1) / eps).toInt
 
   }
 }

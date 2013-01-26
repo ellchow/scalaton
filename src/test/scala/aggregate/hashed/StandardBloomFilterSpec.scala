@@ -103,7 +103,7 @@ class StandardBloomFilterSpec extends Specification{
     "should should return cardinality of -1 if all bloom filter is full" in {
       implicit val sbfinstance = StandardBloomFilter[String,(Long,Long)](StandardBloomFilter.optimalParameters(10,0.05),0)
 
-      val bf: SBF = Tag[BitSet,BF](BitSet((0 until sbfinstance.width) : _*))
+      val bf: StandardBloomFilter.SBF = Tag[BitSet,BF](BitSet((0 until sbfinstance.width) : _*))
 
       (cardinality(bf) === -1L) must beTrue
     }
