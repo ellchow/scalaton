@@ -16,28 +16,28 @@ class StandardBloomFilterSpec extends Specification{
 
   "an empty bloom filter" should {
 
-    implicit val bfinstance = StandardBloomFilter[String,(Long,Long)]((5,625), 0L)
+    implicit val sbfinstance = StandardBloomFilter[String,(Long,Long)]((5,625), 0L)
 
     "not contain anything" in {
       SRandom.setSeed(0)
 
       0 to 1000 foreach { i =>
-         contains(StandardBloomFilter.empty,
+         contains(sbfinstance.zero,
                   SRandom nextDouble() toString) must beFalse
       }
     }
 
     "is only equal to another empty bloom filter" in {
-      val bfz = Tag[BitSet,BF](BitSet.empty)
-      (StandardBloomFilter.empty === bfz) must beTrue
+      val bfz = DenseStandardBloomFilter.DSBF(BitSet.empty)
+      (sbfinstance.zero === bfz) must beTrue
 
       0 to 1000 foreach { i =>
-        (StandardBloomFilter.empty === singleton(SRandom nextDouble() toString)) must beFalse
+        (sbfinstance.zero === singleton(SRandom nextDouble() toString)) must beFalse
       }
     }
 
     "be empty when added with another empty bloom filter" in {
-      ((StandardBloomFilter.empty |+| StandardBloomFilter.empty) === StandardBloomFilter.empty) must beTrue
+      ((sbfinstance.zero |+| sbfinstance.zero) === sbfinstance.zero) must beTrue
     }
 
     "contain the item after adding it" in {
@@ -45,7 +45,7 @@ class StandardBloomFilterSpec extends Specification{
     }
 
     "be equal to the other bloom filter after add another" in {
-      ((StandardBloomFilter.empty |+| singleton("a")) === singleton("a")) must beTrue
+      ((sbfinstance.zero |+| singleton("a")) === singleton("a")) must beTrue
     }
 
   }
@@ -56,11 +56,11 @@ class StandardBloomFilterSpec extends Specification{
       SRandom.setSeed(0)
 
       val params = StandardBloomFilter.optimalParameters(100, 0.05)
-      implicit val BF = StandardBloomFilter[String, (Long,Long)](params, 0L)
+      implicit val sbfinstance = StandardBloomFilter[String, (Long,Long)](params, 0L)
 
       0 to 10 foreach { i =>
         val items = 0 to 10 map { _ => SRandom nextDouble() toString }
-        val bf = items.foldLeft(StandardBloomFilter.empty)((acc,x) => insert(acc,x))
+        val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
 
         items foreach { i => contains(bf, i) must beTrue }
       }
@@ -73,14 +73,14 @@ class StandardBloomFilterSpec extends Specification{
         val numItems = 20
         val params = StandardBloomFilter.optimalParameters(numItems, fpProb)
 
-        implicit val BF = StandardBloomFilter[(String, String), (Long,Long)](params, 0L)
+        implicit val sbfinstance = StandardBloomFilter[(String, String), (Long,Long)](params, 0L)
 
         val fps = 0 until 10000 map { _ =>
           val items = 0 until numItems map { _ => (SRandom nextDouble() toString,
                                                    SRandom nextDouble() toString) }
           val test = (SRandom nextDouble() toString, SRandom nextDouble() toString)
 
-          val bf = items.foldLeft(StandardBloomFilter.empty)((acc,x) => insert(acc,x))
+          val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
           if(contains(bf, test)) 1.0 else 0.0
         }
         val observed = fps.sum / fps.size
@@ -92,7 +92,7 @@ class StandardBloomFilterSpec extends Specification{
     "should estimate size well for elements less than the intended number of elements" in {
       implicit val sbfinstance = StandardBloomFilter[String,(Long,Long)](StandardBloomFilter.optimalParameters(100,0.05),0)
 
-      var bf = StandardBloomFilter.empty
+      var bf = sbfinstance.zero
       for(i <- 1 to 100){
         bf = insert(bf, scala.util.Random.nextDouble.toString)
 
@@ -103,7 +103,7 @@ class StandardBloomFilterSpec extends Specification{
     "should should return cardinality of -1 if all bloom filter is full" in {
       implicit val sbfinstance = StandardBloomFilter[String,(Long,Long)](StandardBloomFilter.optimalParameters(10,0.05),0)
 
-      val bf: StandardBloomFilter.SBF = Tag[BitSet,BF](BitSet((0 until sbfinstance.width) : _*))
+      val bf = DenseStandardBloomFilter.DSBF(BitSet((0 until sbfinstance.width) : _*))
 
       (cardinality(bf) === -1L) must beTrue
     }

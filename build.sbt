@@ -13,6 +13,7 @@ checksums in update := Nil
 libraryDependencies ++= Seq(
   "org.scalaz" % "scalaz-core_2.10" % "7.0.0-M7",
   "org.scalaz" % "scalaz-iteratee_2.10" % "7.0.0-M7",
+  "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6",
   "org.specs2" %% "specs2" % "1.12.3" % "test",
   "org.apache.commons" % "commons-io" % "1.3.2"
 )
