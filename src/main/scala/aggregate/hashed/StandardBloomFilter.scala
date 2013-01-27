@@ -52,6 +52,12 @@ trait StandardBloomFilterInstances{
     def apply[A,B](params: (Int, Int), s: Long = 0L): StandardBloomFilter[A,B,DenseStandardBloomFilter.DSBF] =
       DenseStandardBloomFilter(params, s)
 
+    def dense[A,B](params: (Int, Int), s: Long = 0L): StandardBloomFilter[A,B,DenseStandardBloomFilter.DSBF] =
+      DenseStandardBloomFilter(params, s)
+
+    def sparse[A,B](params: (Int, Int), s: Long = 0L): StandardBloomFilter[A,B,SparseStandardBloomFilter.SSBF] =
+      SparseStandardBloomFilter(params, s)
+
     /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
     def optimalNumHashes(numItems: Int, width: Int): Int = {
       require(numItems gt 0, "fpProb must be > 0")
@@ -91,7 +97,7 @@ trait StandardBloomFilterInstances{
 
         def insert(sbf: DSBF, item: A)(implicit h: Hashable[A, B],
                                        hconv: HashCodeConverter[B, Int]): DSBF =
-          append(sbf, (hashItem _ map toBitSet)(item))
+          union(sbf, (hashItem _ map toBitSet)(item))
 
         def union(sbf1: DSBF, sbf2: => DSBF): DSBF =
           DSBF(sbf1 ++ sbf2)
@@ -101,6 +107,38 @@ trait StandardBloomFilterInstances{
         def size(sbf: DSBF) = sbf.size
 
         private def toBitSet(iter: Iterable[Int @@ HashCode]) = DSBF(BitSet(iter.toSeq : _*))
+      }
+  }
+
+
+  sealed trait SparseStandardBloomFilter
+  object SparseStandardBloomFilter{
+    type SSBF = CompressedBitSet @@ SparseStandardBloomFilter
+
+    def SSBF(b: CompressedBitSet) = Tag[CompressedBitSet, SparseStandardBloomFilter](b)
+
+    val empty = SSBF(new CompressedBitSet)
+
+    def apply[A,B](params: (Int, Int), s: Long = 0L) =
+      new StandardBloomFilter[A,B,SSBF]{
+        val (numHashes, width) = params
+        val seed: Long = s
+
+        val zero = empty
+
+        def equal(sbf1: SSBF, sbf2: SSBF): Boolean =
+          sbf1 equals sbf2
+
+        def insert(sbf: SSBF, item: A)(implicit h: Hashable[A, B],
+                                       hconv: HashCodeConverter[B, Int]): SSBF =
+          union(sbf, SSBF(CompressedBitSet.bitmapOf((hashItem(item).toSeq : Seq[Int]).sorted : _*)))
+
+        def union(sbf1: SSBF, sbf2: => SSBF): SSBF =
+          SSBF(sbf1 or sbf2)
+
+        def intersect(sbf1: SSBF, sbf2: SSBF): SSBF = SSBF(sbf1 and sbf2)
+
+        def size(sbf: SSBF) = sbf.cardinality
       }
   }
 

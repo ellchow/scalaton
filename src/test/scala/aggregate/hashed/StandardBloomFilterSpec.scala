@@ -52,11 +52,9 @@ class StandardBloomFilterSpec extends Specification{
 
   "a nonempty bloom filter" should {
 
-    "should contain all true positives" in {
+    def testTruePositives[F](sbfinst: StandardBloomFilter[String, (Long,Long), F]) = {
       SRandom.setSeed(0)
-
-      val params = StandardBloomFilter.optimalParameters(100, 0.05)
-      implicit val sbfinstance = StandardBloomFilter[String, (Long,Long)](params, 0L)
+      implicit val sbfinstance = sbfinst
 
       0 to 10 foreach { i =>
         val items = 0 to 10 map { _ => SRandom nextDouble() toString }
@@ -66,38 +64,58 @@ class StandardBloomFilterSpec extends Specification{
       }
     }
 
-    "should be below false-positive rate with high confidence" in {
+    def testFPProb[F](sbfinst: StandardBloomFilter[(String,String), (Long,Long), F],
+                      numItems: Int, fpProb: Double) = {
       SRandom.setSeed(0)
+      implicit val sbfinstance = sbfinst
 
-      Seq(0.1, 0.05, 0.01, 0.005) foreach{ fpProb =>
-        val numItems = 20
-        val params = StandardBloomFilter.optimalParameters(numItems, fpProb)
 
-        implicit val sbfinstance = StandardBloomFilter[(String, String), (Long,Long)](params, 0L)
+      val fps = (0 until 5000).view map { _ =>
+        val items = (0 until numItems).view map { _ => (SRandom nextDouble() toString,
+                                                        SRandom nextDouble() toString) }
+        val test = (SRandom nextDouble() toString, SRandom nextDouble() toString)
 
-        val fps = (0 until 10000).view map { _ =>
-          val items = (0 until numItems).view map { _ => (SRandom nextDouble() toString,
-                                                          SRandom nextDouble() toString) }
-          val test = (SRandom nextDouble() toString, SRandom nextDouble() toString)
-
-          val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
-          if(contains(bf, test)) 1.0 else 0.0
-        }
-        val observed = fps.sum / fps.size
-
-        observed must beLessThan(1.5 * fpProb)
+        val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
+        if(contains(bf, test)) 1.0 else 0.0
       }
+      val observed = fps.sum / fps.size
+
+      observed must beLessThan(1.5 * fpProb)
     }
 
-    "should estimate size well for elements less than the intended number of elements" in {
-      implicit val sbfinstance = StandardBloomFilter[String,(Long,Long)](StandardBloomFilter.optimalParameters(100,0.05),0)
-
+    def testCardinalityEstimate[F](sbfinst: StandardBloomFilter[String, (Long,Long), F]) = {
+      implicit val sbfinstance = sbfinst
       var bf = sbfinstance.zero
       for(i <- 1 to 100){
         bf = insert(bf, scala.util.Random.nextDouble.toString)
 
         math.abs(cardinality(bf) - i) must beLessThan(math.max(math.round(1.05 * i), 1).toLong)
       }
+    }
+
+    "should contain all true positives" in {
+      val params = StandardBloomFilter.optimalParameters(100, 0.05)
+
+      testTruePositives(StandardBloomFilter[String, (Long,Long)](params, 0L))
+
+      testTruePositives(StandardBloomFilter.sparse[String, (Long,Long)](params, 0L))
+    }
+
+    "should be below false-positive rate with high confidence" in {
+      Seq(0.1, 0.05, 0.01, 0.005) foreach{ fpProb =>
+        val numItems = 20
+        val params = StandardBloomFilter.optimalParameters(numItems, fpProb)
+
+        testFPProb(StandardBloomFilter[(String, String), (Long,Long)](params, 0L), numItems, fpProb)
+
+        testFPProb(StandardBloomFilter.sparse[(String, String), (Long,Long)](params, 0L), numItems, fpProb)
+      }
+    }
+
+    "should estimate size well for elements less than the intended number of elements" in {
+      testCardinalityEstimate(StandardBloomFilter[String,(Long,Long)](StandardBloomFilter.optimalParameters(100,0.05),0))
+
+      testCardinalityEstimate(StandardBloomFilter.sparse[String,(Long,Long)](StandardBloomFilter.optimalParameters(100,0.05),0))
     }
 
     "should should return cardinality of -1 if all bloom filter is full" in {
