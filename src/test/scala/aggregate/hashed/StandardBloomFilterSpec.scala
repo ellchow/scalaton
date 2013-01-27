@@ -75,9 +75,9 @@ class StandardBloomFilterSpec extends Specification{
 
         implicit val sbfinstance = StandardBloomFilter[(String, String), (Long,Long)](params, 0L)
 
-        val fps = 0 until 10000 map { _ =>
-          val items = 0 until numItems map { _ => (SRandom nextDouble() toString,
-                                                   SRandom nextDouble() toString) }
+        val fps = (0 until 10000).view map { _ =>
+          val items = (0 until numItems).view map { _ => (SRandom nextDouble() toString,
+                                                          SRandom nextDouble() toString) }
           val test = (SRandom nextDouble() toString, SRandom nextDouble() toString)
 
           val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
