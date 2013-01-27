@@ -120,7 +120,7 @@ trait SetLikeFunctions{
 }
 
 trait MapLikeFunctions{
-  def get[A,B,C,T,R,F](collection: F, item: A)(implicit m: MapLike[A,B,C,T,R,F],
+  def lookup[A,B,C,T,R,F](collection: F, item: A)(implicit m: MapLike[A,B,C,T,R,F],
                                                v: Value[T,R],
                                                h: Hashable[A, B],
                                                hconv: HashCodeConverter[B, C]) =
