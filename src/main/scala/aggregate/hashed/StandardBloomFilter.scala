@@ -57,11 +57,11 @@ trait StandardBloomFilterInstances{
 
     /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
     def optimalNumHashes(numItems: Int, width: Int): Int =
-      math.ceil(width / numItems * math.log(2)).toInt
+      math.ceil(width / numItems * math.log(2)) toInt
 
     /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
     def optimalWidth(numItems: Int, fpProb: Double): Int =
-      math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)).toInt
+      math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)) toInt
 
     def optimalParameters(numItems: Int, fpProb: Double) = {
       val width = optimalWidth(numItems, fpProb)

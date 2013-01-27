@@ -116,14 +116,15 @@ with SizedFunctions{
         protected def estimate(rs: Iterable[Long]): Long = rs min
       }
 
-    def optimalParameters(eps: Double, delta: Double) =
-    (optimalNumHashes(delta), optimalWidth(eps))
+    def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
 
+    /** delta is certainty having less than eps **/
     def optimalNumHashes(delta: Double) =
-      math.log(1.0 / delta).toInt
+      math.ceil(math.log(1 - delta) / math.log(0.5)) toInt
 
-    def optimalWidth(eps: Double) =
-    (math.exp(1) / eps).toInt
+    /** eps is max tolerable error **/
+    def optimalWidth(eps: Double) = 2 / eps
+
 
   }
 }
