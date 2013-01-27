@@ -20,6 +20,7 @@ trait Sketch[A,B,T,R,F]
 extends HashedCollection[A,B,Int,F]
 with MakesSingletonM[A,B,Int,T,R,F]
 with Sized[F]
+with Equal[F]
 
 object sketch
 extends CountMinSketchInstances
