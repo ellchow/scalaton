@@ -1,3 +1,5 @@
+/*
+
 package scalaton.aggregate.hashed
 
 import scalaz._
@@ -90,3 +92,4 @@ trait CountMinSketchInstances{
 
   }
 }
+*/

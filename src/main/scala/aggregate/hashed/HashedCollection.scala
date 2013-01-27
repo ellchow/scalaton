@@ -7,12 +7,7 @@ import scalaton.util._
 import scalaton.util.hashable._
 
 
-/**
- * Type classes used for defining different hashed collections
- */
-
-/** Characterizes a collection that will hash items (consistently) **/
-trait Hashes[A,B,C]{
+trait HashedCollectionConfig[A,H1,H2]{
 
   /** Number of hashes used in this collection **/
   val numHashes: Int
@@ -21,16 +16,72 @@ trait Hashes[A,B,C]{
   val seed: Long
 
   /** Compute hash of an item **/
-  def hashItem(item: A)(implicit h: Hashable[A, B],
-                        hconv: HashCodeConverter[B, C]): Iterable[C @@ HashCode] =
+  def hashItem(item: A)(implicit h: Hashable[A, H1],
+                        hconv: HashCodeConverter[H1, H2]): Iterable[H2 @@ HashCode] =
     hconv.convertSeq(multiHash(item, seed)) take numHashes
 
 
 }
 
+trait HashModdedCollectionConfig[A,H1] extends HashedCollectionConfig[A,H1,Int]{
+
+  val width: Int
+
+  override def hashItem(item: A)(implicit h: Hashable[A, H1],
+                                 hconv: HashCodeConverter[H1, Int]): Iterable[Int @@ HashCode] =
+    super.hashItem(item) map { _ % width |> HashCode}
+
+}
+
+trait HashedCollection[A,H1,H2,C <: HashedCollectionConfig[A,H1,H2]]{
+  val conf: C
+}
+
+trait HashModdedCollection[A,H1,C <: HashModdedCollectionConfig[A,H1]] extends HashedCollection[A,H1,Int,C]
+
+
+/** **/
+
+trait HashedCollectionOperations[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2]]{
+  type H = Hashable[A,H1]
+  type HC = HashCodeConverter[H1,Int]
+}
+
+trait InsertsElement[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2]] extends HashedCollectionOperations[A,H1,H2,D,C]{
+  def add(d: D, a: A)(implicit h: H, hconv: HC): D
+}
+
+trait InsertsElementFunction{
+  def add[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2]](d: D, a: A)(implicit i: InsertsElement[A,H1,H2,D,C], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D =
+    i.add(d, a)
+}
+
+trait ChecksMembership[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2]] extends HashedCollectionOperations[A,H1,H2,D,C]{
+  def contains(d: D, a: A)(implicit h: H, hconv: HC): Boolean
+}
+
+trait ChecksMembershipFunction{
+  def contains[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2]](d: D, a: A)(implicit c: ChecksMembership[A,H1,H2,D,C], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): Boolean =
+    c.contains(d,a)
+}
+
+trait Sized[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2]] extends HashedCollectionOperations[A,H1,H2,D,C]{
+  def cardinality(d: D): Long
+}
+
+trait SizedFunction{
+  def cardinality[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2]](d: D)(implicit s: Sized[A,H1,H2,D,C], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): Long = s.cardinality(d)
+}
+
+
+
+
+
+
+
+/*
 /** Collections in which you can insert hashed items **/
 trait HashedCollection[A,B,C,F]
-extends Hashes[A,B,C]
 with Monoid[F]
 
 trait Insertable[A,B,C,F]
@@ -137,5 +188,4 @@ trait SizedFunctions{
   def cardinality[F](collection: F)(implicit s: Sized[F]): Long =
     s.cardinality(collection)
 }
-
-
+*/

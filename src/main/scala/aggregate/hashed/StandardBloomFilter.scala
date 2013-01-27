@@ -1,3 +1,5 @@
+/*
+
 package scalaton.aggregate.hashed
 
 import scala.collection.BitSet
@@ -143,3 +145,4 @@ trait StandardBloomFilterInstances{
   }
 
 }
+*/

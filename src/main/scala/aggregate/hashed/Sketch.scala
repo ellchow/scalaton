@@ -1,3 +1,4 @@
+/*
 package scalaton.aggregate.hashed
 
 import scalaz._
@@ -30,3 +31,4 @@ with SetLikeFunctions
 with MapLikeFunctions
 with SizedFunctions
 
+*/

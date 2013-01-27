@@ -1,41 +1,107 @@
 package scalaton.aggregate.hashed
 
-import scala.collection.BitSet
-
 import scalaz._
 import Scalaz._
 
 import scalaton.util._
 import scalaton.util.hashable._
 
+import scala.collection.BitSet
+import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
-/**
- * Bloom filter
- *
- * http://en.wikipedia.org/wiki/Bloom_filter
- */
-trait BloomFilter[A,B,F]
-extends HashedCollection[A,B,Int,F]
-with MakesSingleton[A,B,Int,F]
-with SetLike[A,B,Int,F]
-with Sized[F] {
+trait BloomFilterConfig[A,H1] extends HashModdedCollectionConfig[A,H1]
+trait StandardBloomFilterConfig[A,H1] extends BloomFilterConfig[A,H1]
+sealed trait DenseStandardBloomFilterConfig[A,H1] extends StandardBloomFilterConfig[A,H1]
+sealed trait SparseStandardBloomFilterConfig[A,H1] extends StandardBloomFilterConfig[A,H1]
 
-  val width: Int
 
-  /** could possibly use double hashing **/
-  override def hashItem(item: A)(implicit h: Hashable[A, B],
-                                 hconv: HashCodeConverter[B, Int]): Iterable[Int @@ HashCode] = {
-    // val hcs = super.hashItem(item)(h,hconv) take 2 toSeq
-    // (0 until numHashes) map { i => HashCode(math.abs(hcs(0) + i * hcs(1) + i * i).toInt % width) }
-    super.hashItem(item) map { _ % width |> HashCode}
+trait BloomFilter[A,H1,D,C <: BloomFilterConfig[A,H1]]
+extends HashModdedCollection[A,H1,C]
+with InsertsElement[A,H1,Int,D,C]
+with ChecksMembership[A,H1,Int,D,C]
+with Sized[A,H1,Int,D,C]
+
+abstract class StandardBloomFilter[A,H1,D,C <: StandardBloomFilterConfig[A,H1]](val conf: C) extends BloomFilter[A,H1,D,C]{
+  def add(d: D, a: A)(implicit h: H, hconv: HC): D =
+    addToBitSet(d, conf.hashItem(a))
+
+  def contains(d: D, a: A)(implicit h: H, hconv: HC): Boolean =
+    hasAllBits(d, conf.hashItem(a))
+
+  /**
+   * MLE of number of elements inserted given t bits turned on.
+   * NOTE: If bloom filter is full, -1 returned.
+   * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
+   **/
+  def cardinality(d: D): Long = {
+    val t = sizeOfBitSet(d)
+    if(t >= conf.width)
+      -1L
+    else{
+      val (m,k) = (conf.width.toDouble, conf.numHashes.toDouble)
+      math.round(math.log(1 - t.toDouble / m) / (k * math.log(1 - 1 / m))).toLong
+    }
   }
+
+  def sizeOfBitSet(d: D): Int
+
+  def hasAllBits(d: D, bits: Iterable[Int @@ HashCode]): Boolean
+
+  def addToBitSet(d: D, bits: Iterable[Int @@ HashCode]): D
+
+
+
 }
 
+abstract class DenseStandardBloomFilter[A,H1,T](override val conf: DenseStandardBloomFilterConfig[A,H1]) extends StandardBloomFilter[A,H1,BitSet @@ T,DenseStandardBloomFilterConfig[A,H1]](conf){
 
-object bloomfilter
-extends StandardBloomFilterInstances
-with HashedCollectionFunctions
-with MakesSingletonFunctions
-with SetLikeFunctions
-with MapLikeFunctions
-with SizedFunctions
+  def tag(b: BitSet) = Tag[BitSet,T](b)
+
+  def hasAllBits(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): Boolean =
+    !(bits exists ( b => !d.contains(b) ))
+
+  def addToBitSet(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): BitSet  @@ T =
+    tag(d ++ bits)
+
+  def sizeOfBitSet(d: BitSet @@ T): Int = d size
+
+}
+abstract class SparseStandardBloomFilter[A,H1,T](override val conf: SparseStandardBloomFilterConfig[A,H1]) extends StandardBloomFilter[A,H1,CompressedBitSet @@ T,SparseStandardBloomFilterConfig[A,H1]](conf){
+
+  def tag(b: CompressedBitSet) = Tag[CompressedBitSet,T](b)
+
+  def hasAllBits(d: CompressedBitSet @@ T, bits: Iterable[Int @@ HashCode]): Boolean = {
+    val b = bitSetFromIterable(bits)
+    b equals (d and b)
+  }
+
+  def addToBitSet(d: CompressedBitSet @@ T, bits: Iterable[Int @@ HashCode]): CompressedBitSet @@ T =
+    tag(d or bitSetFromIterable(bits))
+
+  def bitSetFromIterable(bits: Iterable[Int @@ HashCode]): CompressedBitSet @@ T =
+    tag(CompressedBitSet.bitmapOf((bits.toSeq : Seq[Int]).sorted : _*))
+
+  def sizeOfBitSet(d: CompressedBitSet @@ T): Int = d cardinality
+
+}
+
+object bloomfilter{
+  object standard extends InsertsElementFunction
+                  with ChecksMembershipFunction
+                  with SizedFunction{
+    def dense[A,H1,T](params: (Int,Int), s: Long = 0L) = {
+      val x = new DenseStandardBloomFilterConfig[A,H1] {
+        val (numHashes, width) = params
+        val seed = s
+      }
+      new DenseStandardBloomFilter[A,H1,T](x){}
+    }
+    def sparse[A,H1,T](params: (Int,Int), s: Long = 0L) = {
+      val x = new SparseStandardBloomFilterConfig[A,H1] {
+        val (numHashes, width) = params
+        val seed = s
+      }
+      new SparseStandardBloomFilter[A,H1,T](x){}
+    }
+  }
+}
