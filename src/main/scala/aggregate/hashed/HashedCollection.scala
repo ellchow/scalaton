@@ -73,7 +73,23 @@ trait SizedFunction{
   def cardinality[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2]](d: D)(implicit s: Sized[A,H1,H2,D,C], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): Long = s.cardinality(d)
 }
 
+trait UpdatesElementValue[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2],V1] extends HashedCollectionOperations[A,H1,H2,D,C]{
+  def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D
+}
 
+trait UpdatesElementValueFunction{
+  def update[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2],V1](d: D, a: A, v1: V1)(implicit u: UpdatesElementValue[A,H1,H2,D,C,V1], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D =
+    u.update(d,a,v1)
+}
+
+trait LooksUpElementValue[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2],V2] extends HashedCollectionOperations[A,H1,H2,D,C]{
+  def lookup(d: D, a: A)(implicit h: H, hconv: HC): V2
+}
+
+trait LooksUpElementValueFunction{
+  def lookup[A,H1,H2,D,C <: HashedCollectionConfig[A,H1,H2],V2](d: D, a: A)(implicit l: LooksUpElementValue[A,H1,H2,D,C,V2], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): V2 =
+    l.lookup(d,a)
+}
 
 
 

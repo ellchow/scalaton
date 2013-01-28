@@ -1,3 +1,4 @@
+/*
 package scalaton.aggregate.hashed
 
 import scalaz._
@@ -17,3 +18,4 @@ object Value{
 }
 
 
+*/

@@ -72,6 +72,7 @@ abstract class DenseStandardBloomFilter[A,H1,T](override val conf: DenseStandard
     tag(d1 ++ d2)
 
 }
+
 abstract class SparseStandardBloomFilter[A,H1,T](override val conf: SparseStandardBloomFilterConfig[A,H1]) extends StandardBloomFilter[A,H1,CompressedBitSet @@ T,SparseStandardBloomFilterConfig[A,H1]](conf){
 
   def tag(b: CompressedBitSet) = Tag[CompressedBitSet,T](b)
@@ -100,22 +101,25 @@ abstract class SparseStandardBloomFilter[A,H1,T](override val conf: SparseStanda
 }
 
 object bloomfilter{
-  object standard extends InsertsElementFunction
+  object sbf extends InsertsElementFunction
                   with ChecksMembershipFunction
                   with SizedFunction{
+
     def dense[A,H1,T](params: (Int,Int), s: Long = 0L) = {
-      val x = new DenseStandardBloomFilterConfig[A,H1] {
+      val conf = new DenseStandardBloomFilterConfig[A,H1] {
         val (numHashes, width) = params
         val seed = s
       }
-      new DenseStandardBloomFilter[A,H1,T](x){}
+      new DenseStandardBloomFilter[A,H1,T](conf){}
     }
+
     def sparse[A,H1,T](params: (Int,Int), s: Long = 0L) = {
-      val x = new SparseStandardBloomFilterConfig[A,H1] {
+      val conf = new SparseStandardBloomFilterConfig[A,H1] {
         val (numHashes, width) = params
         val seed = s
       }
-      new SparseStandardBloomFilter[A,H1,T](x){}
+      new SparseStandardBloomFilter[A,H1,T](conf){}
     }
+
   }
 }

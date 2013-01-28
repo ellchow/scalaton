@@ -1,5 +1,3 @@
-/*
-
 package scalaton.aggregate.hashed
 
 import scalaz._
@@ -8,88 +6,113 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashable._
 
-trait CountEstSketch[A,B,T,R,F]
-extends Sketch[A,B,T,R,F]
-{
+abstract class CountEstSketchConfig[A,H1,V1] extends HashModdedCollectionConfig[A,H1]{
+  def estimate(cs: Iterable[Long]): Long
 
-  val width: Int
+  def valueToLong(v1: V1): Long
 
-  /** could possibly use double hashing - see BloomFilter.scala **/
-  override def hashItem(item: A)(implicit h: Hashable[A, B],
-                                 hconv: HashCodeConverter[B, Int]): Iterable[Int @@ HashCode] =
-    super.hashItem(item) map { _ % width |> HashCode}
+  def updateValueWith(v: V1, u: V1): V1
+
+}
+
+abstract class CountEstSketchMonoidVConfig[A,H1,V1 : Monoid] extends CountEstSketchConfig[A,H1,V1]{
+  def updateValueWith(v: V1, u: V1): V1 = v |+| u
+}
+abstract class DenseCountEstSketchMonoidVConfig[A,H1,V1 : Monoid] extends CountEstSketchMonoidVConfig[A,H1,V1]
+abstract class DenseCountEstSketchLongConfig[A,H1] extends DenseCountEstSketchMonoidVConfig[A,H1,Long]{
+
+  def valueToLong(v1: Long): Long = v1
 
 }
 
 
-trait CountMinSketchInstances{
 
-  object CountMinSketch{
+abstract class CountEstSketch[A,H1,D,V1,C <: CountEstSketchConfig[A,H1,V1]](val conf: C)
+extends HashModdedCollection[A,H1,C]
+with UpdatesElementValue[A,H1,Int,D,C,V1]
+with LooksUpElementValue[A,H1,Int,D,C,Long]{
 
-    sealed trait CMSData
+  def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D = {
+    val ijs = itemIJs(a) toSet
 
-    type CMS = (Vector[Vector[Long]], Long) @@ CMSData
-    def CMS(x: (Vector[Vector[Long]], Long) ) = Tag[(Vector[Vector[Long]], Long), CMSData](x)
-
-    def apply[A,B](params: (Int,Int), s: Long = 0L) =
-      new CountEstSketch[A,B,Long,Long,CMS]{
-        val (numHashes, width) = params
-
-        val seed: Long = s
-
-        def equal(cms1: CMS, cms2: CMS) = (cms1._1 == cms2._1) && (cms1._2 == cms2._2)
-
-        val zero: CMS = CMS((Vector.fill[Long](numHashes, width)(0L), 0L))
-
-        def append(cms1: CMS, cms2: => CMS): CMS = {
-          val table = Vector.tabulate(numHashes, width)((i,j) =>
-            cms1._1(i)(j) + cms2._1(i)(j) )
-
-          CMS((table, cms1._2 + cms2._2))
-        }
-
-        def get(f: CMS, item: A)(implicit v: Value[Long,Long],
-                                 h: Hashable[A, B],
-                                 hconv: HashCodeConverter[B, Int]): Long =
-        (cellsOf(item) map { case (i,j) => valueAt(f, i, j) }) min
-
-        def update(f: CMS , item: A, u: Long)
-                  (implicit mon: Monoid[Long],
-                   h: Hashable[A, B],
-                   hconv: HashCodeConverter[B, Int]): CMS = {
-          val cells = cellsOf(item) toSet
-
-          val table = Vector.tabulate(numHashes, width)((i,j) =>
-            valueAt(f,i,j) + (cells.contains((i,j)) ? u | 0)
-          )
-
-          CMS((table, f._2))
-        }
-
-        def cardinality(cms: CMS): Long = cms._2
-
-        protected def cellsOf(item: A)(implicit h: Hashable[A, B],
-                                       hconv: HashCodeConverter[B, Int]): Iterable[(Int,Int)] =
-        (0 to numHashes).view zip (hashItem(item))
-
-        protected def valueAt(f: CMS, i: Int, j: Int): Long =
-          f._1(i)(j)
-
-      }
-
-    def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
-
-    /** delta is certainty having less than eps **/
-    def optimalNumHashes(delta: Double) = {
-      require((delta gte 0.0) && (delta lte 1.0), "delta must be between 0 and 1")
-      math.ceil(math.log(1 - delta) / math.log(0.5)) toInt
-    }
-    /** eps is max tolerable error **/
-    def optimalWidth(eps: Double) = {
-      require((eps gte 0.0) && (eps lte 1.0), "eps must be between 0 and 1")
-      math.ceil(2 / eps) toInt
-    }
+    newSize(newData(d, (i: Int, j: Int) =>
+                    ijs.contains((i,j)) ? conf.updateValueWith(valueAt(d,i,j),v1) | valueAt(d,i,j) ),
+            v1)
 
   }
+
+  def lookup(d: D, a: A)(implicit h: H, hconv: HC): Long = {
+    val ijs = itemIJs(a)
+
+    conf estimate(ijs map { case(i,j) => conf valueToLong(valueAt(d,i,j)) })
+  }
+
+  def itemIJs(a: A)(implicit h: H, hconv: HC): Iterable[(Int,Int)] = {
+    (0 to conf.numHashes).view zip conf.hashItem(a)
+  }
+
+
+  def valueAt(d: D, i: Int, j: Int): V1
+
+  def newData(d: D, f: (Int,Int) => V1): D
+
+  def newSize(d: D, v1: V1): D
+
 }
-*/
+
+abstract class CountEstSketchMonoidV[A,H1,D,V1 : Monoid,C <: CountEstSketchMonoidVConfig[A,H1,V1]](override val conf: C)
+extends CountEstSketch[A,H1,D,V1,C](conf)
+
+
+abstract class DenseCountEstSketchMonoidV[A,H1,V1 : Monoid,C <: DenseCountEstSketchMonoidVConfig[A,H1,V1],T](override val conf: C)
+extends CountEstSketchMonoidV[A,H1,(Vector[Vector[V1]], Long) @@ T,V1,C](conf)
+with Monoid[(Vector[Vector[V1]], Long) @@ T]
+with Equal[(Vector[Vector[V1]], Long) @@ T]{
+
+  def equal(d1: (Vector[Vector[V1]], Long) @@ T, d2: (Vector[Vector[V1]], Long) @@ T) =
+    (d1._1 == d2._1) && (d1._2 === d2._2)
+
+  val zero = tag((Vector.fill(conf.numHashes, conf.width)(implicitly[Monoid[V1]].zero), 0L))
+
+  def append(d1: (Vector[Vector[V1]], Long) @@ T, d2: => (Vector[Vector[V1]], Long) @@ T) = {
+    val data = Vector.tabulate(conf.numHashes, conf.width)((i,j) =>
+      valueAt(d1,i,j) |+| valueAt(d2,i,j))
+
+    val size = d1._2 + d2._2
+
+    tag((data, size))
+  }
+
+  def tag(d: (Vector[Vector[V1]], Long)) = Tag[(Vector[Vector[V1]], Long), T](d)
+
+  def valueAt(d: (Vector[Vector[V1]], Long) @@ T, i: Int, j: Int): V1 = d._1(i)(j)
+
+  def newData(d: (Vector[Vector[V1]], Long) @@ T, f: (Int,Int) => V1): (Vector[Vector[V1]], Long) @@ T =
+    tag((Vector.tabulate(conf.numHashes, conf.width)(f), d._2))
+
+  def newSize(d: (Vector[Vector[V1]], Long) @@ T, v1: V1) =
+    tag(d._1, d._2 + conf.valueToLong(v1))
+
+}
+
+abstract class DenseCountEstSketchLong[A,H1,T](override val conf: DenseCountEstSketchLongConfig[A,H1])
+extends DenseCountEstSketchMonoidV[A,H1,Long,DenseCountEstSketchLongConfig[A,H1],T](conf)
+
+
+object sketch{
+
+  object ces extends UpdatesElementValueFunction with LooksUpElementValueFunction{
+
+    def denseLong[A,H1,T](params: (Int,Int), s: Long = 0L,
+                          estimator: (Iterable[Long]) => Long = (x:Iterable[Long]) => x.min) = {
+      val conf = new DenseCountEstSketchLongConfig[A,H1] {
+        val (numHashes, width) = params
+        val seed = s
+
+        def estimate(cs: Iterable[Long]): Long = estimator(cs)
+      }
+      new DenseCountEstSketchLong[A,H1,T](conf){}
+    }
+  }
+}
+
