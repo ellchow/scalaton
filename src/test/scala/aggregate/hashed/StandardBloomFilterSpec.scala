@@ -58,7 +58,7 @@ class StandardBloomFilterSpec extends Specification{
 
   "a nonempty bloom filter" should {
 
-    def testTruePositives[C <: StandardBloomFilterConfig[String,(Long,Long)],D](sbfinst: StandardBloomFilter[String,(Long,Long),D,C]) = {
+    def testTruePositives[D](sbfinst: StandardBloomFilter[String,(Long,Long),D]) = {
       SRandom.setSeed(0)
       implicit val sbfinstance = sbfinst
 
@@ -70,7 +70,7 @@ class StandardBloomFilterSpec extends Specification{
       }
     }
 
-    def testFPProb[C <: StandardBloomFilterConfig[(String,String),(Long,Long)],D](sbfinst: StandardBloomFilter[(String,String),(Long,Long),D,C],
+    def testFPProb[D](sbfinst: StandardBloomFilter[(String,String),(Long,Long),D],
                       numItems: Int, fpProb: Double) = {
       SRandom.setSeed(0)
       implicit val sbfinstance = sbfinst
@@ -88,7 +88,7 @@ class StandardBloomFilterSpec extends Specification{
       observed must beLessThan(1.5 * fpProb)
     }
 
-    def testCardinalityEstimate[C <: StandardBloomFilterConfig[String,(Long,Long)], D](sbfinst: StandardBloomFilter[String,(Long,Long),D,C]) = {
+    def testCardinalityEstimate[D](sbfinst: StandardBloomFilter[String,(Long,Long),D]) = {
       implicit val sbfinstance = sbfinst
       var bf = sbfinstance.zero
 
@@ -127,7 +127,7 @@ class StandardBloomFilterSpec extends Specification{
     "should should return cardinality of -1 if all bloom filter is full" in {
       implicit val sbfinstance = dense[String,(Long,Long),DSBF](optimalParameters(10,0.05),0)
 
-      val bf = tagDense(BitSet((0 until sbfinstance.conf.width) : _*))
+      val bf = tagDense(BitSet((0 until sbfinstance.width) : _*))
 
       (cardinality(bf) === -1L) must beTrue
     }

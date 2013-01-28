@@ -9,24 +9,25 @@ import scalaton.util.hashable._
 import scala.collection.BitSet
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
-trait BloomFilterConfig[A,H1] extends HashModdedCollectionConfig[A,H1]
-trait StandardBloomFilterConfig[A,H1] extends BloomFilterConfig[A,H1]
-sealed trait DenseStandardBloomFilterConfig[A,H1] extends StandardBloomFilterConfig[A,H1]
-sealed trait SparseStandardBloomFilterConfig[A,H1] extends StandardBloomFilterConfig[A,H1]
+// trait BloomFilterConfig[A,H1] extends HashModdedCollectionConfig[A,H1]
+// trait StandardBloomFilterConfig[A,H1] extends BloomFilterConfig[A,H1]
+// sealed trait DenseStandardBloomFilterConfig[A,H1] extends StandardBloomFilterConfig[A,H1]
+// sealed trait SparseStandardBloomFilterConfig[A,H1] extends StandardBloomFilterConfig[A,H1]
 
 
-trait BloomFilter[A,H1,D,C <: BloomFilterConfig[A,H1]]
-extends HashModdedCollection[A,H1,C]
-with InsertsElement[A,H1,Int,D,C]
-with ChecksMembership[A,H1,Int,D,C]
-with Sized[A,H1,Int,D,C]
+// trait BloomFilter[A,H1,D,C <: BloomFilterConfig[A,H1]]
+trait BloomFilter[A,H1,D]
+extends HashModdedCollection[A,H1]
+with InsertsElement[A,H1,Int,D]
+with ChecksMembership[A,H1,Int,D]
+with Sized[A,H1,Int,D]
 
-abstract class StandardBloomFilter[A,H1,D,C <: StandardBloomFilterConfig[A,H1]](val conf: C) extends BloomFilter[A,H1,D,C] with Monoid[D] with Equal[D]{
+trait StandardBloomFilter[A,H1,D] extends BloomFilter[A,H1,D] with Monoid[D] with Equal[D]{
   def add(d: D, a: A)(implicit h: H, hconv: HC): D =
-    addToBitSet(d, conf.hashItem(a))
+    addToBitSet(d, hashItem(a))
 
   def contains(d: D, a: A)(implicit h: H, hconv: HC): Boolean =
-    hasAllBits(d, conf.hashItem(a))
+    hasAllBits(d, hashItem(a))
 
   /**
    * MLE of number of elements inserted given t bits turned on.
@@ -35,10 +36,10 @@ abstract class StandardBloomFilter[A,H1,D,C <: StandardBloomFilterConfig[A,H1]](
    **/
   def cardinality(d: D): Long = {
     val t = sizeOfBitSet(d)
-    if(t >= conf.width)
+    if(t >= width)
       -1L
     else{
-      val (m,k) = (conf.width.toDouble, conf.numHashes.toDouble)
+      val (m,k) = (width.toDouble, numHashes.toDouble)
       math.round(math.log(1 - t.toDouble / m) / (k * math.log(1 - 1 / m))).toLong
     }
   }
@@ -51,7 +52,7 @@ abstract class StandardBloomFilter[A,H1,D,C <: StandardBloomFilterConfig[A,H1]](
 
 }
 
-abstract class DenseStandardBloomFilter[A,H1,T](override val conf: DenseStandardBloomFilterConfig[A,H1]) extends StandardBloomFilter[A,H1,BitSet @@ T,DenseStandardBloomFilterConfig[A,H1]](conf){
+abstract class DenseStandardBloomFilter[A,H1,T] extends StandardBloomFilter[A,H1,BitSet @@ T]{
 
   def tag(b: BitSet) = Tag[BitSet,T](b)
 
@@ -73,7 +74,7 @@ abstract class DenseStandardBloomFilter[A,H1,T](override val conf: DenseStandard
 
 }
 
-abstract class SparseStandardBloomFilter[A,H1,T](override val conf: SparseStandardBloomFilterConfig[A,H1]) extends StandardBloomFilter[A,H1,CompressedBitSet @@ T,SparseStandardBloomFilterConfig[A,H1]](conf){
+abstract class SparseStandardBloomFilter[A,H1,T] extends StandardBloomFilter[A,H1,CompressedBitSet @@ T]{
 
   def tag(b: CompressedBitSet) = Tag[CompressedBitSet,T](b)
 
@@ -123,21 +124,19 @@ object bloomfilter{
       (numHashes, width)
     }
 
-    def dense[A,H1,T](params: (Int,Int), s: Long = 0L) = {
-      val conf = new DenseStandardBloomFilterConfig[A,H1] {
+    def dense[A,H1,T](params: (Int,Int), s: Long = 0L) =
+      new DenseStandardBloomFilter[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
       }
-      new DenseStandardBloomFilter[A,H1,T](conf){}
-    }
 
-    def sparse[A,H1,T](params: (Int,Int), s: Long = 0L) = {
-      val conf = new SparseStandardBloomFilterConfig[A,H1] {
+
+    def sparse[A,H1,T](params: (Int,Int), s: Long = 0L) =
+      new SparseStandardBloomFilter[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
       }
-      new SparseStandardBloomFilter[A,H1,T](conf){}
-    }
+
 
   }
 }
