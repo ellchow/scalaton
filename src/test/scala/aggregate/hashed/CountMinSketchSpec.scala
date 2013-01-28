@@ -1,3 +1,4 @@
+/*
 package scalaton.aggregate.hashed
 
 import scala.util.{Random => SRandom}
@@ -87,3 +88,4 @@ class CountMinSketchSpec extends Specification{
   }
 
 }
+*/

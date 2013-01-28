@@ -105,6 +105,24 @@ object bloomfilter{
                   with ChecksMembershipFunction
                   with SizedFunction{
 
+    /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
+    def optimalNumHashes(numItems: Int, width: Int): Int = {
+      require(numItems gt 0, "fpProb must be > 0")
+      require(width gt 0, "width must be > 0")
+      math.ceil(width / numItems * math.log(2)) toInt
+    }
+    /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
+    def optimalWidth(numItems: Int, fpProb: Double): Int = {
+      require((fpProb gte 0.0) && (fpProb lte 1.0), "fpProb must be between 0 and 1")
+      math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)) toInt
+    }
+    def optimalParameters(numItems: Int, fpProb: Double) = {
+      val width = optimalWidth(numItems, fpProb)
+      val numHashes = optimalNumHashes(numItems, width)
+
+      (numHashes, width)
+    }
+
     def dense[A,H1,T](params: (Int,Int), s: Long = 0L) = {
       val conf = new DenseStandardBloomFilterConfig[A,H1] {
         val (numHashes, width) = params
