@@ -9,13 +9,6 @@ import scalaton.util.hashable._
 import scala.collection.BitSet
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
-// trait BloomFilterConfig[A,H1] extends HashModdedCollectionConfig[A,H1]
-// trait StandardBloomFilterConfig[A,H1] extends BloomFilterConfig[A,H1]
-// sealed trait DenseStandardBloomFilterConfig[A,H1] extends StandardBloomFilterConfig[A,H1]
-// sealed trait SparseStandardBloomFilterConfig[A,H1] extends StandardBloomFilterConfig[A,H1]
-
-
-// trait BloomFilter[A,H1,D,C <: BloomFilterConfig[A,H1]]
 trait BloomFilter[A,H1,D]
 extends HashModdedCollection[A,H1]
 with InsertsElement[A,H1,Int,D]

@@ -7,31 +7,6 @@ import scalaton.util._
 import scalaton.util.hashable._
 
 
-// trait HashedCollectionConfig[A,H1,H2]{
-
-//   /** Number of hashes used in this collection **/
-//   val numHashes: Int
-
-//   /** Seed of hashing function **/
-//   val seed: Long
-
-//   /** Compute hash of an item **/
-//   def hashItem(item: A)(implicit h: Hashable[A, H1],
-//                         hconv: HashCodeConverter[H1, H2]): Iterable[H2 @@ HashCode] =
-//     hconv.convertSeq(multiHash(item, seed)) take numHashes
-
-// }
-
-// trait HashModdedCollectionConfig[A,H1] extends HashedCollectionConfig[A,H1,Int]{
-
-//   val width: Int
-
-//   override def hashItem(item: A)(implicit h: Hashable[A, H1],
-//                                  hconv: HashCodeConverter[H1, Int]): Iterable[Int @@ HashCode] =
-//     super.hashItem(item) map { _ % width |> HashCode}
-
-// }
-
 trait HashedCollection[A,H1,H2]{
   /** Number of hashes used in this collection **/
   val numHashes: Int
