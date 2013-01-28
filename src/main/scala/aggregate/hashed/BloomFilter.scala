@@ -21,7 +21,7 @@ with InsertsElement[A,H1,Int,D,C]
 with ChecksMembership[A,H1,Int,D,C]
 with Sized[A,H1,Int,D,C]
 
-abstract class StandardBloomFilter[A,H1,D,C <: StandardBloomFilterConfig[A,H1]](val conf: C) extends BloomFilter[A,H1,D,C]{
+abstract class StandardBloomFilter[A,H1,D,C <: StandardBloomFilterConfig[A,H1]](val conf: C) extends BloomFilter[A,H1,D,C] with Monoid[D] with Equal[D]{
   def add(d: D, a: A)(implicit h: H, hconv: HC): D =
     addToBitSet(d, conf.hashItem(a))
 
@@ -49,8 +49,6 @@ abstract class StandardBloomFilter[A,H1,D,C <: StandardBloomFilterConfig[A,H1]](
 
   def addToBitSet(d: D, bits: Iterable[Int @@ HashCode]): D
 
-
-
 }
 
 abstract class DenseStandardBloomFilter[A,H1,T](override val conf: DenseStandardBloomFilterConfig[A,H1]) extends StandardBloomFilter[A,H1,BitSet @@ T,DenseStandardBloomFilterConfig[A,H1]](conf){
@@ -64,6 +62,14 @@ abstract class DenseStandardBloomFilter[A,H1,T](override val conf: DenseStandard
     tag(d ++ bits)
 
   def sizeOfBitSet(d: BitSet @@ T): Int = d size
+
+  def equal(d1: BitSet @@ T, d2: BitSet @@ T ): Boolean =
+    d1 == d2
+
+  val zero: BitSet @@ T = tag(BitSet.empty)
+
+  def append(d1: BitSet @@ T, d2: => BitSet @@ T ) =
+    tag(d1 ++ d2)
 
 }
 abstract class SparseStandardBloomFilter[A,H1,T](override val conf: SparseStandardBloomFilterConfig[A,H1]) extends StandardBloomFilter[A,H1,CompressedBitSet @@ T,SparseStandardBloomFilterConfig[A,H1]](conf){
@@ -82,6 +88,14 @@ abstract class SparseStandardBloomFilter[A,H1,T](override val conf: SparseStanda
     tag(CompressedBitSet.bitmapOf((bits.toSeq : Seq[Int]).sorted : _*))
 
   def sizeOfBitSet(d: CompressedBitSet @@ T): Int = d cardinality
+
+  def equal(d1: CompressedBitSet @@ T, d2: CompressedBitSet @@ T ): Boolean =
+    d1 equals d2
+
+  val zero: CompressedBitSet @@ T = tag(new CompressedBitSet)
+
+  def append(d1: CompressedBitSet @@ T, d2: => CompressedBitSet @@ T ) =
+    tag(d1 or d2)
 
 }
 
