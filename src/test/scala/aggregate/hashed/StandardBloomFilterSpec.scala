@@ -22,8 +22,6 @@ class StandardBloomFilterSpec extends Specification{
 
   "an empty bloom filter" should {
 
-
-
     implicit val sbfinstance = dense[String,(Long,Long),DSBF]((5,625), 0L)
 
     "not contain anything" in {
