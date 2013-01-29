@@ -12,7 +12,7 @@ import scalaton.aggregate.hashed.sketch.ces._
 
 class CountMinSketchSpec extends Specification{
   trait CMS
-  def tag(x: (Vector[Vector[Long]], Long)) = Tag[(Vector[Vector[Long]], Long), CMS](x)
+  def tag[A](x: A) = Tag[A, CMS](x)
 
   "an empty count min sketch" should {
     implicit val cmsinstance = denseLong[String,(Long,Long),CMS]((5,60),0)
@@ -31,7 +31,7 @@ class CountMinSketchSpec extends Specification{
       (cmsinstance.zero === cmsz) must beTrue
 
       0 to 1000 foreach { i =>
-        (cmsinstance.zero === update(cmsinstance.zero, SRandom nextDouble() toString, 1L)) must beFalse
+        (cmsinstance.zero === singleton(tag(SRandom nextDouble() toString), 1L)) must beFalse
       }
     }
 
@@ -40,11 +40,11 @@ class CountMinSketchSpec extends Specification{
     }
 
     "have an value for an item after updating it" in {
-      lookup(update(cmsinstance.zero,"a",1L),"a") mustEqual 1L
+      lookup(singleton(tag("a"),1L), "a") mustEqual 1L
     }
 
     "be equal to the other count min sketch after updating it" in {
-      ((cmsinstance.zero |+| update(cmsinstance.zero,"a",1L)) === update(cmsinstance.zero,"a",1L)) must beTrue
+      ((cmsinstance.zero |+| singleton(tag("a"),1L)) === singleton(tag("a"),1L)) must beTrue
     }
 
   }

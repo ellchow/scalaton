@@ -17,8 +17,8 @@ class StandardBloomFilterSpec extends Specification{
   trait DSBF
   trait SSBF
 
-  def tagDense(b: BitSet) = Tag[BitSet, DSBF](b)
-  def tagSparse(b: CompressedBitSet) = Tag[CompressedBitSet, SSBF](b)
+  def tagDense[A](a: A) = Tag[A, DSBF](a)
+  def tagSparse[A](a: A) = Tag[A, SSBF](a)
 
   "an empty bloom filter" should {
 
@@ -38,7 +38,7 @@ class StandardBloomFilterSpec extends Specification{
       (sbfinstance.zero === bfz) must beTrue
 
       0 to 1000 foreach { i =>
-        (sbfinstance.zero === add(sbfinstance.zero,SRandom nextDouble() toString)) must beFalse
+        (sbfinstance.zero === singleton(tagDense(SRandom nextDouble() toString))) must beFalse
       }
     }
 
@@ -47,11 +47,11 @@ class StandardBloomFilterSpec extends Specification{
     }
 
     "contain the item after adding it" in {
-      contains(add(sbfinstance.zero,"a"), "a") must beTrue
+      contains(singleton(tagDense("a")), "a") must beTrue
     }
 
     "be equal to the other bloom filter after add another" in {
-      ((sbfinstance.zero |+| add(sbfinstance.zero,"a")) === add(sbfinstance.zero,"a")) must beTrue
+      ((sbfinstance.zero |+| singleton(tagDense("a"))) === singleton(tagDense("a"))) must beTrue
     }
 
   }
