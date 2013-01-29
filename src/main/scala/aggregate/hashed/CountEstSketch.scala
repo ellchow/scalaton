@@ -94,7 +94,9 @@ extends DenseCountEstSketchMonoidV[A,H1,Long,T]{
 
 object sketch{
 
-  object ces extends UpdatesElementValueFunction with LooksUpElementValueFunction{
+  object ces extends UpdatesElementValueFunction
+             with LooksUpElementValueFunction
+             with MakesSingletonFunction{
 
     /** delta is certainty having less than eps **/
     def optimalNumHashes(delta: Double) = {

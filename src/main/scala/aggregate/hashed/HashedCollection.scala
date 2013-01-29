@@ -81,6 +81,13 @@ trait LooksUpElementValueFunction{
     l.lookup(d,a)
 }
 
+trait MakesSingletonFunction{
+  def singleton[A,H1,H2,D,T](a: A @@ T)(implicit i: InsertsElement[A,H1,H2,D @@ T], m: Monoid[D @@ T], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D @@ T =
+    i.add(m.zero, a)
+
+  def singleton[A,H1,H2,D,T,V1](a: A @@ T, v1: V1)(implicit u: UpdatesElementValue[A,H1,H2,D @@ T,V1], m: Monoid[D @@ T], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D @@ T=
+    u.update(m.zero, a, v1)
+}
 
 
 
