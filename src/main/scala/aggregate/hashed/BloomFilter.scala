@@ -94,11 +94,11 @@ abstract class SparseStandardBloomFilter[A,H1,T] extends StandardBloomFilter[A,H
 
 }
 
-object bloomfilter{
-  object sbf extends InsertsElementFunction
-             with ChecksMembershipFunction
-             with SizedFunction
-             with MakesSingletonFunction{
+object bloomfilter extends InsertsElementFunction
+                   with ChecksMembershipFunction
+                   with SizedFunction
+                   with MakesSingletonFunction{
+  object sbf{
 
     /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
     def optimalNumHashes(numItems: Int, width: Int): Int = {

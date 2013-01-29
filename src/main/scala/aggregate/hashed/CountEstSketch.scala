@@ -92,24 +92,11 @@ extends DenseCountEstSketchMonoidV[A,H1,Long,T]{
 }
 
 
-object sketch{
+object sketch extends UpdatesElementValueFunction
+              with LooksUpElementValueFunction
+              with MakesSingletonFunction{
 
-  object ces extends UpdatesElementValueFunction
-             with LooksUpElementValueFunction
-             with MakesSingletonFunction{
-
-    /** delta is certainty having less than eps **/
-    def optimalNumHashes(delta: Double) = {
-      require((delta gte 0.0) && (delta lte 1.0), "delta must be between 0 and 1")
-      math.ceil(math.log(1 - delta) / math.log(0.5)) toInt
-    }
-    /** eps is max tolerable error **/
-    def optimalWidth(eps: Double) = {
-      require((eps gte 0.0) && (eps lte 1.0), "eps must be between 0 and 1")
-      math.ceil(2 / eps) toInt
-    }
-
-    def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
+  object ces {
 
     def denseLong[A,H1,T](params: (Int,Int), s: Long = 0L,
                           estimator: (Iterable[Long]) => Long = (x:Iterable[Long]) => x.min) =
@@ -119,6 +106,25 @@ object sketch{
 
         def estimate(cs: Iterable[Long]): Long = estimator(cs)
       }
+
   }
+
+  object countminsketch {
+
+    /** delta is certainty having less than eps **/
+    def optimalNumHashes(delta: Double) = {
+      require((delta gte 0.0) && (delta lte 1.0), "delta must be between 0 and 1")
+      math.ceil(math.log(1 - delta) / math.log(0.5)) toInt
+    }
+
+    /** eps is max tolerable error **/
+    def optimalWidth(eps: Double) = {
+      require((eps gte 0.0) && (eps lte 1.0), "eps must be between 0 and 1")
+      math.ceil(2 / eps) toInt
+    }
+
+    def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
+  }
+
 }
 

@@ -11,7 +11,7 @@ import scalaz._
 import Scalaz._
 
 import scalaton.util.hashable._
-import scalaton.aggregate.hashed.bloomfilter.sbf._
+import scalaton.aggregate.hashed.bloomfilter._
 
 class StandardBloomFilterSpec extends Specification{
   trait DSBF
@@ -22,7 +22,7 @@ class StandardBloomFilterSpec extends Specification{
 
   "an empty bloom filter" should {
 
-    implicit val sbfinstance = dense[String,(Long,Long),DSBF]((5,625), 0L)
+    implicit val sbfinstance = sbf.dense[String,(Long,Long),DSBF]((5,625), 0L)
 
     "not contain anything" in {
       SRandom.setSeed(0)
@@ -100,32 +100,32 @@ class StandardBloomFilterSpec extends Specification{
     }
 
     "should contain all true positives" in {
-      val params = optimalParameters(100, 0.05)
+      val params = sbf.optimalParameters(100, 0.05)
 
-      testTruePositives(dense[String, (Long,Long), DSBF](params, 0L))
+      testTruePositives(sbf.dense[String, (Long,Long), DSBF](params, 0L))
 
-      testTruePositives(sparse[String, (Long,Long), SSBF](params, 0L))
+      testTruePositives(sbf.sparse[String, (Long,Long), SSBF](params, 0L))
     }
 
     "should be below false-positive rate with high confidence" in {
       Seq(0.1, 0.05, 0.01, 0.005) foreach{ fpProb =>
         val numItems = 20
-        val params = optimalParameters(numItems, fpProb)
+        val params = sbf.optimalParameters(numItems, fpProb)
 
-        testFPProb(dense[(String, String), (Long,Long), DSBF](params, 0L), numItems, fpProb)
+        testFPProb(sbf.dense[(String, String), (Long,Long), DSBF](params, 0L), numItems, fpProb)
 
-        testFPProb(sparse[(String, String), (Long,Long), SSBF](params, 0L), numItems, fpProb)
+        testFPProb(sbf.sparse[(String, String), (Long,Long), SSBF](params, 0L), numItems, fpProb)
       }
     }
 
     "should estimate size well for elements less than the intended number of elements" in {
-      testCardinalityEstimate(dense[String,(Long,Long),DSBF](optimalParameters(100,0.05),0))
+      testCardinalityEstimate(sbf.dense[String,(Long,Long),DSBF](sbf.optimalParameters(100,0.05),0))
 
-      testCardinalityEstimate(sparse[String,(Long,Long),SSBF](optimalParameters(100,0.05),0))
+      testCardinalityEstimate(sbf.sparse[String,(Long,Long),SSBF](sbf.optimalParameters(100,0.05),0))
     }
 
     "should should return cardinality of -1 if all bloom filter is full" in {
-      implicit val sbfinstance = dense[String,(Long,Long),DSBF](optimalParameters(10,0.05),0)
+      implicit val sbfinstance = sbf.dense[String,(Long,Long),DSBF](sbf.optimalParameters(10,0.05),0)
 
       val bf = tagDense(BitSet((0 until sbfinstance.width) : _*))
 
