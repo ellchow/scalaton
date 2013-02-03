@@ -28,8 +28,6 @@ resolvers ++= Seq(
   "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
 )
 
-// "Cloudera Maven Repository" at "https://repository.cloudera.com/content/repositories/releases/",
-
 publishTo := Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
 
 assemblySettings
