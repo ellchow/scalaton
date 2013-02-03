@@ -89,6 +89,23 @@ class CountMinSketchSpec extends Specification{
       }
     }
 
+    "should track distribution accurately" in {
+      SRandom.setSeed(0)
+
+      val eps = 0.001
+      val delta = 0.999
+      val params = countminsketch.optimalParameters(eps,delta)
+      implicit val cmsinstance = ces.denseLong[Int,(Long,Long),CMS](params,0)
+
+      val n = 5000
+      val xs = for(i <- 1 to n) yield (1 to 10).map (_ => SRandom.nextInt(5)).sum
+
+      val actual = xs.groupBy(identity).map{ case (k,vs) => (k,vs.size) }
+      val cms = xs.foldLeft(cmsinstance.zero)((acc, x) => update(acc, x, 1L))
+
+      actual.foreach{ case (x, aCounts) => (lookup(cms, x) - aCounts) must beLessThan(2L) }
+    }
+
   }
 
 }
