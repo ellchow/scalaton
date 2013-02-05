@@ -69,18 +69,22 @@ object ProjectBuild extends Build{
     "-deprecation",
     "-unchecked")
 
+  val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
+
   lazy val utilProject = Project (
     "scalaton-util",
     file ("scalaton-util"),
     settings = buildSettings ++ Seq(libraryDependencies ++= commonDeps ++ utilDeps,
-                                    scalacOptions := compilerOptions)
+                                    scalacOptions := compilerOptions,
+                                    publishTo := publishLoc)
   )
 
   lazy val aggregateProject = Project (
     "scalaton-aggregate",
     file ("scalaton-aggregate"),
     settings = buildSettings ++ Seq(libraryDependencies ++= commonDeps ++ aggregateDeps,
-                                    scalacOptions := compilerOptions)
+                                    scalacOptions := compilerOptions,
+                                    publishTo := publishLoc)
   ) dependsOn (utilProject)
 
 }
