@@ -16,7 +16,7 @@ object url {
   def encode(u: String, encoding: String = "UTF-8"): ValidationNEL[String, String] =
     fromTryCatch(URLEncoder.encode(u, encoding)) match {
       case Success(s) => s.successNel[String]
-      case Failure(f) => f"failed to encode string: $u%s".failureNel[String]
+      case Failure(f) => "failed to encode string: %s".format(u).failureNel[String]
     }
 
   def encodeIfPossible(u: String, encoding: String = "UTF-8"): String =
@@ -25,7 +25,7 @@ object url {
   def decode(u: String, encoding: String = "UTF-8"): ValidationNEL[String, String] =
     fromTryCatch(URLDecoder.decode(u, encoding)) match {
       case Success(s) => s.successNel[String]
-      case Failure(f) => f"failed to decode string: $u%s".failureNel[String]
+      case Failure(f) => "failed to decode string: %s".format(u).failureNel[String]
     }
 
   def decodeIfPossible(u: String, encoding: String = "UTF-8"): String =

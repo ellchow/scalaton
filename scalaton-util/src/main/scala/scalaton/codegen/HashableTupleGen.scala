@@ -1,3 +1,4 @@
+/*
 package scalaton.codegen
 
 import scalaz._
@@ -45,3 +46,4 @@ object HashableTupleGen{
 
   }
 }
+*/

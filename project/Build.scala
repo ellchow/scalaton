@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings {
   val buildOrganization = "scalaton"
   val buildVersion      = "0.1-SNAPSHOT"
-  val buildScalaVersion = "2.10.0"
+  val buildScalaVersion = "2.9.2"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := buildOrganization,
@@ -44,7 +44,7 @@ object Resolvers {
 }
 
 object Dependencies {
-  val scalaz7 = "org.scalaz" % "scalaz-core_2.10" % "7.0.0-M7"
+  val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0-M3"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val specs2 = "org.specs2" %% "specs2" % "1.12.3" % "test"
   val apacheCommonsIo = "org.apache.commons" % "commons-io" % "1.3.2"
@@ -62,12 +62,10 @@ object ProjectBuild extends Build{
   val aggregateDeps = Seq(javaewah)
 
   val compilerOptions = Seq(
-    "-feature",
-    "-language:higherKinds",
-    "-language:implicitConversions",
-    "-language:postfixOps",
     "-deprecation",
-    "-unchecked")
+    "-Ydependent-method-types",
+    "-unchecked"
+  )
 
   lazy val utilProject = Project (
     "scalaton-util",
