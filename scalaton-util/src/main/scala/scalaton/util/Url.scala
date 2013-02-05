@@ -1,4 +1,4 @@
-package scalaton.http
+package scalaton.util.http
 
 import scala.util.control.Exception._
 import scala.io.Source
