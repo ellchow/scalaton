@@ -4,10 +4,10 @@ import scalaz._
 import Scalaz._
 
 import scalaton.util._
-import scalaton.util.hashable._
+import scalaton.util.hashing._
 
 
-trait CountEstSketch[A,H1,D,V1]
+trait CountEstSketchT[A,H1,D,V1]
 extends HashModdedCollection[A,H1]
 with UpdatesElementValue[A,H1,Int,D,V1]
 with LooksUpElementValue[A,H1,Int,D,Long]{
@@ -45,14 +45,14 @@ with LooksUpElementValue[A,H1,Int,D,Long]{
 
 }
 
-abstract class CountEstSketchMonoidV[A,H1,D,V1 : Monoid]
-extends CountEstSketch[A,H1,D,V1]{
+abstract class CountEstSketchMonoidVT[A,H1,D,V1 : Monoid]
+extends CountEstSketchT[A,H1,D,V1]{
   def updateValueWith(v: V1, u: V1): V1 = v |+| u
 }
 
 
-abstract class DenseCountEstSketchMonoidV[A,H1,V1 : Monoid,T]
-extends CountEstSketchMonoidV[A,H1,(Vector[Vector[V1]], Long) @@ T,V1]
+abstract class DenseCountEstSketchMonoidVT[A,H1,V1 : Monoid,T]
+extends CountEstSketchMonoidVT[A,H1,(Vector[Vector[V1]], Long) @@ T,V1]
 with Monoid[(Vector[Vector[V1]], Long) @@ T]
 with Equal[(Vector[Vector[V1]], Long) @@ T]{
 
@@ -84,8 +84,8 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
 
 }
 
-abstract class DenseCountEstSketchLong[A,H1,T]
-extends DenseCountEstSketchMonoidV[A,H1,Long,T]{
+abstract class DenseCountEstSketchLongT[A,H1,T]
+extends DenseCountEstSketchMonoidVT[A,H1,Long,T]{
 
   def valueToLong(v1: Long): Long = v1
 
@@ -100,7 +100,7 @@ object sketch extends UpdatesElementValueFunction
 
     def denseLong[A,H1,T](params: (Int,Int), s: Long = 0L,
                           estimator: (Iterable[Long]) => Long = (x:Iterable[Long]) => x.min) =
-      new DenseCountEstSketchLong[A,H1,T]{
+      new DenseCountEstSketchLongT[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
 

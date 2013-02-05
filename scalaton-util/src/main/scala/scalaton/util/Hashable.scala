@@ -126,7 +126,7 @@ trait HashableFunctions extends HashingTags{
 
 }
 
-object hashable
+object hashing
 extends HashableInstances
 with HashableFunctions
 with HashCodeConverterInstances

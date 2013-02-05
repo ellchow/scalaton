@@ -4,18 +4,18 @@ import scalaz._
 import Scalaz._
 
 import scalaton.util._
-import scalaton.util.hashable._
+import scalaton.util.hashing._
 
 import scala.collection.BitSet
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
-trait BloomFilter[A,H1,D]
+trait BloomFilterT[A,H1,D]
 extends HashModdedCollection[A,H1]
 with InsertsElement[A,H1,Int,D]
 with ChecksMembership[A,H1,Int,D]
 with Sized[A,H1,Int,D]
 
-trait StandardBloomFilter[A,H1,D] extends BloomFilter[A,H1,D] with Monoid[D] with Equal[D]{
+trait StandardBloomFilterT[A,H1,D] extends BloomFilterT[A,H1,D] with Monoid[D] with Equal[D]{
   def add(d: D, a: A)(implicit h: H, hconv: HC): D =
     addToBitSet(d, hashItem(a))
 
@@ -45,7 +45,7 @@ trait StandardBloomFilter[A,H1,D] extends BloomFilter[A,H1,D] with Monoid[D] wit
 
 }
 
-abstract class DenseStandardBloomFilter[A,H1,T] extends StandardBloomFilter[A,H1,BitSet @@ T]{
+abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,H1,BitSet @@ T]{
 
   def tag(b: BitSet) = Tag[BitSet,T](b)
 
@@ -67,7 +67,7 @@ abstract class DenseStandardBloomFilter[A,H1,T] extends StandardBloomFilter[A,H1
 
 }
 
-abstract class SparseStandardBloomFilter[A,H1,T] extends StandardBloomFilter[A,H1,CompressedBitSet @@ T]{
+abstract class SparseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,H1,CompressedBitSet @@ T]{
 
   def tag(b: CompressedBitSet) = Tag[CompressedBitSet,T](b)
 
@@ -119,14 +119,14 @@ object bloomfilter extends InsertsElementFunction
     }
 
     def dense[A,H1,T](params: (Int,Int), s: Long = 0L) =
-      new DenseStandardBloomFilter[A,H1,T]{
+      new DenseStandardBloomFilterT[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
       }
 
 
     def sparse[A,H1,T](params: (Int,Int), s: Long = 0L) =
-      new SparseStandardBloomFilter[A,H1,T]{
+      new SparseStandardBloomFilterT[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
       }

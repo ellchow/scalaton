@@ -4,7 +4,7 @@ import org.specs2.mutable._
 import scalaz._
 import Scalaz._
 
-import scalaton.util.hashable._
+import scalaton.util.hashing._
 
 class HashableSpec extends Specification {
 
