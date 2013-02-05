@@ -72,7 +72,7 @@ object ProjectBuild extends Build{
   val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
 
   lazy val utilProject = Project (
-    "scalaton-util",
+    "util",
     file ("scalaton-util"),
     settings = buildSettings ++ Seq(libraryDependencies ++= commonDeps ++ utilDeps,
                                     scalacOptions := compilerOptions,
@@ -80,7 +80,7 @@ object ProjectBuild extends Build{
   )
 
   lazy val aggregateProject = Project (
-    "scalaton-aggregate",
+    "aggregate",
     file ("scalaton-aggregate"),
     settings = buildSettings ++ Seq(libraryDependencies ++= commonDeps ++ aggregateDeps,
                                     scalacOptions := compilerOptions,
