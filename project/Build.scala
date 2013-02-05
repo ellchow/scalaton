@@ -41,6 +41,8 @@ object Resolvers {
   val scalaTools = "scala tools" at "http://scala-tools.org/repo-releases"
   val typesafe = "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
   val localm2 = "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
+
+  val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, scalaTools, typesafe, localm2)
 }
 
 object Dependencies {
@@ -75,17 +77,22 @@ object ProjectBuild extends Build{
   lazy val utilProject = Project (
     "util",
     file ("scalaton-util"),
-    settings = buildSettings ++ Seq(libraryDependencies ++= commonDeps ++ utilDeps,
-                                    scalacOptions := compilerOptions,
-                                    publishTo := publishLoc)
+    settings = buildSettings ++ Seq(
+      resolvers := allResolvers,
+      libraryDependencies ++= commonDeps ++ utilDeps,
+      scalacOptions := compilerOptions,
+      publishTo := publishLoc)
   )
 
   lazy val aggregateProject = Project (
     "aggregate",
     file ("scalaton-aggregate"),
-    settings = buildSettings ++ Seq(libraryDependencies ++= commonDeps ++ aggregateDeps,
-                                    scalacOptions := compilerOptions,
-                                    publishTo := publishLoc)
+    settings = buildSettings ++ Seq(
+      resolvers := allResolvers,
+      libraryDependencies ++= commonDeps ++ aggregateDeps,
+      scalacOptions := compilerOptions,
+      publishTo := publishLoc)
+
   ) dependsOn (utilProject)
 
 }
