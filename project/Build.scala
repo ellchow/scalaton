@@ -46,6 +46,7 @@ object Resolvers {
 object Dependencies {
   val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0-M3"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
+  val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
   val specs2 = "org.specs2" %% "specs2" % "1.12.3" % "test"
   val apacheCommonsIo = "org.apache.commons" % "commons-io" % "1.3.2"
 }
@@ -57,7 +58,7 @@ object ProjectBuild extends Build{
 
   val commonDeps = Seq(scalaz7, specs2)
 
-  val utilDeps = Seq(apacheCommonsIo)
+  val utilDeps = Seq(apacheCommonsIo, opencsv)
 
   val aggregateDeps = Seq(javaewah)
 
