@@ -10,7 +10,7 @@ import org.specs2.mutable._
 import scalaz._
 import Scalaz._
 
-import scalaton.util.hashable._
+import scalaton.util.hashing._
 import scalaton.aggregate.hashed.bloomfilter._
 
 class StandardBloomFilterSpec extends Specification{
@@ -58,7 +58,7 @@ class StandardBloomFilterSpec extends Specification{
 
   "a nonempty bloom filter" should {
 
-    def testTruePositives[D](sbfinst: StandardBloomFilter[String,(Long,Long),D]) = {
+    def testTruePositives[D](sbfinst: StandardBloomFilterT[String,(Long,Long),D]) = {
       SRandom.setSeed(0)
       implicit val sbfinstance = sbfinst
 
@@ -70,7 +70,7 @@ class StandardBloomFilterSpec extends Specification{
       }
     }
 
-    def testFPProb[D](sbfinst: StandardBloomFilter[(String,String),(Long,Long),D],
+    def testFPProb[D](sbfinst: StandardBloomFilterT[(String,String),(Long,Long),D],
                       numItems: Int, fpProb: Double) = {
       SRandom.setSeed(0)
       implicit val sbfinstance = sbfinst
@@ -88,7 +88,7 @@ class StandardBloomFilterSpec extends Specification{
       observed must beLessThan(1.5 * fpProb)
     }
 
-    def testCardinalityEstimate[D](sbfinst: StandardBloomFilter[String,(Long,Long),D]) = {
+    def testCardinalityEstimate[D](sbfinst: StandardBloomFilterT[String,(Long,Long),D]) = {
       implicit val sbfinstance = sbfinst
       var bf = sbfinstance.zero
 
