@@ -58,7 +58,8 @@ extends FileImplicits{
       def next = {
         val ret = nextRow
         nextRow = csvReader.readNext
-        ret toVector
+
+        Vector(ret: _*)
       }
 
     }
