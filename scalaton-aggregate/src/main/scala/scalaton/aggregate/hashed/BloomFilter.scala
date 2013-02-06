@@ -6,7 +6,7 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashing._
 
-import scala.collection.BitSet
+import scala.collection.mutable.BitSet
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 trait BloomFilterT[A,H1,D]
