@@ -1,6 +1,6 @@
 package scalaton.aggregate.hashed
 
-import scala.collection.BitSet
+import scala.collection.mutable.BitSet
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 import scala.util.{Random => SRandom}
