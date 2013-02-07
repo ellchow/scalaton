@@ -113,7 +113,7 @@ object sketch extends UpdatesElementValueFunction
   object ces {
 
     def denseLong[A,H1,T](params: (Int,Int), s: Long = 0L,
-                          estimator: (Iterable[Long]) => Long = (x:Iterable[Long]) => x.min) =
+                          estimator: (Iterable[Long]) => Long) =
       new DenseCountEstSketchLongT[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
@@ -124,6 +124,14 @@ object sketch extends UpdatesElementValueFunction
   }
 
   object countminsketch {
+
+    def apply[A,H1,T](params: (Int,Int), s: Long = 0L) =
+      new DenseCountEstSketchLongT[A,H1,T]{
+        val (numHashes, width) = params
+        val seed = s
+
+        def estimate(cs: Iterable[Long]): Long = cs.min
+      }
 
     /** delta is certainty having less than eps **/
     def optimalNumHashes(delta: Double) = {
