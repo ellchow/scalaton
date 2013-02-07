@@ -12,9 +12,9 @@ import au.com.bytecode.opencsv._
 object file
 extends FileImplicits{
 
-  type Path = FilePath
+  type Path = String @@ FilePath
 
-  def path(x: String): String @@ Path = Tag(x)
+  def path(x: String): Path = Tag(x)
 
   def root = path("/")
 
