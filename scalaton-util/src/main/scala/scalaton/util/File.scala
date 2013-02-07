@@ -11,7 +11,12 @@ import au.com.bytecode.opencsv._
 
 object file
 extends FileImplicits{
-  def path(x: String): String @@ Path = Tag(x)
+
+  type Path = String @@ FilePath
+
+  def path(x: String): Path = Tag(x)
+
+  def root = path("/")
 
   object Csv{
     def apply(r: CSVReader) = {
@@ -58,7 +63,8 @@ extends FileImplicits{
       def next = {
         val ret = nextRow
         nextRow = csvReader.readNext
-        ret toVector
+
+        Vector(ret: _*)
       }
 
     }
@@ -66,38 +72,37 @@ extends FileImplicits{
 
 }
 
-sealed trait Path
+sealed trait FilePath
 
 trait FileImplicits{
-  implicit def stringToReader(s: String @@ Path) =
+  implicit def stringToReader(s: String @@ FilePath) =
       if(s.length == 0)
         new BufferedReader(new InputStreamReader(System.in))
       else
         new BufferedReader(new FileReader(s))
 
-  implicit def optionStringToReader(s: Option[String @@ Path]) =
+  implicit def optionStringToReader(s: Option[String @@ FilePath]) =
     stringToReader(Tag(s.getOrElse("")))
 
-  implicit def stringToWriter(s: String @@ Path) =
+  implicit def stringToWriter(s: String @@ FilePath) =
       if(s.length == 0)
         new BufferedWriter(new OutputStreamWriter(System.out))
       else
         new BufferedWriter(new FileWriter(s))
 
-  implicit def optionStringToWriter(s: Option[String @@ Path]) =
+  implicit def optionStringToWriter(s: Option[String @@ FilePath]) =
     stringToWriter(Tag(s.getOrElse("")))
 
-  implicit def toPathOps(s: String @@ Path) = new PathOps{ val run = s }
+  implicit def toPathOps(s: String @@ FilePath) = new FilePathOps{ val run = s }
 
 }
 
-trait PathOps {
-  val run: String @@ Path
+trait FilePathOps {
+  val run: String @@ FilePath
 
+  def / (s: String): String @@ FilePath = Tag(new File(run,s) getPath)
 
-  def / (s: String): String @@ Path = Tag(new File(run,s) getPath)
-
-  def parent : String @@ Path = Tag(new File(run) getParent)
+  def parent : String @@ FilePath = Tag(new File(run) getParent)
 
   def isDir = new File(run) isDirectory
 
