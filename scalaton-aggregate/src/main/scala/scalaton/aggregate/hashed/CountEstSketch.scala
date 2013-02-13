@@ -1,5 +1,7 @@
 package scalaton.aggregate.hashed
 
+import scala.collection.mutable
+
 import scalaz._
 import Scalaz._
 
@@ -52,17 +54,19 @@ extends CountEstSketchT[A,H1,D,V1]{
 
 
 abstract class DenseCountEstSketchMonoidVT[A,H1,V1 : Monoid,T]
-extends CountEstSketchMonoidVT[A,H1,(Vector[Vector[V1]], Long) @@ T,V1]
-with Monoid[(Vector[Vector[V1]], Long) @@ T]
-with Equal[(Vector[Vector[V1]], Long) @@ T]{
+extends CountEstSketchMonoidVT[A,H1,(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,V1]
+with Monoid[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]
+with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
 
-  def equal(d1: (Vector[Vector[V1]], Long) @@ T, d2: (Vector[Vector[V1]], Long) @@ T) =
+  def equal(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, d2: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) =
     (d1._1 == d2._1) && (d1._2 === d2._2)
 
-  lazy val zero = tag((Vector.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
+  def zero = tag((mutable.ArrayBuffer.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
 
-  def append(d1: (Vector[Vector[V1]], Long) @@ T, d2: => (Vector[Vector[V1]], Long) @@ T) = {
-    val data = Vector.tabulate(numHashes, width)((i,j) =>
+  def dim(d: mutable.ArrayBuffer[mutable.ArrayBuffer[V1]]): (Int, Int) = (d.length, d(0).length)
+
+  def append(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, d2: => (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) = {
+    val data = mutable.ArrayBuffer.tabulate(numHashes, width)((i,j) =>
       valueAt(d1,i,j) |+| valueAt(d2,i,j))
 
     val size = d1._2 + d2._2
@@ -70,17 +74,27 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
     tag((data, size))
   }
 
-  def tag(d: (Vector[Vector[V1]], Long)) = Tag[(Vector[Vector[V1]], Long), T](d)
+  def tag(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long)) = Tag[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long), T](d)
 
-  def valueAt(d: (Vector[Vector[V1]], Long) @@ T, i: Int, j: Int): V1 = {
+  def valueAt(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, i: Int, j: Int): V1 = {
     d._1(i)(j)
   }
 
-  def newData(d: (Vector[Vector[V1]], Long) @@ T, f: (Int,Int) => V1): (Vector[Vector[V1]], Long) @@ T =
-    tag((Vector.tabulate(numHashes, width)(f), d._2))
+  def newData(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, f: (Int,Int) => V1): (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T = {
+    val (numRows, numCols) = dim(d._1)
 
-  def newSize(d: (Vector[Vector[V1]], Long) @@ T, v1: V1) =
+    for {
+      i <- 0 until numRows
+      j <- 0 until numCols
+    } { d._1(i)(j) = f(i,j) }
+
+    d
+  }
+
+
+  def newSize(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, v1: V1) =
     tag(d._1, d._2 + valueToLong(v1))
+
 
 }
 

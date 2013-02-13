@@ -14,7 +14,7 @@ extends FileImplicits{
 
   type Path = String @@ FilePath
 
-  def path(x: String): Path = Tag(x)
+  def path(x: String): Path = Tag(new File(x) toString)
 
   def root = path("/")
 
