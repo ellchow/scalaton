@@ -10,7 +10,7 @@ import scalaton.util.hashing._
 
 
 trait CountEstSketchT[A,H1,D,V1]
-extends HashModdedCollection[A,H1]
+extends DoubleHashModdedCollection[A,H1]
 with UpdatesElementValue[A,H1,Int,D,V1]
 with LooksUpElementValue[A,H1,Int,D,Long]{
 

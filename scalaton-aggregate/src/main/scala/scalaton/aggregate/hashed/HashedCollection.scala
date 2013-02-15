@@ -29,6 +29,22 @@ trait HashModdedCollection[A,H1] extends HashedCollection[A,H1,Int]{
     super.hashItem(item) map { _ % width |> HashCode}
 }
 
+trait DoubleHashModdedCollection[A,H1] extends HashModdedCollection[A,H1]{
+
+  private def doubleHashStream(a: Int, b: Int, i: Int): Stream[Int @@ HashCode] =
+    Stream.cons(HashCode(math.abs(a + i * b + i * i) % width) , doubleHashStream(a, b, i + 1))
+
+  override def hashItem(item: A)(implicit h: Hashable[A, H1],
+                                 hconv: HashCodeConverter[H1, Int]): Iterable[Int @@ HashCode] = {
+    val base = hconv.convertSeq(multiHash(item, seed)) take 2 toSeq
+    val a = base(0)
+    val b = base(1)
+
+    doubleHashStream(a, b, 1) take numHashes
+  }
+
+}
+
 
 /** **/
 
