@@ -127,7 +127,7 @@ object sketch extends UpdatesElementValueFunction
     /** delta is certainty having less than eps **/
     def optimalNumHashes(delta: Double) = {
       require((delta gte 0.0) && (delta lte 1.0), "delta must be between 0 and 1")
-      math.ceil(math.log(1.0 / delta)) toInt
+      math.ceil(math.log(1.0 / (1 - delta))) toInt
     }
 
     /** eps is max tolerable error **/
