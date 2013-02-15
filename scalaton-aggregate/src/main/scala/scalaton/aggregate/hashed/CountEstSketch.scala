@@ -15,12 +15,8 @@ with UpdatesElementValue[A,H1,Int,D,V1]
 with LooksUpElementValue[A,H1,Int,D,Long]{
 
   def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D = {
-    val ijs = itemIJs(a) toSet
-
-    newSize(newData(d, (i: Int, j: Int) =>
-                    ijs.contains((i,j)) ? updateValueWith(valueAt(d,i,j),v1) | valueAt(d,i,j) ),
-            v1)
-
+    val ijs = itemIJs(a)
+    newSize(newData(d, ijs, v1), v1)
   }
 
   def lookup(d: D, a: A)(implicit h: H, hconv: HC): Long = {
@@ -41,7 +37,7 @@ with LooksUpElementValue[A,H1,Int,D,Long]{
 
   def valueAt(d: D, i: Int, j: Int): V1
 
-  def newData(d: D, f: (Int,Int) => V1): D
+  def newData(d: D, ijs: Iterable[(Int,Int)], v1: V1 ): D
 
   def newSize(d: D, v1: V1): D
 
@@ -80,13 +76,8 @@ with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
     d._1(i)(j)
   }
 
-  def newData(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, f: (Int,Int) => V1): (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T = {
-    val (numRows, numCols) = dim(d._1)
-
-    for {
-      i <- 0 until numRows
-      j <- 0 until numCols
-    } { d._1(i)(j) = f(i,j) }
+  def newData(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T = {
+    ijs foreach { case (i, j) => d._1(i)(j) = updateValueWith(valueAt(d,i,j),v1) }
 
     d
   }
