@@ -4,7 +4,7 @@ import scalaz._
 import Scalaz._
 
 import scalaton.util._
-import scalaton.util.hashable._
+import scalaton.util.hashing._
 
 
 trait HashedCollection[A,H1,H2]{

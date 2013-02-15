@@ -1,24 +1,22 @@
 package scalaton.aggregate.hashed
 
+import scala.collection.mutable
+
 import scalaz._
 import Scalaz._
 
 import scalaton.util._
-import scalaton.util.hashable._
+import scalaton.util.hashing._
 
 
-trait CountEstSketch[A,H1,D,V1]
+trait CountEstSketchT[A,H1,D,V1]
 extends HashModdedCollection[A,H1]
 with UpdatesElementValue[A,H1,Int,D,V1]
 with LooksUpElementValue[A,H1,Int,D,Long]{
 
   def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D = {
-    val ijs = itemIJs(a) toSet
-
-    newSize(newData(d, (i: Int, j: Int) =>
-                    ijs.contains((i,j)) ? updateValueWith(valueAt(d,i,j),v1) | valueAt(d,i,j) ),
-            v1)
-
+    val ijs = itemIJs(a)
+    newSize(newData(d, ijs, v1), v1)
   }
 
   def lookup(d: D, a: A)(implicit h: H, hconv: HC): Long = {
@@ -39,30 +37,32 @@ with LooksUpElementValue[A,H1,Int,D,Long]{
 
   def valueAt(d: D, i: Int, j: Int): V1
 
-  def newData(d: D, f: (Int,Int) => V1): D
+  def newData(d: D, ijs: Iterable[(Int,Int)], v1: V1 ): D
 
   def newSize(d: D, v1: V1): D
 
 }
 
-abstract class CountEstSketchMonoidV[A,H1,D,V1 : Monoid]
-extends CountEstSketch[A,H1,D,V1]{
+abstract class CountEstSketchMonoidVT[A,H1,D,V1 : Monoid]
+extends CountEstSketchT[A,H1,D,V1]{
   def updateValueWith(v: V1, u: V1): V1 = v |+| u
 }
 
 
-abstract class DenseCountEstSketchMonoidV[A,H1,V1 : Monoid,T]
-extends CountEstSketchMonoidV[A,H1,(Vector[Vector[V1]], Long) @@ T,V1]
-with Monoid[(Vector[Vector[V1]], Long) @@ T]
-with Equal[(Vector[Vector[V1]], Long) @@ T]{
+abstract class DenseCountEstSketchMonoidVT[A,H1,V1 : Monoid,T]
+extends CountEstSketchMonoidVT[A,H1,(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,V1]
+with Monoid[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]
+with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
 
-  def equal(d1: (Vector[Vector[V1]], Long) @@ T, d2: (Vector[Vector[V1]], Long) @@ T) =
+  def equal(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, d2: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) =
     (d1._1 == d2._1) && (d1._2 === d2._2)
 
-  lazy val zero = tag((Vector.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
+  def zero = tag((mutable.ArrayBuffer.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
 
-  def append(d1: (Vector[Vector[V1]], Long) @@ T, d2: => (Vector[Vector[V1]], Long) @@ T) = {
-    val data = Vector.tabulate(numHashes, width)((i,j) =>
+  def dim(d: mutable.ArrayBuffer[mutable.ArrayBuffer[V1]]): (Int, Int) = (d.length, d(0).length)
+
+  def append(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, d2: => (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) = {
+    val data = mutable.ArrayBuffer.tabulate(numHashes, width)((i,j) =>
       valueAt(d1,i,j) |+| valueAt(d2,i,j))
 
     val size = d1._2 + d2._2
@@ -70,22 +70,27 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
     tag((data, size))
   }
 
-  def tag(d: (Vector[Vector[V1]], Long)) = Tag[(Vector[Vector[V1]], Long), T](d)
+  def tag(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long)) = Tag[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long), T](d)
 
-  def valueAt(d: (Vector[Vector[V1]], Long) @@ T, i: Int, j: Int): V1 = {
+  def valueAt(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, i: Int, j: Int): V1 = {
     d._1(i)(j)
   }
 
-  def newData(d: (Vector[Vector[V1]], Long) @@ T, f: (Int,Int) => V1): (Vector[Vector[V1]], Long) @@ T =
-    tag((Vector.tabulate(numHashes, width)(f), d._2))
+  def newData(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T = {
+    ijs foreach { case (i, j) => d._1(i)(j) = updateValueWith(valueAt(d,i,j),v1) }
 
-  def newSize(d: (Vector[Vector[V1]], Long) @@ T, v1: V1) =
+    d
+  }
+
+
+  def newSize(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, v1: V1) =
     tag(d._1, d._2 + valueToLong(v1))
+
 
 }
 
-abstract class DenseCountEstSketchLong[A,H1,T]
-extends DenseCountEstSketchMonoidV[A,H1,Long,T]{
+abstract class DenseCountEstSketchLongT[A,H1,T]
+extends DenseCountEstSketchMonoidVT[A,H1,Long,T]{
 
   def valueToLong(v1: Long): Long = v1
 
@@ -99,8 +104,8 @@ object sketch extends UpdatesElementValueFunction
   object ces {
 
     def denseLong[A,H1,T](params: (Int,Int), s: Long = 0L,
-                          estimator: (Iterable[Long]) => Long = (x:Iterable[Long]) => x.min) =
-      new DenseCountEstSketchLong[A,H1,T]{
+                          estimator: (Iterable[Long]) => Long) =
+      new DenseCountEstSketchLongT[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
 
@@ -110,6 +115,14 @@ object sketch extends UpdatesElementValueFunction
   }
 
   object countminsketch {
+
+    def apply[A,H1,T](params: (Int,Int), s: Long = 0L) =
+      new DenseCountEstSketchLongT[A,H1,T]{
+        val (numHashes, width) = params
+        val seed = s
+
+        def estimate(cs: Iterable[Long]): Long = cs.min
+      }
 
     /** delta is certainty having less than eps **/
     def optimalNumHashes(delta: Double) = {
