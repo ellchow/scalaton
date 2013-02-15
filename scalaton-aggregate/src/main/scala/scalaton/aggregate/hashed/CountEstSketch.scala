@@ -127,13 +127,13 @@ object sketch extends UpdatesElementValueFunction
     /** delta is certainty having less than eps **/
     def optimalNumHashes(delta: Double) = {
       require((delta gte 0.0) && (delta lte 1.0), "delta must be between 0 and 1")
-      math.ceil(math.log(1 - delta) / math.log(0.5)) toInt
+      math.ceil(math.log(1.0 / delta)) toInt
     }
 
     /** eps is max tolerable error **/
     def optimalWidth(eps: Double) = {
       require((eps gte 0.0) && (eps lte 1.0), "eps must be between 0 and 1")
-      math.ceil(2 / eps) toInt
+      math.ceil(math.exp(1) / eps) toInt
     }
 
     def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
