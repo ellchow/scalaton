@@ -10,7 +10,7 @@ import scala.collection.mutable.BitSet
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 trait BloomFilterT[A,H1,D]
-extends HashModdedCollection[A,H1]
+extends DoubleHashModdedCollection[A,H1]
 with InsertsElement[A,H1,Int,D]
 with ChecksMembership[A,H1,Int,D]
 with Sized[A,H1,Int,D]

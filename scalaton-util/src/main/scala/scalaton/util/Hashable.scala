@@ -10,7 +10,6 @@ import Scalaz._
  * Hashable type class, implicits,  and related things
  */
 
-
 sealed trait HashCode
 trait HashingTags{
   def HashCode [A](a: A) = Tag[A,HashCode](a)
