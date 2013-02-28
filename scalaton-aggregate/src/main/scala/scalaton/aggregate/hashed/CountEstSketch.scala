@@ -12,7 +12,8 @@ import scalaton.util.hashing._
 trait CountEstSketchT[A,H1,D,V1]
 extends DoubleHashModdedCollection[A,H1]
 with UpdatesElementValue[A,H1,Int,D,V1]
-with LooksUpElementValue[A,H1,Int,D,Long]{
+with LooksUpElementValue[A,H1,Int,D,Long]
+with Sized[A,H1,Int,D]{
 
   def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D = {
     val ijs = itemIJs(a)
@@ -53,6 +54,8 @@ abstract class DenseCountEstSketchMonoidVT[A,H1,V1 : Monoid,T]
 extends CountEstSketchMonoidVT[A,H1,(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,V1]
 with Monoid[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]
 with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
+
+  def cardinality(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) = d._2
 
   def equal(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, d2: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) =
     (d1._1 == d2._1) && (d1._2 === d2._2)
