@@ -9,7 +9,7 @@ import scalaton.util._
 import scalaton.util.hashing._
 
 
-trait CountEstSketchT[A,H1,D,V1]
+trait FrequencySketchT[A,H1,D,V1]
 extends DoubleHashModdedCollection[A,H1]
 with UpdatesElementValue[A,H1,Int,D,V1]
 with LooksUpElementValue[A,H1,Int,D,Long]
@@ -44,14 +44,14 @@ with Sized[A,H1,Int,D]{
 
 }
 
-abstract class CountEstSketchMonoidVT[A,H1,D,V1 : Monoid]
-extends CountEstSketchT[A,H1,D,V1]{
+abstract class FrequencySketchMonoidVT[A,H1,D,V1 : Monoid]
+extends FrequencySketchT[A,H1,D,V1]{
   def updateValueWith(v: V1, u: V1): V1 = v |+| u
 }
 
 
-abstract class DenseCountEstSketchMonoidVT[A,H1,V1 : Monoid,T]
-extends CountEstSketchMonoidVT[A,H1,(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,V1]
+abstract class DenseFrequencySketchMonoidVT[A,H1,V1 : Monoid,T]
+extends FrequencySketchMonoidVT[A,H1,(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,V1]
 with Monoid[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]
 with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
 
@@ -92,8 +92,8 @@ with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
 
 }
 
-abstract class DenseCountEstSketchLongT[A,H1,T]
-extends DenseCountEstSketchMonoidVT[A,H1,Long,T]{
+abstract class DenseFrequencySketchLongT[A,H1,T]
+extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
 
   def valueToLong(v1: Long): Long = v1
 
@@ -108,7 +108,7 @@ object sketch extends UpdatesElementValueFunction
 
     def denseLong[A,H1,T](params: (Int,Int), s: Long = 0L,
                           estimator: (Iterable[Long]) => Long) =
-      new DenseCountEstSketchLongT[A,H1,T]{
+      new DenseFrequencySketchLongT[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
 
@@ -120,7 +120,7 @@ object sketch extends UpdatesElementValueFunction
   object countminsketch {
 
     def apply[A,H1,T](params: (Int,Int), s: Long = 0L) =
-      new DenseCountEstSketchLongT[A,H1,T]{
+      new DenseFrequencySketchLongT[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
 
