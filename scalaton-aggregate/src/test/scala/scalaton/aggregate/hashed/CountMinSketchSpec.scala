@@ -17,7 +17,7 @@ class CountMinSketchSpec extends Specification{
   def tag[A](x: A) = Tag[A, CMS](x)
 
   "an empty count min sketch" should {
-    implicit val cmsinstance = countminsketch[String,(Long,Long),CMS]((5,60),0)
+    implicit val cmsinstance = countminsketch[String,Bits128,CMS]((5,60),0)
 
     "not have positive counts for anything" in {
       SRandom.setSeed(0)
@@ -56,7 +56,7 @@ class CountMinSketchSpec extends Specification{
     "should have nonzero estimate for any item that has been updated" in {
       SRandom.setSeed(0)
 
-      implicit val cmsinstance = countminsketch[String,(Long,Long),CMS]((5,60),0)
+      implicit val cmsinstance = countminsketch[String,Bits128,CMS]((5,60),0)
 
       0 to 10 foreach { i =>
         val items = 0 to 10 map { _ => SRandom nextDouble() toString }
@@ -75,7 +75,7 @@ class CountMinSketchSpec extends Specification{
         val params = countminsketch.optimalParameters(eps,delta)
 
         implicit val cmsinstance =
-          countminsketch[String,(Long,Long),CMS](params, 0L)
+          countminsketch[String,Bits128,CMS](params, 0L)
 
         val items = (0 until 5000).view.map( _ => (math.sqrt(SRandom.nextInt(10000)).toInt.toString,
                                                     SRandom.nextInt(20).toLong) )
@@ -97,7 +97,7 @@ class CountMinSketchSpec extends Specification{
       val eps = 0.001
       val delta = 0.999
       val params = countminsketch.optimalParameters(eps,delta)
-      implicit val cmsinstance = countminsketch[Int,(Long,Long),CMS](params,0)
+      implicit val cmsinstance = countminsketch[Int,Bits128,CMS](params,0)
 
       val n = 5000
       val xs = for(i <- 1 to n) yield (1 to 10).map (_ => SRandom.nextInt(5)).sum

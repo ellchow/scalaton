@@ -129,7 +129,11 @@ object hashing
 extends HashableInstances
 with HashableFunctions
 with HashCodeConverterInstances
-with HashingTags
+with HashingTags{
+  type Bits128 = (Long, Long)
+  type Bits64 = Long
+  type Bits32 = Int
+}
 
 
 

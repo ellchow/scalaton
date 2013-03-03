@@ -11,14 +11,14 @@ class HashableSpec extends Specification {
   "The string 'hello'" should {
     "can use default hashable instance" in {
       implicit val hashAnything = anyHashable[String]
-      val hc: (Long,Long) @@ HashCode = hash("hello")
+      val hc: Bits128 @@ HashCode = hash("hello")
 
       hc mustEqual (5620873505596599413L, 2937734076964678877L)
     }
 
     "is hashed by MurmurHash3" in {
       val hc = hash("hello")
-      (hc: (Long, Long)).productArity mustEqual 2
+      (hc: Bits128).productArity mustEqual 2
 
       hc mustEqual (-4758432102323878981L,1262627326183304356L)
     }
@@ -47,11 +47,4 @@ class HashableSpec extends Specification {
 
   }
 
-
-
 }
-
-
-    // multiHash("hello").take(3).foreach( _ |> println )
-
-    // multiHash(Map(1->2))(serHashable).take(3).foreach( _ |> println )

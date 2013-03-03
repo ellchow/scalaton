@@ -22,7 +22,7 @@ class StandardBloomFilterSpec extends Specification{
 
   "an empty bloom filter" should {
 
-    implicit val sbfinstance = sbf.dense[String,(Long,Long),DSBF]((5,625), 0L)
+    implicit val sbfinstance = sbf.dense[String,Bits128,DSBF]((5,625), 0L)
 
     "not contain anything" in {
       SRandom.setSeed(0)
@@ -58,7 +58,7 @@ class StandardBloomFilterSpec extends Specification{
 
   "a nonempty bloom filter" should {
 
-    def testTruePositives[D](sbfinst: StandardBloomFilterT[String,(Long,Long),D]) = {
+    def testTruePositives[D](sbfinst: StandardBloomFilterT[String,Bits128,D]) = {
       SRandom.setSeed(0)
       implicit val sbfinstance = sbfinst
 
@@ -70,7 +70,7 @@ class StandardBloomFilterSpec extends Specification{
       }
     }
 
-    def testFPProb[D](sbfinst: StandardBloomFilterT[(String,String),(Long,Long),D],
+    def testFPProb[D](sbfinst: StandardBloomFilterT[(String,String),Bits128,D],
                       numItems: Int, fpProb: Double) = {
       SRandom.setSeed(0)
       implicit val sbfinstance = sbfinst
@@ -88,7 +88,7 @@ class StandardBloomFilterSpec extends Specification{
       observed must beLessThan(1.5 * fpProb)
     }
 
-    def testCardinalityEstimate[D](sbfinst: StandardBloomFilterT[String,(Long,Long),D]) = {
+    def testCardinalityEstimate[D](sbfinst: StandardBloomFilterT[String,Bits128,D]) = {
       implicit val sbfinstance = sbfinst
       var bf = sbfinstance.zero
 
@@ -102,9 +102,9 @@ class StandardBloomFilterSpec extends Specification{
     "should contain all true positives" in {
       val params = sbf.optimalParameters(100, 0.05)
 
-      testTruePositives(sbf.dense[String, (Long,Long), DSBF](params, 0L))
+      testTruePositives(sbf.dense[String, Bits128, DSBF](params, 0L))
 
-      testTruePositives(sbf.sparse[String, (Long,Long), SSBF](params, 0L))
+      testTruePositives(sbf.sparse[String, Bits128, SSBF](params, 0L))
     }
 
     "should be below false-positive rate with high confidence" in {
@@ -112,20 +112,20 @@ class StandardBloomFilterSpec extends Specification{
         val numItems = 20
         val params = sbf.optimalParameters(numItems, fpProb)
 
-        testFPProb(sbf.dense[(String, String), (Long,Long), DSBF](params, 0L), numItems, fpProb)
+        testFPProb(sbf.dense[(String, String), Bits128, DSBF](params, 0L), numItems, fpProb)
 
-        testFPProb(sbf.sparse[(String, String), (Long,Long), SSBF](params, 0L), numItems, fpProb)
+        testFPProb(sbf.sparse[(String, String), Bits128, SSBF](params, 0L), numItems, fpProb)
       }
     }
 
     "should estimate size well for elements less than the intended number of elements" in {
-      testCardinalityEstimate(sbf.dense[String,(Long,Long),DSBF](sbf.optimalParameters(100,0.05),0))
+      testCardinalityEstimate(sbf.dense[String,Bits128,DSBF](sbf.optimalParameters(100,0.05),0))
 
-      testCardinalityEstimate(sbf.sparse[String,(Long,Long),SSBF](sbf.optimalParameters(100,0.05),0))
+      testCardinalityEstimate(sbf.sparse[String,Bits128,SSBF](sbf.optimalParameters(100,0.05),0))
     }
 
     "should should return cardinality of -1 if all bloom filter is full" in {
-      implicit val sbfinstance = sbf.dense[String,(Long,Long),DSBF](sbf.optimalParameters(10,0.05),0)
+      implicit val sbfinstance = sbf.dense[String,Bits128,DSBF](sbf.optimalParameters(10,0.05),0)
 
       val bf = tagDense(BitSet((0 until sbfinstance.width) : _*))
 
