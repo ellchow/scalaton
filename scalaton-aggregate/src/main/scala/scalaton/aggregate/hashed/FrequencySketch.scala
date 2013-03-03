@@ -104,6 +104,8 @@ object sketch extends UpdatesElementValueFunction
               with LooksUpElementValueFunction
               with MakesSingletonFunction{
 
+  type SketchTable[V1] = (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long)
+
   def apply[A,H1,T](params: (Int,Int), s: Long = 0L,
                     estimator: (Iterable[Long]) => Long) =
     new DenseFrequencySketchLongT[A,H1,T]{
@@ -137,6 +139,8 @@ object sketch extends UpdatesElementValueFunction
 
     def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
   }
+
+
 
 }
 
