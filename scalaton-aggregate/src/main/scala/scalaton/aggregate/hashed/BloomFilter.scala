@@ -53,17 +53,17 @@ abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,
     !(bits exists ( b => !d.contains(b) ))
 
   def addToBitSet(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): BitSet  @@ T =
-    tag(d ++ bits)
+    tag(d ++= bits)
 
   def sizeOfBitSet(d: BitSet @@ T): Int = d size
 
   def equal(d1: BitSet @@ T, d2: BitSet @@ T ): Boolean =
     d1 == d2
 
-  val zero: BitSet @@ T = tag(BitSet.empty)
+  def zero: BitSet @@ T = tag(BitSet.empty)
 
   def append(d1: BitSet @@ T, d2: => BitSet @@ T ) =
-    tag(d1 ++ d2)
+    tag(d1 ++= d2)
 
 }
 
@@ -87,7 +87,7 @@ abstract class SparseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A
   def equal(d1: CompressedBitSet @@ T, d2: CompressedBitSet @@ T ): Boolean =
     d1 equals d2
 
-  val zero: CompressedBitSet @@ T = tag(new CompressedBitSet)
+  def zero: CompressedBitSet @@ T = tag(new CompressedBitSet)
 
   def append(d1: CompressedBitSet @@ T, d2: => CompressedBitSet @@ T ) =
     tag(d1 or d2)
