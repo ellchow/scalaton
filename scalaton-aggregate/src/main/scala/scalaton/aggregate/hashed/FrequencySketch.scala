@@ -1,7 +1,5 @@
 package scalaton.aggregate.hashed
 
-import scala.collection.mutable
-
 import scalaz._
 import Scalaz._
 
@@ -49,23 +47,20 @@ extends FrequencySketchT[A,H1,D,V1]{
   def updateValueWith(v: V1, u: V1): V1 = v |+| u
 }
 
-
 abstract class DenseFrequencySketchMonoidVT[A,H1,V1 : Monoid,T]
-extends FrequencySketchMonoidVT[A,H1,(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,V1]
-with Monoid[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]
-with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
+extends FrequencySketchMonoidVT[A,H1,(Vector[Vector[V1]], Long) @@ T,V1]
+with Monoid[(Vector[Vector[V1]], Long) @@ T]
+with Equal[(Vector[Vector[V1]], Long) @@ T]{
 
-  def cardinality(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) = d._2
+  def cardinality(d: (Vector[Vector[V1]], Long) @@ T) = d._2
 
-  def equal(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, d2: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) =
+  def equal(d1: (Vector[Vector[V1]], Long) @@ T, d2: (Vector[Vector[V1]], Long) @@ T) =
     (d1._1 == d2._1) && (d1._2 === d2._2)
 
-  def zero = tag((mutable.ArrayBuffer.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
+  lazy val zero = tag((Vector.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
 
-  def dim(d: mutable.ArrayBuffer[mutable.ArrayBuffer[V1]]): (Int, Int) = (d.length, d(0).length)
-
-  def append(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, d2: => (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) = {
-    val data = mutable.ArrayBuffer.tabulate(numHashes, width)((i,j) =>
+  def append(d1: (Vector[Vector[V1]], Long) @@ T, d2: => (Vector[Vector[V1]], Long) @@ T) = {
+    val data = Vector.tabulate(numHashes, width)((i,j) =>
       valueAt(d1,i,j) |+| valueAt(d2,i,j))
 
     val size = d1._2 + d2._2
@@ -73,38 +68,52 @@ with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
     tag((data, size))
   }
 
-  def tag(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long)) = Tag[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long), T](d)
+  def tag(d: (Vector[Vector[V1]], Long)) = Tag[(Vector[Vector[V1]], Long), T](d)
 
-  def valueAt(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, i: Int, j: Int): V1 = {
+  def valueAt(d: (Vector[Vector[V1]], Long) @@ T, i: Int, j: Int): V1 = {
     d._1(i)(j)
   }
 
-  def newData(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T = {
-    ijs foreach { case (i, j) => d._1(i)(j) = updateValueWith(valueAt(d,i,j),v1) }
+  def newData(d: (Vector[Vector[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (Vector[Vector[V1]], Long) @@ T = {
+    val updatedTable = ijs.foldLeft(d._1)((table, ij) => {
+      val u = updateValueWith(valueAt(d, ij._1, ij._2), v1)
+      table.updated(ij._1,
+                    table(ij._1).updated(ij._2, u))
+    })
 
-    d
+    tag((updatedTable, d._2))
   }
 
-
-  def newSize(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, v1: V1) =
+  def newSize(d: (Vector[Vector[V1]], Long) @@ T, v1: V1) =
     tag(d._1, d._2 + valueToLong(v1))
-
 
 }
 
 abstract class DenseFrequencySketchLongT[A,H1,T]
 extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
-
   def valueToLong(v1: Long): Long = v1
-
 }
 
 
-object sketch extends UpdatesElementValueFunction
-              with LooksUpElementValueFunction
-              with MakesSingletonFunction{
+trait CountMinSketchParameterEstimates{
+  /** delta is certainty having less than eps **/
+  def optimalNumHashes(delta: Double) = {
+    require((delta gte 0.0) && (delta lte 1.0), "delta must be between 0 and 1")
+    math.ceil(math.log(1.0 / (1 - delta))) toInt
+  }
 
-  type SketchTable[V1] = (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long)
+  /** eps is max tolerable error **/
+  def optimalWidth(eps: Double) = {
+    require((eps gte 0.0) && (eps lte 1.0), "eps must be between 0 and 1")
+    math.ceil(math.exp(1) / eps) toInt
+  }
+
+  def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
+}
+
+object sketch {
+
+  type SketchTable[V1] = (Vector[Vector[V1]], Long)
 
   def apply[A,H1,T](params: (Int,Int), s: Long = 0L,
                     estimator: (Iterable[Long]) => Long) =
@@ -115,7 +124,8 @@ object sketch extends UpdatesElementValueFunction
       def estimate(cs: Iterable[Long]): Long = estimator(cs)
     }
 
-  object countminsketch {
+  object countminsketch
+  extends CountMinSketchParameterEstimates{
 
     def apply[A,H1,T](params: (Int,Int), s: Long = 0L) =
       new DenseFrequencySketchLongT[A,H1,T]{
@@ -124,23 +134,11 @@ object sketch extends UpdatesElementValueFunction
 
         def estimate(cs: Iterable[Long]): Long = cs.min
       }
-
-    /** delta is certainty having less than eps **/
-    def optimalNumHashes(delta: Double) = {
-      require((delta gte 0.0) && (delta lte 1.0), "delta must be between 0 and 1")
-      math.ceil(math.log(1.0 / (1 - delta))) toInt
-    }
-
-    /** eps is max tolerable error **/
-    def optimalWidth(eps: Double) = {
-      require((eps gte 0.0) && (eps lte 1.0), "eps must be between 0 and 1")
-      math.ceil(math.exp(1) / eps) toInt
-    }
-
-    def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
   }
 
 
 
 }
+
+
 

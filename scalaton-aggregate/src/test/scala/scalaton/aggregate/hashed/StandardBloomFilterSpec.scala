@@ -1,6 +1,7 @@
 package scalaton.aggregate.hashed
 
-import scala.collection.mutable.BitSet
+import scala.collection.BitSet
+import scala.collection.mutable.{BitSet => MBitSet}
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 import scala.util.{Random => SRandom}
@@ -11,7 +12,9 @@ import scalaz._
 import Scalaz._
 
 import scalaton.util.hashing._
-import scalaton.aggregate.hashed.bloomfilter._
+import scalaton.aggregate.hashed.hashedcollection._
+import scalaton.aggregate.hashed.bloomfilter.sbf
+import scalaton.aggregate.hashed.mutable.bloomfilter.{sbf => msbf}
 
 class StandardBloomFilterSpec extends Specification{
   trait DSBF
@@ -22,7 +25,7 @@ class StandardBloomFilterSpec extends Specification{
 
   "an empty bloom filter" should {
 
-    implicit val sbfinstance = sbf.dense[String,Bits128,DSBF]((5,625), 0L)
+    implicit val sbfinstance = sbf[String,Bits128,DSBF]((5,625), 0L)
 
     "not contain anything" in {
       SRandom.setSeed(0)
@@ -102,9 +105,9 @@ class StandardBloomFilterSpec extends Specification{
     "should contain all true positives" in {
       val params = sbf.optimalParameters(100, 0.05)
 
-      testTruePositives(sbf.dense[String, Bits128, DSBF](params, 0L))
+      testTruePositives(sbf[String, Bits128, DSBF](params, 0L))
 
-      testTruePositives(sbf.sparse[String, Bits128, SSBF](params, 0L))
+      testTruePositives(msbf.sparse[String, Bits128, SSBF](params, 0L))
     }
 
     "should be below false-positive rate with high confidence" in {
@@ -112,20 +115,20 @@ class StandardBloomFilterSpec extends Specification{
         val numItems = 20
         val params = sbf.optimalParameters(numItems, fpProb)
 
-        testFPProb(sbf.dense[(String, String), Bits128, DSBF](params, 0L), numItems, fpProb)
+        testFPProb(sbf[(String, String), Bits128, DSBF](params, 0L), numItems, fpProb)
 
-        testFPProb(sbf.sparse[(String, String), Bits128, SSBF](params, 0L), numItems, fpProb)
+        testFPProb(msbf.sparse[(String, String), Bits128, SSBF](params, 0L), numItems, fpProb)
       }
     }
 
     "should estimate size well for elements less than the intended number of elements" in {
-      testCardinalityEstimate(sbf.dense[String,Bits128,DSBF](sbf.optimalParameters(100,0.05),0))
+      testCardinalityEstimate(sbf[String,Bits128,DSBF](sbf.optimalParameters(100,0.05),0))
 
-      testCardinalityEstimate(sbf.sparse[String,Bits128,SSBF](sbf.optimalParameters(100,0.05),0))
+      testCardinalityEstimate(msbf.sparse[String,Bits128,SSBF](sbf.optimalParameters(100,0.05),0))
     }
 
     "should should return cardinality of -1 if all bloom filter is full" in {
-      implicit val sbfinstance = sbf.dense[String,Bits128,DSBF](sbf.optimalParameters(10,0.05),0)
+      implicit val sbfinstance = sbf[String,Bits128,DSBF](sbf.optimalParameters(10,0.05),0)
 
       val bf = tagDense(BitSet((0 until sbfinstance.width) : _*))
 

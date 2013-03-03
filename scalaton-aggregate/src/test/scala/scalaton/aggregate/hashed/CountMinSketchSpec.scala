@@ -2,15 +2,15 @@ package scalaton.aggregate.hashed
 
 import scala.util.{Random => SRandom}
 
-import scala.collection.mutable
-
 import org.specs2.mutable._
 
 import scalaz._
 import Scalaz._
 
 import scalaton.util.hashing._
+import scalaton.aggregate.hashed.hashedcollection._
 import scalaton.aggregate.hashed.sketch._
+// import scalaton.aggregate.hashed.mutable.sketch._
 
 class CountMinSketchSpec extends Specification{
   trait CMS
@@ -29,7 +29,8 @@ class CountMinSketchSpec extends Specification{
     }
 
     "is only equal to another empty count min sketch" in {
-      val cmsz = tag((mutable.ArrayBuffer.fill[Long](5, 60)(0L), 0L))
+      val cmsz = tag((Vector.fill[Long](5, 60)(0L), 0L))
+      // val cmsz = tag((collection.mutable.ArrayBuffer.fill[Long](5, 60)(0L), 0L))
       (cmsinstance.zero === cmsz) must beTrue
 
       0 to 1000 foreach { i =>
