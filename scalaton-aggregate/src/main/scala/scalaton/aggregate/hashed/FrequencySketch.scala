@@ -104,18 +104,14 @@ object sketch extends UpdatesElementValueFunction
               with LooksUpElementValueFunction
               with MakesSingletonFunction{
 
-  object ces {
+  def apply[A,H1,T](params: (Int,Int), s: Long = 0L,
+                    estimator: (Iterable[Long]) => Long) =
+    new DenseFrequencySketchLongT[A,H1,T]{
+      val (numHashes, width) = params
+      val seed = s
 
-    def denseLong[A,H1,T](params: (Int,Int), s: Long = 0L,
-                          estimator: (Iterable[Long]) => Long) =
-      new DenseFrequencySketchLongT[A,H1,T]{
-        val (numHashes, width) = params
-        val seed = s
-
-        def estimate(cs: Iterable[Long]): Long = estimator(cs)
-      }
-
-  }
+      def estimate(cs: Iterable[Long]): Long = estimator(cs)
+    }
 
   object countminsketch {
 
