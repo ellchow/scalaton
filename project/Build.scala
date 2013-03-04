@@ -3,14 +3,14 @@ import Keys._
 
 object BuildSettings {
   val buildOrganization = "scalaton"
-  val buildVersion      = "0.1-SNAPSHOT"
-  val buildScalaVersion = "2.9.2"
+  val buildVersion = "0.1-SNAPSHOT"
+  val buildScalaVersion = "2.10.0"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := buildOrganization,
-    version      := buildVersion,
+    version := buildVersion,
     scalaVersion := buildScalaVersion,
-    shellPrompt  := ShellPrompt.buildShellPrompt
+    shellPrompt := ShellPrompt.buildShellPrompt
   )
 }
 
@@ -37,7 +37,7 @@ object ShellPrompt {
 
 object Resolvers {
   val sonatypeSnapshots = "sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots"
-  val sonatypeReleases = "sonatype releases"  at "http://oss.sonatype.org/content/repositories/releases"
+  val sonatypeReleases = "sonatype releases" at "http://oss.sonatype.org/content/repositories/releases"
   val scalaTools = "scala tools" at "http://scala-tools.org/repo-releases"
   val typesafe = "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
   val localm2 = "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
@@ -46,7 +46,7 @@ object Resolvers {
 }
 
 object Dependencies {
-  val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0-M3"
+  val scalaz7 = "org.scalaz" % "scalaz-core_2.10" % "7.0.0-M7"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
   val scalatime = "com.github.nscala-time" %% "nscala-time" % "0.2.0"
@@ -66,10 +66,12 @@ object ProjectBuild extends Build{
   val aggregateDeps = Seq(javaewah)
 
   val compilerOptions = Seq(
+    "-feature",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    "-language:postfixOps",
     "-deprecation",
-    "-Ydependent-method-types",
-    "-unchecked"
-  )
+    "-unchecked")
 
   val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
 
@@ -95,9 +97,5 @@ object ProjectBuild extends Build{
   ) dependsOn (utilProject)
 
 }
-
-
-
-
 
 

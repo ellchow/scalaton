@@ -12,7 +12,7 @@ import scalaz._
 import Scalaz._
 
 import scalaton.util.hashing._
-import scalaton.aggregate.hashed.hashedcollection._
+import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.bloomfilter.sbf
 import scalaton.aggregate.hashed.mutable.bloomfilter.{sbf => msbf}
 

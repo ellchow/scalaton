@@ -105,7 +105,7 @@ trait MakesSingletonFunction{
     u.update(m.zero, a, v1)
 }
 
-object hashedcollection
+object hcollection
 extends InsertsElementFunction
 with ChecksMembershipFunction
 with SizedFunction
