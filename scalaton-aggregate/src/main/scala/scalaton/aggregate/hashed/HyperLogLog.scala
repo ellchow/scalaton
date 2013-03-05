@@ -42,6 +42,20 @@ with Monoid[D @@ T]{
 
   protected def numZeroRegisters(d: D @@ T): Int
 
+  protected def registerValue(d: D @@ T, j: Int): Int
+
+  protected def updateRegister(d: D @@ T, j: Int, n: Int): D @@ T
+
+  def add(d: D @@ T, a: A)(implicit h: H, hconv: HC): D @@ T = {
+    val hashedValue = hashItem(a).head
+
+    val j = readAddress(hashedValue)
+
+    val r = numLeadingZeros(hashedValue)
+
+    tag((registerValue(d, j) lt r) ? updateRegister(d, j, r) | d)
+  }
+
   def cardinality(d: D @@ T): Long = {
     val rsum = registerSum(d)
 
@@ -63,20 +77,8 @@ with Monoid[D @@ T]{
 
 }
 
-
-
 trait DenseHyperLogLogT[A,H1,T]
 extends HyperLogLogT[A,H1,Vector[Int],T]{
-
-  def add(d: Vector[Int] @@ T, a: A)(implicit h: H, hconv: HC): Vector[Int] @@ T = {
-    val hashedValue = hashItem(a).head
-
-    val j = readAddress(hashedValue)
-
-    val r = numLeadingZeros(hashedValue)
-
-    tag((d(j) lt r) ? d.updated(j, r) | d)
-  }
 
   def equal(d1: Vector[Int] @@ T, d2: Vector[Int] @@ T) =
     d1 == d2
@@ -91,6 +93,10 @@ extends HyperLogLogT[A,H1,Vector[Int],T]{
 
   protected def numZeroRegisters(d: Vector[Int] @@ T) =
     d.foldLeft(0)((acc, x) => (x === 0) ? (acc + 1) | acc)
+
+  protected def registerValue(d: Vector[Int] @@ T, j: Int) = d(j)
+
+  protected def updateRegister(d: Vector[Int] @@ T, j: Int, n: Int) = tag(d.updated(j, n))
 
 }
 
