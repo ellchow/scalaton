@@ -11,6 +11,7 @@ import scalaton.util.hashing._
 import scala.collection.mutable.BitSet
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
+/** standard bloom filter backed by mutable bitset **/
 abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,H1,BitSet @@ T]{
 
   def tag(b: BitSet) = Tag[BitSet,T](b)
@@ -33,6 +34,7 @@ abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,
 
 }
 
+/** standard bloom filter backed by mutable, sparse bitset; good for large filters at the cost of some runtime performance  **/
 abstract class SparseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,H1,CompressedBitSet @@ T]{
 
   def tag(b: CompressedBitSet) = Tag[CompressedBitSet,T](b)

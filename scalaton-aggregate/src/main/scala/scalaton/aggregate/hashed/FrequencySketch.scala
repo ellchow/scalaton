@@ -6,7 +6,7 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashing._
 
-
+/** sketch data structure to store and lookup values given a key, generally used for keeping track of frequencies **/
 trait FrequencySketchT[A,H1,D,V1]
 extends DoubleHashModdedCollection[A,H1]
 with UpdatesElementValue[A,H1,Int,D,V1]
@@ -24,29 +24,38 @@ with Sized[A,H1,Int,D]{
     estimate(ijs map { case(i,j) => valueToLong(valueAt(d,i,j)) })
   }
 
+  /** get cells to update **/
   def itemIJs(a: A)(implicit h: H, hconv: HC): Iterable[(Int,Int)] = {
     (0 to numHashes).view zip hashItem(a)
   }
 
+  /** compute estimate given the values extracted from each cell **/
   def estimate(cs: Iterable[Long]): Long
 
+  /** extract long from value stored in cell **/
   def valueToLong(v1: V1): Long
 
+  /** update a cell's value given an input **/
   def updateValueWith(v: V1, u: V1): V1
 
+  /** retrieve value from cell **/
   def valueAt(d: D, i: Int, j: Int): V1
 
+  /** construct a data structure with cells specified by ijs updated with value v1 **/
   def newData(d: D, ijs: Iterable[(Int,Int)], v1: V1 ): D
 
+  /** update the size (number of items inserted) **/
   def newSize(d: D, v1: V1): D
 
 }
 
+/** sketch requiring cell values to be monoids **/
 abstract class FrequencySketchMonoidVT[A,H1,D,V1 : Monoid]
 extends FrequencySketchT[A,H1,D,V1]{
   def updateValueWith(v: V1, u: V1): V1 = v |+| u
 }
 
+/** sketch implementation backed with an immutable table **/
 abstract class DenseFrequencySketchMonoidVT[A,H1,V1 : Monoid,T]
 extends FrequencySketchMonoidVT[A,H1,(Vector[Vector[V1]], Long) @@ T,V1]
 with Monoid[(Vector[Vector[V1]], Long) @@ T]
@@ -60,9 +69,11 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
   lazy val zero = tag((Vector.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
 
   def append(d1: (Vector[Vector[V1]], Long) @@ T, d2: => (Vector[Vector[V1]], Long) @@ T) = {
+    // append values in cells together
     val data = Vector.tabulate(numHashes, width)((i,j) =>
       valueAt(d1,i,j) |+| valueAt(d2,i,j))
 
+    // add sizes together
     val size = d1._2 + d2._2
 
     tag((data, size))
@@ -77,6 +88,7 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
   def newData(d: (Vector[Vector[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (Vector[Vector[V1]], Long) @@ T = {
     val updatedTable = ijs.foldLeft(d._1)((table, ij) => {
       val u = updateValueWith(valueAt(d, ij._1, ij._2), v1)
+
       table.updated(ij._1,
                     table(ij._1).updated(ij._2, u))
     })
@@ -89,6 +101,7 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
 
 }
 
+/** standard frequency counting sketch **/
 abstract class DenseFrequencySketchLongT[A,H1,T]
 extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
   def valueToLong(v1: Long): Long = v1

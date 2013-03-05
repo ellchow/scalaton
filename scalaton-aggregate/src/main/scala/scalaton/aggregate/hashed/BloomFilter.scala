@@ -8,12 +8,15 @@ import scalaton.util.hashing._
 
 import scala.collection.BitSet
 
+
+/** Bloom filter data structure that allows for checking membership **/
 trait BloomFilterT[A,H1,D]
 extends DoubleHashModdedCollection[A,H1]
 with InsertsElement[A,H1,Int,D]
 with ChecksMembership[A,H1,Int,D]
 with Sized[A,H1,Int,D]
 
+/** standard bloom filter backed by bitset **/
 trait StandardBloomFilterT[A,H1,D] extends BloomFilterT[A,H1,D] with Monoid[D] with Equal[D]{
   def add(d: D, a: A)(implicit h: H, hconv: HC): D =
     addToBitSet(d, hashItem(a))
@@ -36,14 +39,18 @@ trait StandardBloomFilterT[A,H1,D] extends BloomFilterT[A,H1,D] with Monoid[D] w
     }
   }
 
+  /** get number of bits set to 1 **/
   def sizeOfBitSet(d: D): Int
 
+  /** check if given bits are contained in the bit set **/
   def hasAllBits(d: D, bits: Iterable[Int @@ HashCode]): Boolean
 
+  /** set bits to 1 in the bit set **/
   def addToBitSet(d: D, bits: Iterable[Int @@ HashCode]): D
 
 }
 
+/** standard bloom filter backed by immutable bitset **/
 abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,H1,BitSet @@ T]{
 
   def tag(b: BitSet) = Tag[BitSet,T](b)

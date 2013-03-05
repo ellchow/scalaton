@@ -8,7 +8,7 @@ import scalaton.aggregate.hashed._
 import scalaton.util._
 import scalaton.util.hashing._
 
-
+/** sketch implementation backed with an mutable table **/
 abstract class DenseFrequencySketchMonoidVT[A,H1,V1 : Monoid,T]
 extends FrequencySketchMonoidVT[A,H1,(collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T,V1]
 with Monoid[(collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T]
@@ -50,11 +50,10 @@ with Equal[(collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], 
 
 }
 
+/** standard frequency counting sketch using mutable table **/
 abstract class DenseFrequencySketchLongT[A,H1,T]
 extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
-
   def valueToLong(v1: Long): Long = v1
-
 }
 
 

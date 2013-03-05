@@ -6,7 +6,7 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashing._
 
-
+/** Collection where keys inserted are hashed **/
 trait HashedCollection[A,H1,H2]{
   /** Number of hashes used in this collection **/
   val numHashes: Int
@@ -29,6 +29,7 @@ trait HashModdedCollection[A,H1] extends HashedCollection[A,H1,Int]{
     super.hashItem(item) map { _ % width |> HashCode}
 }
 
+/** Uses extended double hashing to improve runtime performance (http://www.eecs.harvard.edu/~michaelm/CS223/lesshash.pdf) **/
 trait DoubleHashModdedCollection[A,H1] extends HashModdedCollection[A,H1]{
 
   private def doubleHashStream(a: Int, b: Int, i: Int): Stream[Int @@ HashCode] =
@@ -45,8 +46,6 @@ trait DoubleHashModdedCollection[A,H1] extends HashModdedCollection[A,H1]{
 
 }
 
-
-/** **/
 
 trait HashedCollectionOperations[A,H1,H2,D]{
   type H = Hashable[A,H1]

@@ -87,6 +87,8 @@ trait HashCodeConverter[A, B] extends HashingTags{
 
 }
 
+
+/** Typeclasses for converting hash codes **/
 trait HashCodeConverterInstances extends HashingTags{
   implicit def hashCodeIdentity[A] = new HashCodeConverter[A, A]{
     def convert(hc: A @@ HashCode): Seq[A @@ HashCode] = Seq(hc)
