@@ -61,8 +61,6 @@ with Monoid[D @@ T]{
 
     val estimate = alphamm / rsum
 
-    println(numZeroRegisters(d) + "   " + m + "   " + "    " + estimate + "    " + (numZeroRegisters(d) =/= 0) + "    " + rsum)
-
     val correctedEstimate = if(estimate lte (5.0 / 2.0 * m)){ // small range correction
       val v = numZeroRegisters(d)
 
