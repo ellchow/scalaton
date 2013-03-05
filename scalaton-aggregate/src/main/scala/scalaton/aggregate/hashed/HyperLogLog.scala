@@ -7,12 +7,12 @@ import scalaton.util._
 import scalaton.util.hashing._
 
 /** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9 **/
-trait HyperLogLogT[A,H1,D,T]
+trait HyperLogLogT[A,H1,D]
 extends HashedCollection[A,H1,Bits32]
-with InsertsElement[A,H1,Bits32,D @@ T]
-with Sized[A,H1,Bits32,D @@ T]
-with Equal[D @@ T]
-with Monoid[D @@ T]{
+with InsertsElement[A,H1,Bits32,D]
+with Sized[A,H1,Bits32,D]
+with Equal[D]
+with Monoid[D]{
   val numHashes: Int = 1
 
   val b: Int
@@ -26,8 +26,6 @@ with Monoid[D @@ T]{
     case _ => (0.7213 / (1 + 1.079 / m)) * m * m
   }
 
-  protected def tag(d: D) = Tag[D, T](d)
-
   protected def numLeadingZeros(hashedValue: Bits32): Int =
     Integer.numberOfLeadingZeros((hashedValue << b) | (1 << (b - 1)) + 1) + 1
 
@@ -38,25 +36,25 @@ with Monoid[D @@ T]{
 
   protected val negPow2to32 = -4294967296.0
 
-  protected def registerSum(d: D @@ T): Double
+  protected def registerSum(d: D): Double
 
-  protected def numZeroRegisters(d: D @@ T): Int
+  protected def numZeroRegisters(d: D): Int
 
-  protected def registerValue(d: D @@ T, j: Int): Int
+  protected def registerValue(d: D, j: Int): Int
 
-  protected def updateRegister(d: D @@ T, j: Int, n: Int): D @@ T
+  protected def updateRegister(d: D, j: Int, n: Int): D
 
-  def add(d: D @@ T, a: A)(implicit h: H, hconv: HC): D @@ T = {
+  def add(d: D, a: A)(implicit h: H, hconv: HC): D = {
     val hashedValue = hashItem(a).head
 
     val j = readAddress(hashedValue)
 
     val r = numLeadingZeros(hashedValue)
 
-    tag((registerValue(d, j) lt r) ? updateRegister(d, j, r) | d)
+    (registerValue(d, j) lt r) ? updateRegister(d, j, r) | d
   }
 
-  def cardinality(d: D @@ T): Long = {
+  def cardinality(d: D): Long = {
     val rsum = registerSum(d)
 
     val estimate = alphamm / rsum
@@ -76,7 +74,9 @@ with Monoid[D @@ T]{
 }
 
 trait DenseHyperLogLogT[A,H1,T]
-extends HyperLogLogT[A,H1,Vector[Int],T]{
+extends HyperLogLogT[A,H1,Vector[Int] @@ T]{
+
+  def tag(d: Vector[Int]) = Tag[Vector[Int], T](d)
 
   def equal(d1: Vector[Int] @@ T, d2: Vector[Int] @@ T) =
     d1 == d2
@@ -101,9 +101,11 @@ extends HyperLogLogT[A,H1,Vector[Int],T]{
 }
 
 trait SparseHyperLogLogT[A,H1,T]
-extends HyperLogLogT[A,H1,Map[Int,Int @@ Tags.Max],T]{
+extends HyperLogLogT[A,H1,Map[Int,Int @@ Tags.Max] @@ T]{
 
   implicit val maxIntMonoid: Monoid[Int @@ Tags.Max] = Monoid instance ((l, r) => Tag(l max r), Tags.Max(Int.MinValue))
+
+  def tag(d: Map[Int,Int @@ Tags.Max]) = Tag[Map[Int,Int @@ Tags.Max], T](d)
 
   def equal(d1: Map[Int,Int @@ Tags.Max] @@ T, d2: Map[Int,Int @@ Tags.Max] @@ T) =
     d1 == d2
@@ -127,12 +129,15 @@ extends HyperLogLogT[A,H1,Map[Int,Int @@ Tags.Max],T]{
   protected def updateRegister(d: Map[Int,Int @@ Tags.Max] @@ T, j: Int, n: Int) = tag(d.updated(j, Tags.Max(n)))
 }
 
-
+trait HyperLogLogParameterEstimate{
+  def error(m: Int) = 1.04 / math.sqrt(m)
+}
 
 object hyperloglog{
   type HLLRegisters[T] = Vector[Int] @@ T
 
-  object hll{
+  object hll
+  extends HyperLogLogParameterEstimate{
     def dense[A,H1,T](addressSize: Int, s: Long = 0L) = new DenseHyperLogLogT[A,H1,T]{
       val seed = s
 
