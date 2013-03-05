@@ -134,7 +134,9 @@ trait HyperLogLogParameterEstimate{
 }
 
 object hyperloglog{
-  type HLLRegisters[T] = Vector[Int] @@ T
+  type SparseHLLRegisters[T] = Map[Int,Int @@ Tags.Max] @@ T
+
+  type DenseHLLRegisters[T] = Vector[Int] @@ T
 
   object hll
   extends HyperLogLogParameterEstimate{
