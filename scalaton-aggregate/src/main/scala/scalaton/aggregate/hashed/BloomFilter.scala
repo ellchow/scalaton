@@ -12,9 +12,9 @@ import scala.collection.BitSet
 /** Bloom filter data structure that allows for checking membership **/
 trait BloomFilterT[A,H1,D]
 extends DoubleHashModdedCollection[A,H1]
-with InsertsElement[A,H1,Int,D]
-with ChecksMembership[A,H1,Int,D]
-with Sized[A,H1,Int,D]
+with InsertsElement[A,H1,Bits32,D]
+with ChecksMembership[A,H1,Bits32,D]
+with Sized[A,H1,Bits32,D]
 
 /** standard bloom filter backed by bitset **/
 trait StandardBloomFilterT[A,H1,D] extends BloomFilterT[A,H1,D] with Monoid[D] with Equal[D]{
@@ -96,12 +96,10 @@ trait StandardBloomFilterParameterEstimate{
 object bloomfilter{
   object sbf
   extends StandardBloomFilterParameterEstimate {
-
     def apply[A,H1,T](params: (Int,Int), s: Long = 0L) =
       new DenseStandardBloomFilterT[A,H1,T]{
         val (numHashes, width) = params
         val seed = s
       }
-
   }
 }

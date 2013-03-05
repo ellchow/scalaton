@@ -9,9 +9,9 @@ import scalaton.util.hashing._
 /** sketch data structure to store and lookup values given a key, generally used for keeping track of frequencies **/
 trait FrequencySketchT[A,H1,D,V1]
 extends DoubleHashModdedCollection[A,H1]
-with UpdatesElementValue[A,H1,Int,D,V1]
-with LooksUpElementValue[A,H1,Int,D,Long]
-with Sized[A,H1,Int,D]{
+with UpdatesElementValue[A,H1,Bits32,D,V1]
+with LooksUpElementValue[A,H1,Bits32,D,Long]
+with Sized[A,H1,Bits32,D]{
 
   def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D = {
     val ijs = itemIJs(a)

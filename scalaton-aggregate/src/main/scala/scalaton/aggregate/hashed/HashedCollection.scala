@@ -21,22 +21,22 @@ trait HashedCollection[A,H1,H2]{
 
 }
 
-trait HashModdedCollection[A,H1] extends HashedCollection[A,H1,Int]{
+trait HashModdedCollection[A,H1] extends HashedCollection[A,H1,Bits32]{
   val width: Int
 
   override def hashItem(item: A)(implicit h: Hashable[A, H1],
-                                 hconv: HashCodeConverter[H1, Int]): Iterable[Int @@ HashCode] =
+                                 hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32 @@ HashCode] =
     super.hashItem(item) map { _ % width |> HashCode}
 }
 
 /** Uses extended double hashing to improve runtime performance (http://www.eecs.harvard.edu/~michaelm/CS223/lesshash.pdf) **/
 trait DoubleHashModdedCollection[A,H1] extends HashModdedCollection[A,H1]{
 
-  private def doubleHashStream(a: Int, b: Int, i: Int): Stream[Int @@ HashCode] =
+  private def doubleHashStream(a: Bits32, b: Bits32, i: Int): Stream[Bits32 @@ HashCode] =
     Stream.cons(HashCode(math.abs(a + i * b + i * i) % width) , doubleHashStream(a, b, i + 1))
 
   override def hashItem(item: A)(implicit h: Hashable[A, H1],
-                                 hconv: HashCodeConverter[H1, Int]): Iterable[Int @@ HashCode] = {
+                                 hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32 @@ HashCode] = {
     val base = hconv.convertSeq(multiHash(item, seed)) take 2 toSeq
     val a = base(0)
     val b = base(1)
