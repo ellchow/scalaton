@@ -30,22 +30,22 @@ with Sized[A,H1,Bits32,D]{
   }
 
   /** compute estimate given the values extracted from each cell **/
-  def estimate(cs: Iterable[Long]): Long
+  protected def estimate(cs: Iterable[Long]): Long
 
   /** extract long from value stored in cell **/
-  def valueToLong(v1: V1): Long
+  protected def valueToLong(v1: V1): Long
 
   /** update a cell's value given an input **/
-  def updateValueWith(v: V1, u: V1): V1
+  protected def updateValueWith(v: V1, u: V1): V1
 
   /** retrieve value from cell **/
-  def valueAt(d: D, i: Int, j: Int): V1
+  protected def valueAt(d: D, i: Int, j: Int): V1
 
   /** construct a data structure with cells specified by ijs updated with value v1 **/
-  def newData(d: D, ijs: Iterable[(Int,Int)], v1: V1 ): D
+  protected def newData(d: D, ijs: Iterable[(Int,Int)], v1: V1 ): D
 
   /** update the size (number of items inserted) **/
-  def newSize(d: D, v1: V1): D
+  protected def newSize(d: D, v1: V1): D
 
 }
 
@@ -79,13 +79,13 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
     tag((data, size))
   }
 
-  def tag(d: (Vector[Vector[V1]], Long)) = Tag[(Vector[Vector[V1]], Long), T](d)
+  protected def tag(d: (Vector[Vector[V1]], Long)) = Tag[(Vector[Vector[V1]], Long), T](d)
 
-  def valueAt(d: (Vector[Vector[V1]], Long) @@ T, i: Int, j: Int): V1 = {
+  protected def valueAt(d: (Vector[Vector[V1]], Long) @@ T, i: Int, j: Int): V1 = {
     d._1(i)(j)
   }
 
-  def newData(d: (Vector[Vector[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (Vector[Vector[V1]], Long) @@ T = {
+  protected def newData(d: (Vector[Vector[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (Vector[Vector[V1]], Long) @@ T = {
     val updatedTable = ijs.foldLeft(d._1)((table, ij) => {
       val u = updateValueWith(valueAt(d, ij._1, ij._2), v1)
 
@@ -96,7 +96,7 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
     tag((updatedTable, d._2))
   }
 
-  def newSize(d: (Vector[Vector[V1]], Long) @@ T, v1: V1) =
+  protected def newSize(d: (Vector[Vector[V1]], Long) @@ T, v1: V1) =
     tag(d._1, d._2 + valueToLong(v1))
 
 }
@@ -104,7 +104,7 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
 /** standard frequency counting sketch **/
 abstract class DenseFrequencySketchLongT[A,H1,T]
 extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
-  def valueToLong(v1: Long): Long = v1
+  protected def valueToLong(v1: Long): Long = v1
 }
 
 
@@ -134,7 +134,7 @@ object sketch {
       val (numHashes, width) = params
       val seed = s
 
-      def estimate(cs: Iterable[Long]): Long = estimator(cs)
+      protected def estimate(cs: Iterable[Long]): Long = estimator(cs)
     }
 
   object countminsketch
@@ -145,7 +145,7 @@ object sketch {
         val (numHashes, width) = params
         val seed = s
 
-        def estimate(cs: Iterable[Long]): Long = cs.min
+        protected def estimate(cs: Iterable[Long]): Long = cs.min
       }
   }
 

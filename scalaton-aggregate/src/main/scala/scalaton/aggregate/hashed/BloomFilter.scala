@@ -40,28 +40,18 @@ trait StandardBloomFilterT[A,H1,D] extends BloomFilterT[A,H1,D] with Monoid[D] w
   }
 
   /** get number of bits set to 1 **/
-  def sizeOfBitSet(d: D): Int
+  protected def sizeOfBitSet(d: D): Int
 
   /** check if given bits are contained in the bit set **/
-  def hasAllBits(d: D, bits: Iterable[Int @@ HashCode]): Boolean
+  protected def hasAllBits(d: D, bits: Iterable[Int @@ HashCode]): Boolean
 
   /** set bits to 1 in the bit set **/
-  def addToBitSet(d: D, bits: Iterable[Int @@ HashCode]): D
+  protected def addToBitSet(d: D, bits: Iterable[Int @@ HashCode]): D
 
 }
 
 /** standard bloom filter backed by immutable bitset **/
 abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,H1,BitSet @@ T]{
-
-  def tag(b: BitSet) = Tag[BitSet,T](b)
-
-  def hasAllBits(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): Boolean =
-    !(bits exists ( b => !d.contains(b) ))
-
-  def addToBitSet(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): BitSet  @@ T =
-    tag(d ++ bits)
-
-  def sizeOfBitSet(d: BitSet @@ T): Int = d size
 
   def equal(d1: BitSet @@ T, d2: BitSet @@ T ): Boolean =
     d1 == d2
@@ -71,6 +61,15 @@ abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,
   def append(d1: BitSet @@ T, d2: => BitSet @@ T ) =
     tag(d1 ++ d2)
 
+  protected def tag(b: BitSet) = Tag[BitSet,T](b)
+
+  protected def hasAllBits(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): Boolean =
+    !(bits exists ( b => !d.contains(b) ))
+
+  protected def addToBitSet(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): BitSet  @@ T =
+    tag(d ++ bits)
+
+  protected def sizeOfBitSet(d: BitSet @@ T): Int = d size
 }
 
 trait StandardBloomFilterParameterEstimate{
