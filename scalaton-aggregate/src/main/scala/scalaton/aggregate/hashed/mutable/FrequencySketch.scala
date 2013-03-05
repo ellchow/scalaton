@@ -21,8 +21,6 @@ with Equal[(collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], 
 
   def zero = tag((collection.mutable.ArrayBuffer.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
 
-  def dim(d: collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]]): (Int, Int) = (d.length, d(0).length)
-
   def append(d1: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T, d2: => (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T) = {
     val data = collection.mutable.ArrayBuffer.tabulate(numHashes, width)((i,j) =>
       valueAt(d1,i,j) |+| valueAt(d2,i,j))
@@ -32,19 +30,21 @@ with Equal[(collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], 
     tag((data, size))
   }
 
-  def tag(d: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long)) = Tag[(collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long), T](d)
+  protected def tag(d: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long)) = Tag[(collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long), T](d)
 
-  def valueAt(d: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T, i: Int, j: Int): V1 = {
+  protected def dim(d: collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]]): (Int, Int) = (d.length, d(0).length)
+
+  protected def valueAt(d: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T, i: Int, j: Int): V1 = {
     d._1(i)(j)
   }
 
-  def newData(d: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T = {
+  protected def newData(d: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T = {
     ijs foreach { case (i, j) => d._1(i)(j) = updateValueWith(valueAt(d,i,j),v1) }
 
     d
   }
 
-  def newSize(d: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T, v1: V1) =
+  protected def newSize(d: (collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], Long) @@ T, v1: V1) =
     tag(d._1, d._2 + valueToLong(v1))
 
 
@@ -53,7 +53,7 @@ with Equal[(collection.mutable.ArrayBuffer[collection.mutable.ArrayBuffer[V1]], 
 /** standard frequency counting sketch using mutable table **/
 abstract class DenseFrequencySketchLongT[A,H1,T]
 extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
-  def valueToLong(v1: Long): Long = v1
+  protected def valueToLong(v1: Long): Long = v1
 }
 
 
@@ -67,7 +67,7 @@ object sketch {
       val (numHashes, width) = params
       val seed = s
 
-      def estimate(cs: Iterable[Long]): Long = estimator(cs)
+      protected def estimate(cs: Iterable[Long]): Long = estimator(cs)
     }
 
   object countminsketch
@@ -78,7 +78,7 @@ object sketch {
         val (numHashes, width) = params
         val seed = s
 
-        def estimate(cs: Iterable[Long]): Long = cs.min
+        protected def estimate(cs: Iterable[Long]): Long = cs.min
       }
   }
 }
