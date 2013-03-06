@@ -16,34 +16,11 @@ with Equal[D]
 with Monoid[D]{
   val numHashes: Int = 1
 
+  // b = log2(m)
   val b: Int
 
+  // number of registers
   lazy val m: Int = 1 << (b - 1)
-
-  protected lazy val alphamm: Double = b match {
-    case 4 => 0.673
-    case 5 => 0.697
-    case 6 => 0.709
-    case _ => (0.7213 / (1 + 1.079 / m)) * m * m
-  }
-
-  protected def numLeadingZeros(hashedValue: Bits32): Int =
-    Integer.numberOfLeadingZeros((hashedValue << b) | (1 << (b - 1)) + 1) + 1
-
-  protected def readAddress(hashedValue: Bits32): Int =
-    hashedValue >> (Integer.SIZE - b)
-
-  protected val pow2to32 = math.pow(2,32)
-
-  protected val negPow2to32 = -4294967296.0
-
-  protected def registerSum(d: D): Double
-
-  protected def numZeroRegisters(d: D): Int
-
-  protected def registerValue(d: D, j: Int): Int
-
-  protected def updateRegister(d: D, j: Int, n: Int): D
 
   def add(d: D, a: A)(implicit h: H, hconv: HC): D = {
     val hashedValue = hashItem(a).head
@@ -72,6 +49,38 @@ with Monoid[D]{
     math.round(correctedEstimate)
   }
 
+  // multiplicative constant alpha * m^2 used for computing estimate
+  protected lazy val alphamm: Double = b match {
+    case 4 => 0.673
+    case 5 => 0.697
+    case 6 => 0.709
+    case _ => (0.7213 / (1 + 1.079 / m)) * m * m
+  }
+
+  // number of leading zeros, after skipping the b bits used for addressing
+  protected def numLeadingZeros(hashedValue: Bits32): Int =
+    Integer.numberOfLeadingZeros((hashedValue << b) | (1 << (b - 1)) + 1) + 1
+
+  // read the 1st b bits to determing the register address
+  protected def readAddress(hashedValue: Bits32): Int =
+    hashedValue >> (Integer.SIZE - b)
+
+  protected val pow2to32 = math.pow(2,32)
+
+  protected val negPow2to32 = -4294967296.0
+
+  /** sum of 2^(-registerValue_j) for all j in 1...m **/
+  protected def registerSum(d: D): Double
+
+  /** number of registers with value 0 **/
+  protected def numZeroRegisters(d: D): Int
+
+  /** retrieve register value **/
+  protected def registerValue(d: D, j: Int): Int
+
+  /** update register value **/
+  protected def updateRegister(d: D, j: Int, n: Int): D
+
 }
 
 trait DenseHyperLogLogT[A,H1,T]
@@ -87,10 +96,8 @@ extends HyperLogLogT[A,H1,Vector[Int] @@ T]{
   def append (d1: Vector[Int] @@ T, d2: => Vector[Int] @@ T): Vector[Int] @@ T =
     tag(d1.zip(d2) map { case (r1, r2) => r1 max r2 })
 
-  protected def registerSum(d: Vector[Int] @@ T) = {
+  protected def registerSum(d: Vector[Int] @@ T) =
     d map ( count => math.pow(2, -count)) sum
-  }
-
 
   protected def numZeroRegisters(d: Vector[Int] @@ T) =
     d.foldLeft(0)((acc, x) => (x === 0) ? (acc + 1) | acc)
