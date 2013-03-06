@@ -5,6 +5,7 @@ import Scalaz._
 
 import scalaton.util._
 import scalaton.util.hashing._
+import scalaton.util.monoids._
 
 /** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9 **/
 trait HyperLogLogT[A,H1,D]
@@ -102,8 +103,6 @@ extends HyperLogLogT[A,H1,Vector[Int] @@ T]{
 
 trait SparseHyperLogLogT[A,H1,T]
 extends HyperLogLogT[A,H1,Map[Int,Int @@ Tags.Max] @@ T]{
-
-  implicit val maxIntMonoid: Monoid[Int @@ Tags.Max] = Monoid instance ((l, r) => Tag(l max r), Tags.Max(Int.MinValue))
 
   def tag(d: Map[Int,Int @@ Tags.Max]) = Tag[Map[Int,Int @@ Tags.Max], T](d)
 
