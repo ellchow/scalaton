@@ -67,7 +67,7 @@ class StandardBloomFilterSpec extends Specification{
 
       0 to 10 foreach { i =>
         val items = 0 to 10 map { _ => SRandom nextDouble() toString }
-        val bf = items.foldLeft(sbfinstance.zero)((acc,x) => add(acc,x))
+        val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
 
         items foreach { i => contains(bf, i) must beTrue }
       }
@@ -83,7 +83,7 @@ class StandardBloomFilterSpec extends Specification{
                                                         SRandom nextDouble() toString) }
         val test = (SRandom nextDouble() toString, SRandom nextDouble() toString)
 
-        val bf = items.foldLeft(sbfinstance.zero)((acc,x) => add(acc, x))
+        val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc, x))
         if(contains(bf, test)) 1.0 else 0.0
       }
       val observed = fps.sum / fps.size
@@ -96,7 +96,7 @@ class StandardBloomFilterSpec extends Specification{
       var bf = sbfinstance.zero
 
       for(i <- 1 to 100){
-        bf = add(bf, scala.util.Random.nextDouble.toString)
+        bf = insert(bf, scala.util.Random.nextDouble.toString)
 
         math.abs(cardinality(bf) - i) must beLessThan(math.max(math.round(1.05 * i), 1).toLong)
       }

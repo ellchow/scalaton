@@ -29,7 +29,7 @@ class HyperLogLogSpec extends Specification{
 
 
       val (err, h) = (1 to 10000).foldLeft((List[Double](), hllinstance.zero))((acc, x) => {
-        val u = add(acc._2, x toString)
+        val u = insert(acc._2, x toString)
         val e = cardinality(u)
 
         ((math.abs(x - e).toDouble / x) :: acc._1,u)

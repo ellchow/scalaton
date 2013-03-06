@@ -53,12 +53,12 @@ trait HashedCollectionOperations[A,H1,H2,D]{
 }
 
 trait InsertsElement[A,H1,H2,D] extends HashedCollectionOperations[A,H1,H2,D]{
-  def add(d: D, a: A)(implicit h: H, hconv: HC): D
+  def insert(d: D, a: A)(implicit h: H, hconv: HC): D
 }
 
 trait InsertsElementFunction{
-  def add[A,H1,H2,D](d: D, a: A)(implicit i: InsertsElement[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D =
-    i.add(d, a)
+  def insert[A,H1,H2,D](d: D, a: A)(implicit i: InsertsElement[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D =
+    i.insert(d, a)
 }
 
 trait ChecksMembership[A,H1,H2,D] extends HashedCollectionOperations[A,H1,H2,D]{
@@ -98,7 +98,7 @@ trait LooksUpElementValueFunction{
 
 trait MakesSingletonFunction{
   def singleton[A,H1,H2,D,T](a: A @@ T)(implicit i: InsertsElement[A,H1,H2,D @@ T], m: Monoid[D @@ T], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D @@ T =
-    i.add(m.zero, a)
+    i.insert(m.zero, a)
 
   def singleton[A,H1,H2,D,T,V1](a: A @@ T, v1: V1)(implicit u: UpdatesElementValue[A,H1,H2,D @@ T,V1], m: Monoid[D @@ T], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D @@ T=
     u.update(m.zero, a, v1)

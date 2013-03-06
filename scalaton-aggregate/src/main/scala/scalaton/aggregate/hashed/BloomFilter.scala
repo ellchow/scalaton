@@ -18,7 +18,7 @@ with Sized[A,H1,Bits32,D]
 
 /** standard bloom filter backed by bitset **/
 trait StandardBloomFilterT[A,H1,D] extends BloomFilterT[A,H1,D] with Monoid[D] with Equal[D]{
-  def add(d: D, a: A)(implicit h: H, hconv: HC): D =
+  def insert(d: D, a: A)(implicit h: H, hconv: HC): D =
     addToBitSet(d, hashItem(a))
 
   def contains(d: D, a: A)(implicit h: H, hconv: HC): Boolean =

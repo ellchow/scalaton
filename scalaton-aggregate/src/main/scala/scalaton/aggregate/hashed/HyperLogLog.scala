@@ -3,7 +3,7 @@ package scalaton.aggregate.hashed
 import scalaz._
 import Scalaz._
 
-import scalaton.util._
+import scalaton.util.{Tags => _, _}
 import scalaton.util.hashing._
 import scalaton.util.monoids._
 
@@ -22,7 +22,7 @@ with Monoid[D]{
   // number of registers
   lazy val m: Int = 1 << (b - 1)
 
-  def add(d: D, a: A)(implicit h: H, hconv: HC): D = {
+  def insert(d: D, a: A)(implicit h: H, hconv: HC): D = {
     val hashedValue = hashItem(a).head
 
     val j = readAddress(hashedValue)
