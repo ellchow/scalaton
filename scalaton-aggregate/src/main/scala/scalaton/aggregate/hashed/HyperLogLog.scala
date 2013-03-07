@@ -58,8 +58,8 @@ with Monoid[D]{
   }
 
   // number of leading zeros, after skipping the b bits used for addressing
-  protected def numLeadingZeros(hashedValue: Bits32): Int =
-    Integer.numberOfLeadingZeros((hashedValue << b) | (1 << (b - 1)) + 1) + 1
+  protected def numLeadingZeros(hashedValue: Bits32): Byte =
+    (Integer.numberOfLeadingZeros((hashedValue << b) | (1 << (b - 1)) + 1) + 1) toByte
 
   // read the 1st b bits to determing the register address
   protected def readAddress(hashedValue: Bits32): Int =
@@ -79,60 +79,60 @@ with Monoid[D]{
   protected def registerValue(d: D, j: Int): Int
 
   /** update register value **/
-  protected def updateRegister(d: D, j: Int, n: Int): D
+  protected def updateRegister(d: D, j: Int, n: Byte): D
 
 }
 
 trait DenseHyperLogLogT[A,H1,T]
-extends HyperLogLogT[A,H1,Vector[Int] @@ T]{
+extends HyperLogLogT[A,H1,Vector[Byte] @@ T]{
 
-  def tag(d: Vector[Int]) = Tag[Vector[Int], T](d)
+  def tag(d: Vector[Byte]) = Tag[Vector[Byte], T](d)
 
-  def equal(d1: Vector[Int] @@ T, d2: Vector[Int] @@ T) =
+  def equal(d1: Vector[Byte] @@ T, d2: Vector[Byte] @@ T) =
     d1 == d2
 
-  lazy val zero = tag(Vector.fill[Int](m)(0))
+  lazy val zero = tag(Vector.fill[Byte](m)(0))
 
-  def append (d1: Vector[Int] @@ T, d2: => Vector[Int] @@ T): Vector[Int] @@ T =
+  def append (d1: Vector[Byte] @@ T, d2: => Vector[Byte] @@ T): Vector[Byte] @@ T =
     tag(d1.zip(d2) map { case (r1, r2) => r1 max r2 })
 
-  protected def registerSum(d: Vector[Int] @@ T) =
+  protected def registerSum(d: Vector[Byte] @@ T) =
     d map ( count => math.pow(2, -count)) sum
 
-  protected def numZeroRegisters(d: Vector[Int] @@ T) =
+  protected def numZeroRegisters(d: Vector[Byte] @@ T) =
     d.foldLeft(0)((acc, x) => (x === 0) ? (acc + 1) | acc)
 
-  protected def registerValue(d: Vector[Int] @@ T, j: Int) = d(j)
+  protected def registerValue(d: Vector[Byte] @@ T, j: Int) = d(j)
 
-  protected def updateRegister(d: Vector[Int] @@ T, j: Int, n: Int) = tag(d.updated(j, n))
+  protected def updateRegister(d: Vector[Byte] @@ T, j: Int, n: Byte) = tag(d.updated(j, n))
 
 }
 
 trait SparseHyperLogLogT[A,H1,T]
-extends HyperLogLogT[A,H1,Map[Int,Int @@ Tags.Max] @@ T]{
+extends HyperLogLogT[A,H1,Map[Int,Byte @@ Tags.Max] @@ T]{
 
-  def tag(d: Map[Int,Int @@ Tags.Max]) = Tag[Map[Int,Int @@ Tags.Max], T](d)
+  def tag(d: Map[Int,Byte @@ Tags.Max]) = Tag[Map[Int,Byte @@ Tags.Max], T](d)
 
-  def equal(d1: Map[Int,Int @@ Tags.Max] @@ T, d2: Map[Int,Int @@ Tags.Max] @@ T) =
+  def equal(d1: Map[Int,Byte @@ Tags.Max] @@ T, d2: Map[Int,Byte @@ Tags.Max] @@ T) =
     d1 == d2
 
   lazy val zero = tag(Map.empty)
 
-  def append (d1: Map[Int,Int @@ Tags.Max] @@ T, d2: => Map[Int,Int @@ Tags.Max] @@ T): Map[Int,Int @@ Tags.Max] @@ T =
-    tag((d1: Map[Int,Int @@ Tags.Max]) |+| (d2: Map[Int,Int @@ Tags.Max]))
+  def append (d1: Map[Int,Byte @@ Tags.Max] @@ T, d2: => Map[Int,Byte @@ Tags.Max] @@ T): Map[Int,Byte @@ Tags.Max] @@ T =
+    tag((d1: Map[Int,Byte @@ Tags.Max]) |+| (d2: Map[Int,Byte @@ Tags.Max]))
 
-  protected def registerSum(d: Map[Int,Int @@ Tags.Max] @@ T) = {
+  protected def registerSum(d: Map[Int,Byte @@ Tags.Max] @@ T) = {
     val nonZeroCountSum = d.map{ case (j, count) => math.pow(2, -count) } sum
 
     numZeroRegisters(d) + nonZeroCountSum
   }
 
-  protected def numZeroRegisters(d: Map[Int,Int @@ Tags.Max] @@ T) =
+  protected def numZeroRegisters(d: Map[Int,Byte @@ Tags.Max] @@ T) =
     m - d.size
 
-  protected def registerValue(d: Map[Int,Int @@ Tags.Max] @@ T, j: Int) = d.get(j) | Tags.Max(0)
+  protected def registerValue(d: Map[Int,Byte @@ Tags.Max] @@ T, j: Int) = d.get(j) | Tags.Max(0)
 
-  protected def updateRegister(d: Map[Int,Int @@ Tags.Max] @@ T, j: Int, n: Int) = tag(d.updated(j, Tags.Max(n)))
+  protected def updateRegister(d: Map[Int,Byte @@ Tags.Max] @@ T, j: Int, n: Byte) = tag(d.updated(j, Tags.Max(n)))
 }
 
 trait HyperLogLogParameterEstimate{
@@ -140,7 +140,7 @@ trait HyperLogLogParameterEstimate{
 }
 
 object hyperloglog{
-  type SparseHLLRegisters[T] = Map[Int,Int @@ Tags.Max] @@ T
+  type SparseHLLRegisters[T] = Map[Int,Byte @@ Tags.Max] @@ T
 
   type DenseHLLRegisters[T] = Vector[Int] @@ T
 
