@@ -16,10 +16,10 @@ with Equal[D]
 with Monoid[D]{
   val numHashes: Int = 1
 
-  // b = log2(m)
+  /** b = log2(m) **/
   val b: Int
 
-  // number of registers
+  /** number of registers **/
   lazy val m: Int = 1 << (b - 1)
 
   def insert(d: D, a: A)(implicit h: H, hconv: HC): D = {
@@ -49,7 +49,7 @@ with Monoid[D]{
     math.round(correctedEstimate)
   }
 
-  // multiplicative constant alpha * m^2 used for computing estimate
+  /** multiplicative constant alpha * m^2 used for computing estimate **/
   protected lazy val alphamm: Double = b match {
     case 4 => 0.673
     case 5 => 0.697
@@ -57,11 +57,11 @@ with Monoid[D]{
     case _ => (0.7213 / (1 + 1.079 / m)) * m * m
   }
 
-  // number of leading zeros, after skipping the b bits used for addressing
+  /** number of leading zeros, after skipping the b bits used for addressing **/
   protected def numLeadingZeros(hashedValue: Bits32): Byte =
     (Integer.numberOfLeadingZeros((hashedValue << b) | (1 << (b - 1)) + 1) + 1) toByte
 
-  // read the 1st b bits to determing the register address
+  /** read the 1st b bits to determing the register address **/
   protected def readAddress(hashedValue: Bits32): Int =
     hashedValue >> (Integer.SIZE - b)
 
