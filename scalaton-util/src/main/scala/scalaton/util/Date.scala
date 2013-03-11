@@ -5,9 +5,8 @@ import com.github.nscala_time.time.Imports._
 import scalaz._
 import Scalaz._
 
-object date {
-
-  implicit val localDateEnum = new Enum[LocalDate] {
+trait DateInstances{
+  implicit val localDateInstance = new Enum[LocalDate] {
     def succ(a: LocalDate): LocalDate = a + 1.day
 
     def pred(a: LocalDate): LocalDate = a - 1.day
@@ -18,5 +17,7 @@ object date {
       case 1 => Ordering.GT
     }
   }
-
 }
+
+object date
+extends DateInstances

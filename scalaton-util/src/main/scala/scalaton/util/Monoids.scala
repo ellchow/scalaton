@@ -3,8 +3,8 @@ package scalaton.util
 import scalaz.{Tags => ZTags,_}
 import Scalaz._
 
-object monoids{
 
+trait MonoidInstances{
   implicit val maxIntMonoid: Monoid[Int @@ ZTags.Max] = Monoid instance ((l, r) => Tag(l max r), ZTags.Max(Int.MinValue))
   implicit val minIntMonoid: Monoid[Int @@ ZTags.Min] = Monoid instance ((l, r) => Tag(l min r), ZTags.Min(Int.MaxValue))
 
@@ -19,5 +19,8 @@ object monoids{
 
   implicit val maxByteMonoid: Monoid[Byte @@ ZTags.Max] = Monoid instance ((l, r) => Tag(l max r), ZTags.Max(Byte.MinValue))
   implicit val minByteMonoid: Monoid[Byte @@ ZTags.Min] = Monoid instance ((l, r) => Tag(l min r), ZTags.Min(Byte.MaxValue))
-
 }
+
+object monoids
+extends MonoidInstances
+
