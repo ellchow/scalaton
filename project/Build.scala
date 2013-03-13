@@ -85,6 +85,17 @@ object ProjectBuild extends Build{
       publishTo := publishLoc)
   )
 
+  lazy val zedProject = Project (
+    "zed",
+    file ("scalaton-zed"),
+    settings = buildSettings ++ Seq(
+      resolvers := allResolvers,
+      libraryDependencies ++= commonDeps,
+      scalacOptions := compilerOptions,
+      publishTo := publishLoc)
+
+  )
+
   lazy val aggregateProject = Project (
     "aggregate",
     file ("scalaton-aggregate"),
@@ -94,7 +105,7 @@ object ProjectBuild extends Build{
       scalacOptions := compilerOptions,
       publishTo := publishLoc)
 
-  ) dependsOn (utilProject)
+  ) dependsOn (utilProject, zedProject)
 
 }
 

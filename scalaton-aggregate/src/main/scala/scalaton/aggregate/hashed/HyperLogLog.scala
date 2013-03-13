@@ -5,7 +5,7 @@ import Scalaz._
 
 import scalaton.util.{Tags => _, _}
 import scalaton.util.hashing._
-import scalaton.util.monoids._
+import scalaton.zed.monoids._
 
 /** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9 **/
 trait HyperLogLogT[A,H1,D]
