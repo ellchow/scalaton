@@ -47,6 +47,7 @@ object Resolvers {
 
 object Dependencies {
   val scalaz7 = "org.scalaz" % "scalaz-core_2.10" % "7.0.0-M8"
+  val scalaz7iteratee = "org.scalaz" % "scalaz-iteratee_2.10" % "7.0.0-M8"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
   val scalatime = "com.github.nscala-time" %% "nscala-time" % "0.2.0"
@@ -59,7 +60,7 @@ object ProjectBuild extends Build{
   import Dependencies._
   import BuildSettings._
 
-  val commonDeps = Seq(scalaz7, specs2)
+  val commonDeps = Seq(scalaz7, scalaz7iteratee, specs2)
 
   val utilDeps = Seq(apacheCommonsIo, opencsv, scalatime)
 
