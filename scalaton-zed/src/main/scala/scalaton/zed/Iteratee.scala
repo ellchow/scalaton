@@ -11,14 +11,14 @@ import java.io._
 trait IterateeModule{
 
   /** enumerate BufferedReader; close readeer when done/error **/
-  def enumBuffered[F[_],E](r: => BufferedReader)(f: BufferedReader => E)(implicit MO: MonadPartialOrder[F, IO]): EnumeratorT[IoExceptionOr[E], F] =
-    new EnumeratorT[IoExceptionOr[E], F] {
+  def enumLines[F[_]](r: => BufferedReader)(implicit MO: MonadPartialOrder[F, IO]): EnumeratorT[IoExceptionOr[String], F] =
+    new EnumeratorT[IoExceptionOr[String], F] {
       import MO._
       lazy val reader = r
-      def apply[A] = (s: StepT[IoExceptionOr[E], F, A]) =>
+      def apply[A] = (s: StepT[IoExceptionOr[String], F, A]) =>
       s.mapCont(
         k => {
-          val i = IoExceptionOr(f(reader))
+          val i = IoExceptionOr(reader.readLine)
           if (i exists (_ != null)) k(elInput(i)) >>== apply[A]
           else {
             reader.close
@@ -27,8 +27,6 @@ trait IterateeModule{
         }
       )
     }
-
-
 
   /** perform some IO given elements
    *  example: ((writeTo((x: String) => IO(println(x))) %= map((_: IoExceptionOr[String]).toOption | "!") )&= enumBuffered(reader.file("./NOTES"))(_.readLine)).run.unsafePerformIO
