@@ -1,7 +1,5 @@
 package scalaton.util
 
-import collection.mutable
-
 import scalaz._
 import Scalaz._
 
