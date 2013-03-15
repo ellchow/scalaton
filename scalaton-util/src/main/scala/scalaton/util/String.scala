@@ -1,5 +1,8 @@
 package scalaton.util
 
+import scalaz._
+import Scalaz._
+
 trait StringModule{
   def splitByChar(s: String, splitChar: Char) =
     (s.foldLeft((new StringBuilder, Vector[String]()))
