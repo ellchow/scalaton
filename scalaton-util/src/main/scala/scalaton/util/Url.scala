@@ -18,7 +18,7 @@ trait UrlModule{
     )
 
   def encodeIfPossible(u: String, encoding: String = "UTF-8"): String =
-    encode(u) fold (_ => u, identity)
+    encode(u, encoding) fold (_ => u, identity)
 
   def decode(u: String, encoding: String = "UTF-8"): Validation[String, String] =
     fromTryCatch(URLDecoder.decode(u, encoding)) fold (
@@ -27,7 +27,7 @@ trait UrlModule{
     )
 
   def decodeIfPossible(u: String, encoding: String = "UTF-8"): String =
-    decode(u) fold (_ => u, identity)
+    decode(u, encoding) fold (_ => u, identity)
 
 
   def constructQueryString(queryParams: Map[String,String], encoding: String = "UTF-8"): String =
@@ -35,11 +35,12 @@ trait UrlModule{
                      encodeIfPossible(k, encoding) + "=" +
                      encodeIfPossible(v, encoding) }.mkString("&")
 
-  def parseQueryString(queryString: String, encoding: String = "UTF-8"): ValidationNEL[String,Map[String,String]] =
+  def parseQueryString(queryString: String, encoding: Option[String] = "UTF-8".some): ValidationNEL[String,Map[String,String]] =
     queryString.split("&").foldLeft(Map[String,String]().successNel[String]){ (acc, next) =>
       val pair = next.split("=")
       if (pair.size == 2 && pair(0).nonEmpty)
-        acc |+|  Map(decodeIfPossible(pair(0)) -> decodeIfPossible(pair(1))).successNel[String]
+        acc |+|  Map(encoding.some(e => decodeIfPossible(pair(0), e)).none(pair(0)) ->
+                     encoding.some(e => decodeIfPossible(pair(1), e)).none(pair(1))).successNel[String]
       else
         acc |+| "failed to parse key-value from \"%s\"".format(next).failureNel[Map[String,String]]
     }
