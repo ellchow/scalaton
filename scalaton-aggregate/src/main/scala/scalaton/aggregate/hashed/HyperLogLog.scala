@@ -3,7 +3,7 @@ package scalaton.aggregate.hashed
 import scalaz._
 import Scalaz._
 
-import scalaton.util.{Tags => _, _}
+import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.zed.monoids._
 

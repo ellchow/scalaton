@@ -36,8 +36,8 @@ trait UrlModule{
                      encodeIfPossible(v, encoding) }.mkString("&")
 
   def parseQueryString(queryString: String, encoding: Option[String] = "UTF-8".some): ValidationNEL[String,Map[String,String]] =
-    queryString.split("&").foldLeft(Map[String,String]().successNel[String]){ (acc, next) =>
-      val pair = next.split("=")
+    str.splitByChar(queryString, '&').foldLeft(Map[String,String]().successNel[String]){ (acc, next) =>
+      val pair = str.splitByChar(next, '=')
       if (pair.size == 2 && pair(0).nonEmpty)
         acc |+|  Map(encoding.some(e => decodeIfPossible(pair(0), e)).none(pair(0)) ->
                      encoding.some(e => decodeIfPossible(pair(1), e)).none(pair(1))).successNel[String]
