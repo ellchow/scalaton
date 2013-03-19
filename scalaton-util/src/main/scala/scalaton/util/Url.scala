@@ -38,10 +38,14 @@ trait UrlModule{
   def parseQueryString(queryString: String, encoding: Option[String] = "UTF-8".some): ValidationNEL[String,Map[String,String]] =
     str.splitByChar(queryString, '&').foldLeft(Map[String,String]().successNel[String]){ (acc, next) =>
       val pair = str.splitByChar(next, '=')
-      if (pair.size == 2 && pair(0).nonEmpty)
-        acc |+|  Map(encoding.some(e => decodeIfPossible(pair(0), e)).none(pair(0)) ->
-                     encoding.some(e => decodeIfPossible(pair(1), e)).none(pair(1))).successNel[String]
-      else
+      if (pair.size == 2 && pair(0).nonEmpty){
+        for{
+          map <- acc
+        } yield {
+          map ++ Map(encoding.some(e => decodeIfPossible(pair(0), e)).none(pair(0)) ->
+                     encoding.some(e => decodeIfPossible(pair(1), e)).none(pair(1)))
+        }
+      }else
         acc |+| "failed to parse key-value from \"%s\"".format(next).failureNel[Map[String,String]]
     }
 
