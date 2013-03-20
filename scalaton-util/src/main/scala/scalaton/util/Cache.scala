@@ -129,7 +129,7 @@ extends LruCache[V](maxCapacity, initialCapacity){
 private[caching] case class Entry[V](val value: V){
   val creationTime = System currentTimeMillis
 
-  var accessTime = System currentTimeMillis
+  @volatile var accessTime = System currentTimeMillis
 
   def touch(){
     accessTime = System currentTimeMillis
