@@ -9,7 +9,7 @@ class CacheSpec extends Specification {
 
   "An LRU cache" should {
     "hold recently used items" in {
-      val lru = new LruCache[Int](100)
+      val lru = new LruCache[String,Int](100)
 
       lru update("a", 1)
 
@@ -23,7 +23,7 @@ class CacheSpec extends Specification {
     }
 
     "evict least recently used items when full" in {
-      val lru = new LruCache[Int](3)
+      val lru = new LruCache[String,Int](3)
 
       lru update("a", 1)
 
@@ -50,7 +50,7 @@ class CacheSpec extends Specification {
 
   "An expiring LRU cache" should {
     "hold recently used items before expiration" in {
-      val lru = new ExpiringLruCache[Int](100, 16, 1000, 1000, 0, 1000, 0.9)
+      val lru = new ExpiringLruCache[String,Int](100, 16, 1000, 1000, 0, 1000, 0.9)
 
       lru update("a", 1)
 
@@ -76,7 +76,7 @@ class CacheSpec extends Specification {
     }
 
     "clean up expired items on update" in {
-      val lru = new ExpiringLruCache[Int](100, 16, 1000, 1000, 0, 2000, 0.9)
+      val lru = new ExpiringLruCache[String,Int](100, 16, 1000, 1000, 0, 2000, 0.9)
 
       lru update("a", 1)
 

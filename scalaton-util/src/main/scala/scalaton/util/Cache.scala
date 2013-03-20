@@ -7,45 +7,45 @@ import Scalaz._
 
 import com.googlecode.concurrentlinkedhashmap.{ConcurrentLinkedHashMap => CLHashMap}
 
-trait Cache[V]{
+trait Cache[K,V]{
 
-  def apply(key: Any): V
+  def apply(key: K): V
 
-  def get(key: Any): Option[V]
+  def get(key: K): Option[V]
 
-  def update(key: Any, value: V): Cache[V]
+  def update(key: K, value: V): Cache[K,V]
 
-  def delete(key: Any): Option[V]
+  def delete(key: K): Option[V]
 
   def clear()
 
 }
 
-trait CLHashMapBacked[V]{
-  private[caching] val cache: CLHashMap[Any,Entry[V]]
+trait CLHashMapBacked[K,V]{
+  private[caching] val cache: CLHashMap[K,Entry[V]]
 
   def clear() = cache.clear
 
-  private[caching] def contains(key: Any): Boolean =
+  private[caching] def contains(key: K): Boolean =
     cache containsKey key
 }
 
-class LruCache[V](val maxCapacity: Int, val initialCapacity: Int = 16)
-extends Cache[V]
-with CLHashMapBacked[V]{
+class LruCache[K,V](val maxCapacity: Int, val initialCapacity: Int = 16)
+extends Cache[K,V]
+with CLHashMapBacked[K,V]{
 
-  private[caching] val cache = new CLHashMap.Builder[Any, Entry[V]]
+  private[caching] val cache = new CLHashMap.Builder[K, Entry[V]]
     .initialCapacity(initialCapacity)
     .maximumWeightedCapacity(maxCapacity)
     .build
 
-  def apply(key: Any): V =
+  def apply(key: K): V =
     get(key) match {
       case Some(v) => v
       case _ => throw new java.util.NoSuchElementException("key not found: %s" format key)
     }
 
-  def get(key: Any): Option[V] = {
+  def get(key: K): Option[V] = {
     val opt = (contains(key)) ? cache.get(key).some | none
 
     opt map ( _.touch )
@@ -53,13 +53,13 @@ with CLHashMapBacked[V]{
     opt map ( _.value )
   }
 
-  def update(key: Any, value: V): Cache[V] = {
+  def update(key: K, value: V): Cache[K,V] = {
     cache put (key, Entry[V](value))
 
     this
   }
 
-  def delete(key: Any): Option[V] = {
+  def delete(key: K): Option[V] = {
     val v = get(key)
 
     v map ( _ => cache remove key )
@@ -71,17 +71,17 @@ with CLHashMapBacked[V]{
 
 }
 
-class ExpiringLruCache[V](override val maxCapacity: Int, override val initialCapacity: Int,
+class ExpiringLruCache[K,V](override val maxCapacity: Int, override val initialCapacity: Int,
                           val timeToLive: Int, val timeToIdle: Int,
                           val minTimeToSweep: Int, val maxTimeToSweep: Int,
                           val sizeToSweep: Double)
-extends LruCache[V](maxCapacity, initialCapacity){
+extends LruCache[K,V](maxCapacity, initialCapacity){
 
   private var sweepTime = System currentTimeMillis
 
   private val sweepSize = (sizeToSweep * maxCapacity) toDouble
 
-  override def get(key: Any) = {
+  override def get(key: K) = {
     val opt =
       if(contains(key)){
         if(!isExpired(key)){
@@ -98,7 +98,7 @@ extends LruCache[V](maxCapacity, initialCapacity){
     opt map ( _.value )
   }
 
-  override def update(key: Any, value: V): Cache[V] = {
+  override def update(key: K, value: V): Cache[K,V] = {
     val currentTime = System currentTimeMillis
 
     if((currentTime - sweepTime) > maxTimeToSweep || // exceeds maximum time to sweep
@@ -117,7 +117,7 @@ extends LruCache[V](maxCapacity, initialCapacity){
     }
   }
 
-  private def isExpired(key: Any): Boolean = {
+  private def isExpired(key: K): Boolean = {
     val e = cache get key
 
     val currentTime = System currentTimeMillis
