@@ -53,6 +53,7 @@ object Dependencies {
   val scalatime = "com.github.nscala-time" %% "nscala-time" % "0.2.0"
   val specs2 = "org.specs2" %% "specs2" % "1.12.3" % "test"
   val apacheCommonsIo = "org.apache.commons" % "commons-io" % "1.3.2"
+  val clHashMap = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.3.2"
 }
 
 object ProjectBuild extends Build{
@@ -62,7 +63,7 @@ object ProjectBuild extends Build{
 
   val commonDeps = Seq(scalaz7, scalaz7iteratee, specs2)
 
-  val utilDeps = Seq(apacheCommonsIo, opencsv, scalatime)
+  val utilDeps = Seq(apacheCommonsIo, opencsv, scalatime, clHashMap)
 
   val aggregateDeps = Seq(javaewah)
 
