@@ -109,6 +109,8 @@ extends LruCache[V](maxCapacity, initialCapacity){
   }
 
   private def sweep(){
+    sweepTime = System currentTimeMillis
+
     cache.keySet foreach { key =>
       if(isExpired(key))
         cache remove key
