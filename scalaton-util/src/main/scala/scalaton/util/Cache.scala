@@ -46,9 +46,7 @@ with CLHashMapBacked[V]{
   def get(key: Any): Option[V] = {
     val opt = (contains(key)) ? cache.get(key).some | none
 
-    opt map ( e => e.accessTime = System.currentTimeMillis )
-
-    opt foreach (e =>  println(e.accessTime) )
+    opt map ( _.touch )
 
     opt map ( _.value )
   }
@@ -74,11 +72,18 @@ class ExpiringLruCache[V](override val maxCapacity: Int, override val initialCap
 extends LruCache[V](maxCapacity, initialCapacity){
 
   override def get(key: Any) = {
-    val opt = (contains(key) && !isExpired(key)) ? cache.get(key).some | none
+    val opt =
+      if(contains(key)){
+        if(!isExpired(key)){
+          cache.get(key).some
+        }else{
+          cache remove key
+          none
+        }
+      }else
+        none
 
-    opt map ( e => e.accessTime = System.currentTimeMillis )
-
-    opt foreach (e =>  println(e.accessTime) )
+    opt map ( _.touch )
 
     opt map ( _.value )
   }
