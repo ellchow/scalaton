@@ -1,5 +1,7 @@
 package scalaton.util.caching
 
+import collection.JavaConversions._
+
 import scalaz._
 import Scalaz._
 
@@ -65,11 +67,19 @@ with CLHashMapBacked[V]{
     v
   }
 
+  def keySet = cache.keySet.toSet
+
 }
 
-class ExpiringLruCache[V](override val maxCapacity: Int, override val initialCapacity: Int = 16,
-                          val timeToLive: Int = Int.MaxValue, val timeToIdle: Int = Int.MaxValue)
+class ExpiringLruCache[V](override val maxCapacity: Int, override val initialCapacity: Int,
+                          val timeToLive: Int, val timeToIdle: Int,
+                          val minTimeToSweep: Int, val maxTimeToSweep: Int,
+                          val sizeToSweep: Double)
 extends LruCache[V](maxCapacity, initialCapacity){
+
+  private var sweepTime = System currentTimeMillis
+
+  private val sweepSize = (sizeToSweep * maxCapacity) toDouble
 
   override def get(key: Any) = {
     val opt =
@@ -88,10 +98,27 @@ extends LruCache[V](maxCapacity, initialCapacity){
     opt map ( _.value )
   }
 
+  override def update(key: Any, value: V): Cache[V] = {
+    val currentTime = System currentTimeMillis
+
+    if((currentTime - sweepTime) > maxTimeToSweep || // exceeds maximum time to sweep
+       ((currentTime - sweepTime) > minTimeToSweep && (cache.size > sweepSize))) // exceeds minimum time to sweep and cache size exceeds threshold
+      sweep()
+
+    super.update(key, value)
+  }
+
+  private def sweep(){
+    cache.keySet foreach { key =>
+      if(isExpired(key))
+        cache remove key
+    }
+  }
+
   private def isExpired(key: Any): Boolean = {
     val e = cache get key
 
-    val currentTime = System.currentTimeMillis
+    val currentTime = System currentTimeMillis
 
     ((currentTime - e.creationTime) > timeToLive) ||
     ((currentTime - e.accessTime) > timeToIdle)
@@ -100,10 +127,11 @@ extends LruCache[V](maxCapacity, initialCapacity){
 }
 
 private[caching] case class Entry[V](val value: V){
-  val creationTime = System.currentTimeMillis
-  var accessTime = System.currentTimeMillis
+  val creationTime = System currentTimeMillis
+
+  var accessTime = System currentTimeMillis
 
   def touch(){
-    accessTime = System.currentTimeMillis
+    accessTime = System currentTimeMillis
   }
 }
