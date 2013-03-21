@@ -79,7 +79,7 @@ extends LruCache[K,V](maxCapacity, initialCapacity){
 
   private var sweepTime = System currentTimeMillis
 
-  private val sweepSize = (sizeToSweep * maxCapacity) toDouble
+  private val sweepSize = (sizeToSweep * maxCapacity) toInt
 
   override def get(key: K) = {
     val opt =
