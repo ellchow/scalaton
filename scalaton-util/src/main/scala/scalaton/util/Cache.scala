@@ -48,7 +48,7 @@ with CLHashMapBacked[K,V]{
   def get(key: K): Option[V] = {
     val opt = (contains(key)) ? cache.get(key).some | none
 
-    opt map ( _.touch )
+    opt foreach ( _.touch() )
 
     opt map ( _.value )
   }
@@ -62,7 +62,7 @@ with CLHashMapBacked[K,V]{
   def delete(key: K): Option[V] = {
     val v = get(key)
 
-    v map ( _ => cache remove key )
+    v foreach ( _ => cache remove key )
 
     v
   }
@@ -93,7 +93,7 @@ extends LruCache[K,V](maxCapacity, initialCapacity){
       }else
         none
 
-    opt map ( _.touch )
+    opt foreach ( _.touch() )
 
     opt map ( _.value )
   }
