@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings {
   val buildOrganization = "scalaton"
   val buildVersion      = "0.1-SNAPSHOT"
-  val buildScalaVersion = "2.9.2"
+  val buildScalaVersion = "2.10.0"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := buildOrganization,
@@ -72,8 +72,10 @@ object ProjectBuild extends Build{
 
   val compilerOptions = Seq(
     "-deprecation",
-    "-Ydependent-method-types",
-    "-unchecked"
+    "-feature",
+    "-language:postfixOps",
+    "-language:higherKinds",
+    "-language:implicitConversions"
   )
 
   val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
