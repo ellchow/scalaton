@@ -1,11 +1,11 @@
-package scalaton.util
+package scalaton.zed
 
 import com.github.nscala_time.time.Imports._
 
 import scalaz._
 import Scalaz._
 
-trait DateInstances{
+trait DateEnumInstances{
   implicit val localDateInstance = new Enum[LocalDate] {
     def succ(a: LocalDate): LocalDate = a + 1.day
 
@@ -19,5 +19,5 @@ trait DateInstances{
   }
 }
 
-object date
-extends DateInstances
+object enum
+extends DateEnumInstances
