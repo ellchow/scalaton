@@ -51,6 +51,7 @@ object Dependencies {
   val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0-M9"
   val scoobi = "com.nicta" %% "scoobi" % "0.7.0-cdh4-SNAPSHOT"
   val spire = "org.spire-math" %% "spire" % "0.3.0"
+  val breeze = "org.scalanlp" %% "breeze-math" % "0.3-SNAPSHOT"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0-M8"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
@@ -80,14 +81,9 @@ object ProjectBuild extends Build{
     scalaz7effect, scalatime
   )
 
-  val fitDeps = Seq(
-    scalaz7, specs2,
-    spire
-  )
-
   val dooDeps = Seq(
     scalaz7, specs2,
-    scoobi
+    scalaz7effect, scoobi
   )
 
   val compilerOptions = Seq(
@@ -131,16 +127,6 @@ object ProjectBuild extends Build{
       publishTo := publishLoc)
   ) dependsOn (utilProject, zedProject)
 
-  lazy val fitProject = Project (
-    "fit",
-    file ("scalaton-fit"),
-    settings = buildSettings ++ Seq(
-      resolvers := allResolvers,
-      libraryDependencies ++= fitDeps,
-      scalacOptions := compilerOptions,
-      publishTo := publishLoc)
-  )
-
   lazy val dooProject = Project (
     "doo",
     file ("scalaton-doo"),
@@ -149,7 +135,7 @@ object ProjectBuild extends Build{
       libraryDependencies ++= dooDeps,
       scalacOptions := compilerOptions,
       publishTo := publishLoc)
-  )
+  ) dependsOn (zedProject)
 
 }
 

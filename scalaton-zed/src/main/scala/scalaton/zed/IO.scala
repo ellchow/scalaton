@@ -4,17 +4,25 @@ import java.io._
 
 trait IOModule{
   object reader{
-    def stdin = new BufferedReader(new InputStreamReader(System.in))
 
     def file(path: String) = new BufferedReader(new FileReader(path))
+
+    def inputStream(is: InputStream) = new BufferedReader(new InputStreamReader(is))
+
+    def stdin = inputStream(System.in)
+
   }
 
   object writer{
-    def stdout = new BufferedWriter(new OutputStreamWriter(System.out))
-
-    def stderr = new BufferedWriter(new OutputStreamWriter(System.err))
 
     def file(path: String) = new BufferedWriter(new FileWriter(path))
+
+    def outputStream(os: OutputStream) = new BufferedWriter(new OutputStreamWriter(os))
+
+    def stdout = outputStream(System.out)
+
+    def stderr = outputStream(System.err)
+
   }
 
 }
