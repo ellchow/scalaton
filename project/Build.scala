@@ -40,14 +40,17 @@ object Resolvers {
   val sonatypeReleases = "sonatype releases"  at "http://oss.sonatype.org/content/repositories/releases"
   val scalaTools = "scala tools" at "http://scala-tools.org/repo-releases"
   val typesafe = "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
+  val nictaAvro = "nicta's avro" at "http://nicta.github.com/scoobi/releases"
   val localm2 = "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
 
-  val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, scalaTools, typesafe, localm2)
+
+  val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, scalaTools, typesafe, nictaAvro, localm2)
 }
 
 object Dependencies {
-  val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0-M8"
-  val scalaz7iteratee = "org.scalaz" %% "scalaz-iteratee" % "7.0.0-M8"
+  val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0-M9"
+  val scoobi = "com.nicta" %% "scoobi" % "0.7.0-cdh4-SNAPSHOT"
+  val spire = "org.spire-math" %% "spire" % "0.3.0"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0-M8"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
@@ -62,13 +65,30 @@ object ProjectBuild extends Build{
   import Dependencies._
   import BuildSettings._
 
-  val commonDeps = Seq(scalaz7, specs2)
+  val utilDeps = Seq(
+    scalaz7, specs2,
+    apacheCommonsIo, opencsv, clHashMap
+  )
 
-  val utilDeps = Seq(apacheCommonsIo, opencsv, clHashMap)
+  val aggregateDeps = Seq(
+    scalaz7, specs2,
+    javaewah
+  )
 
-  val aggregateDeps = Seq(javaewah)
+  val zedDeps = Seq(
+    scalaz7, specs2,
+    scalaz7effect, scalatime
+  )
 
-  val zedDeps = Seq(scalaz7iteratee, scalaz7effect, scalatime)
+  val fitDeps = Seq(
+    scalaz7, specs2,
+    spire
+  )
+
+  val dooDeps = Seq(
+    scalaz7, specs2,
+    scoobi
+  )
 
   val compilerOptions = Seq(
     "-deprecation",
@@ -85,7 +105,7 @@ object ProjectBuild extends Build{
     file ("scalaton-util"),
     settings = buildSettings ++ Seq(
       resolvers := allResolvers,
-      libraryDependencies ++= commonDeps ++ utilDeps,
+      libraryDependencies ++= utilDeps,
       scalacOptions := compilerOptions,
       publishTo := publishLoc)
   )
@@ -98,19 +118,38 @@ object ProjectBuild extends Build{
       libraryDependencies ++= zedDeps,
       scalacOptions := compilerOptions,
       publishTo := publishLoc)
-
   )
+
 
   lazy val aggregateProject = Project (
     "aggregate",
     file ("scalaton-aggregate"),
     settings = buildSettings ++ Seq(
       resolvers := allResolvers,
-      libraryDependencies ++= commonDeps ++ aggregateDeps,
+      libraryDependencies ++= aggregateDeps,
       scalacOptions := compilerOptions,
       publishTo := publishLoc)
-
   ) dependsOn (utilProject, zedProject)
+
+  lazy val fitProject = Project (
+    "fit",
+    file ("scalaton-fit"),
+    settings = buildSettings ++ Seq(
+      resolvers := allResolvers,
+      libraryDependencies ++= fitDeps,
+      scalacOptions := compilerOptions,
+      publishTo := publishLoc)
+  )
+
+  lazy val dooProject = Project (
+    "doo",
+    file ("scalaton-doo"),
+    settings = buildSettings ++ Seq(
+      resolvers := allResolvers,
+      libraryDependencies ++= dooDeps,
+      scalacOptions := compilerOptions,
+      publishTo := publishLoc)
+  )
 
 }
 
