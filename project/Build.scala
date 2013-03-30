@@ -64,11 +64,11 @@ object ProjectBuild extends Build{
 
   val commonDeps = Seq(scalaz7, specs2)
 
-  val utilDeps = Seq(apacheCommonsIo, opencsv, scalatime, clHashMap)
+  val utilDeps = Seq(apacheCommonsIo, opencsv, clHashMap)
 
   val aggregateDeps = Seq(javaewah)
 
-  val zedDeps = Seq(scalaz7iteratee, scalaz7effect)
+  val zedDeps = Seq(scalaz7iteratee, scalaz7effect, scalatime)
 
   val compilerOptions = Seq(
     "-deprecation",
