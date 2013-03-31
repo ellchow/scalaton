@@ -12,7 +12,7 @@ import Scalaz._
 import Validation.fromTryCatch
 
 
-trait hdfs{
+trait HdfsFunctions{
 
   def connect(conf: HConf = new HConf): FileSystem = FileSystem.get(conf)
 
@@ -77,3 +77,5 @@ trait hdfs{
     }
   )
 }
+
+object hdfs extends HdfsFunctions
