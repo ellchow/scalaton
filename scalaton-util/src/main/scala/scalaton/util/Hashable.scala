@@ -24,13 +24,6 @@ trait Hashable[A,B] extends HashingTags{
                 multiDigest(a, seed + 1))
 }
 
-trait LowPriorityHashableInstances extends HashFuncs with HashingTags{
-  implicit def anyHashable[A] = new Hashable[A, Int]{
-    def digest(a: A, seed: Long = 0L): Int @@ HashCode =
-      HashCode(a.hashCode)
-  }
-}
-
 trait Hashable32Instances
 extends HashFuncs
 with HashingTags{
@@ -211,7 +204,6 @@ trait HashingSizes{
 
 object hashing
 extends Hashable128Instances
-with LowPriorityHashableInstances
 with HashableFunctions
 with HashableTupleInstances
 with HashCodeConverterInstances
@@ -220,7 +212,6 @@ with HashingSizes
 
 object hashing32
 extends Hashable32Instances
-with LowPriorityHashableInstances
 with HashableFunctions
 with HashableTupleInstances
 with HashCodeConverterInstances
@@ -229,7 +220,6 @@ with HashingSizes
 
 object hashing64
 extends Hashable64Instances
-with LowPriorityHashableInstances
 with HashableFunctions
 with HashableTupleInstances
 with HashCodeConverterInstances
