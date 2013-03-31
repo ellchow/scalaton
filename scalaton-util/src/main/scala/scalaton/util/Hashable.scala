@@ -203,8 +203,7 @@ trait HashingSizes{
 }
 
 object hashing
-extends Hashable128Instances
-with HashableFunctions
+extends HashableFunctions
 with HashableTupleInstances
 with HashCodeConverterInstances
 with HashingTags
@@ -212,16 +211,9 @@ with HashingSizes
 
 object hashing32
 extends Hashable32Instances
-with HashableFunctions
-with HashableTupleInstances
-with HashCodeConverterInstances
-with HashingTags
-with HashingSizes
 
 object hashing64
 extends Hashable64Instances
-with HashableFunctions
-with HashableTupleInstances
-with HashCodeConverterInstances
-with HashingTags
-with HashingSizes
+
+object hashing128
+extends Hashable128Instances

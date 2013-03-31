@@ -5,16 +5,11 @@ import scalaz._
 import Scalaz._
 
 import scalaton.util.hashing._
+import scalaton.util.hashing128._
 
 class HashableSpec extends Specification {
 
   "The string 'hello'" should {
-    "can use default hashable instance" in {
-      implicit val hashAnything = anyHashable[String]
-      val hc: Bits128 @@ HashCode = hash("hello")
-
-      hc mustEqual (5620873505596599413L, 2937734076964678877L)
-    }
 
     "is hashed by MurmurHash3" in {
       val hc = hash("hello")
