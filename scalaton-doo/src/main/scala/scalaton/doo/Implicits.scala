@@ -53,11 +53,18 @@ trait ImplicitConversions{
       def limit(n: Int = 0) = sampling.limit(dl, n)
     }
 
-  implicit def enrichDListWithBloomJoin[A : Manifest : WireFormat : Grouping, BL : Manifest : WireFormat](x: DList[(A, BL)])(implicit hashable: Hashable[A,Bits128]) =
+  implicit def enrichDListWithBloomJoin[A : Manifest : WireFormat : Grouping, BL : Manifest : WireFormat](x: DList[(A, BL)])(implicit hashable: Hashable[A,Bits32]) =
     new EnrichedDList[(A,BL)]{
       val dl = x
 
       def bloomJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], expectedNumKeys: Int) = joins.bloomJoin(dl, right, expectedNumKeys)
+    }
+
+  implicit def enrichDListWithSkewedJoin[A : Manifest : WireFormat : Grouping, BL : Manifest : WireFormat](x: DList[(A, BL)])(implicit hashable: Hashable[A,Bits32]) =
+    new EnrichedDList[(A,BL)]{
+      val dl = x
+
+      def skewedJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], sampleRate: Double, maxPerReducer: Int) = joins.skewedJoin(dl, right, sampleRate, maxPerReducer)
     }
 
 }

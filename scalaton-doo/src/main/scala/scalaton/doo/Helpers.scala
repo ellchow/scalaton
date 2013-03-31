@@ -41,7 +41,6 @@ trait HelperFunctions {
 
     (dl parallelDo accumulateFun).materialise map (_ reduce (_ |+| _))
   }
-
 }
 
 
