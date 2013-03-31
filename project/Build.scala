@@ -43,7 +43,6 @@ object Resolvers {
   val nictaAvro = "nicta's avro" at "http://nicta.github.com/scoobi/releases"
   val localm2 = "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
 
-
   val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, scalaTools, typesafe, nictaAvro, localm2)
 }
 
@@ -51,7 +50,8 @@ object Dependencies {
   val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0-M9"
   val scoobi = "com.nicta" %% "scoobi" % "0.7.0-cdh4-SNAPSHOT"
   val spire = "org.spire-math" %% "spire" % "0.3.0"
-  val breeze = "org.scalanlp" %% "breeze-math" % "0.3-SNAPSHOT"
+  val breezemath = "org.scalanlp" %% "breeze-math" % "0.3-SNAPSHOT"
+  // val breezelearn = "org.scalanlp" %% "breeze-learn" % "0.3-SNAPSHOT"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0-M8"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
@@ -73,7 +73,7 @@ object ProjectBuild extends Build{
 
   val aggregateDeps = Seq(
     scalaz7, specs2,
-    javaewah
+    javaewah, breezemath
   )
 
   val zedDeps = Seq(
@@ -83,7 +83,7 @@ object ProjectBuild extends Build{
 
   val dooDeps = Seq(
     scalaz7, specs2,
-    scalaz7effect, scoobi
+    scoobi
   )
 
   val compilerOptions = Seq(

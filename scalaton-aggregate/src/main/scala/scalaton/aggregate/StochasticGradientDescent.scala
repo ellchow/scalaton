@@ -55,3 +55,12 @@ trait SGDModule{
 }
 
 object sgd extends SGDModule
+
+// set.seed(0);n <- 10000; x1 <- runif(n); x2 <- runif(n); e <- rnorm(n); y <- 10 * x1 + 2 * x2 + 10*e - 30; write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
+
+/*
+import breeze.linalg._
+import scalaton.aggregate.sgd._
+val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => SGDExample(p(0),p.drop(1)))
+SGDFit(LinearRegressionUpdate,DenseVector.zeros[Double](3), 0.01)(examples)
+*/
