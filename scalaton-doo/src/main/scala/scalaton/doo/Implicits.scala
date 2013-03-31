@@ -16,6 +16,8 @@
 
 package scalaton.doo
 
+import scala.language.reflectiveCalls
+
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
@@ -44,11 +46,18 @@ trait ImplicitConversions{
       def sampleBy(rate: Double, seed: Int = 0) = sampling.sampleBy(dl, rate, seed)
     }
 
-  implicit def enrichDListWithSample[A : Manifest : WireFormat](x: DList[A]) =
+  implicit def enrichDListWithLimit[A : Manifest : WireFormat](x: DList[A]) =
     new EnrichedDList[A]{
       val dl = x
 
       def limit(n: Int = 0) = sampling.limit(dl, n)
+    }
+
+  implicit def enrichDListWithBloomJoin[A : Manifest : WireFormat : Grouping, BL : Manifest : WireFormat](x: DList[(A, BL)])(implicit hashable: Hashable[A,Bits128]) =
+    new EnrichedDList[(A,BL)]{
+      val dl = x
+
+      def bloomJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], expectedNumKeys: Int) = joins.bloomJoin(dl, right, expectedNumKeys)
     }
 
 }
