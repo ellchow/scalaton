@@ -42,13 +42,17 @@ trait SGDModule{
     w - (g(w, (y, x)) * alpha)
   }
 
-
   val LinearRegressionGradient: GradientFunction = { case (w, (y, x)) => x * ((w dot x) - y) }
   val LinearRegressionUpdate = SGDUpdate(LinearRegressionGradient)
   val LinearPredictor: PredictFunction = w => x => w dot x
 
-  def SGDFit(update: UpdateFunction, initW: SGDWeights, alpha: LearningRate)(examples: Iterable[SGDExample]): SGDWeights =
-    examples.foldLeft(initW)((w0, ex) => update(w0, ex, alpha))
+  def SGDFit(update: UpdateFunction, initW: Int => Double = _ => 0, alpha: LearningRate = 0.01)(examples: Iterable[SGDExample]): SGDWeights =
+    examples.foldLeft(none[SGDWeights]){
+      case (Some(w0), ex) => update(w0, ex, alpha).some
+      case (None, ex) => update(DenseVector(((0 until ex._2.length) map initW): _*), ex, alpha).some
+    }.get
+
+
 
   def combineSGDWeights(ws: Seq[SGDWeights]): SGDWeights =
     (ws reduce (_ + _)) / ws.size.toDouble
@@ -62,5 +66,5 @@ object sgd extends SGDModule
 import breeze.linalg._
 import scalaton.aggregate.sgd._
 val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => SGDExample(p(0),p.drop(1)))
-SGDFit(LinearRegressionUpdate,DenseVector.zeros[Double](3), 0.01)(examples)
+SGDFit(LinearRegressionUpdate,alpha =  0.01)(examples)
 */
