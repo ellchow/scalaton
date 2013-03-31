@@ -1,3 +1,19 @@
+/*
+ Copyright 2013 Elliot Chow
+
+ Licensed under the Apache License, Version 2.0 (the "License")
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+
 package scalaton.util
 
 import scalaz._
@@ -7,7 +23,7 @@ import Scalaz._
   * Implicits for Hashable Tuples
   * DO NOT EDIT - code generated on 2013-03-30T20:07:41.131. see scalaton/codegen/HashableTupleGen.scala
   **/
-  
+
 trait HashableTuple32Instances extends HashFuncs{
   implicit def tuple1Hashable32[A1](implicit h1: Hashable[A1,Int]) = new Hashable[Tuple1[A1],Int]{
       def digest(a: Tuple1[A1], seed: Long): Int @@ HashCode = {
