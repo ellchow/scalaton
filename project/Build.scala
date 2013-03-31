@@ -91,7 +91,8 @@ object ProjectBuild extends Build{
     "-feature",
     "-language:postfixOps",
     "-language:higherKinds",
-    "-language:implicitConversions"
+    "-language:implicitConversions",
+    "-language:reflectiveCalls"
   )
 
   val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
@@ -135,7 +136,7 @@ object ProjectBuild extends Build{
       libraryDependencies ++= dooDeps,
       scalacOptions := compilerOptions,
       publishTo := publishLoc)
-  ) dependsOn (zedProject)
+  ) dependsOn (utilProject, zedProject)
 
 }
 
