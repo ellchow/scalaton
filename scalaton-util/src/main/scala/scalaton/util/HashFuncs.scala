@@ -3,6 +3,10 @@ package scalaton.util
 trait HashFuncs{
   import java.nio._
 
+  def combine32Hashes(x: Int, y: Int): Int = 31 * x + y
+
+  def combine64Hashes(x: Long, y: Long): Long = 31L * x + y
+
   def combine128Hashes(x: (Long, Long), y: (Long,Long)): (Long, Long) =
     (31L * x._1 + y._1, 31L * x._2 + y._2)
 

@@ -68,7 +68,7 @@ object ProjectBuild extends Build{
 
   val utilDeps = Seq(
     scalaz7, specs2,
-    apacheCommonsIo, opencsv, clHashMap
+    apacheCommonsIo, opencsv, clHashMap, scalatime
   )
 
   val aggregateDeps = Seq(
