@@ -35,7 +35,7 @@ trait UrlModule{
                      encodeIfPossible(k, encoding) + "=" +
                      encodeIfPossible(v, encoding) }.mkString("&")
 
-  def parseQueryString(queryString: String, encoding: Option[String] = "UTF-8".some): ValidationNEL[String,Map[String,String]] =
+  def parseQueryString(queryString: String, encoding: Option[String] = "UTF-8".some): ValidationNel[String,Map[String,String]] =
     str.splitByChar(queryString, '&').foldLeft(Map[String,String]().successNel[String]){ (acc, next) =>
       val pair = str.splitByChar(next, '=')
       if (pair.size == 2 && pair(0).nonEmpty){
@@ -60,7 +60,7 @@ trait UrlModule{
     val url = catching(classOf[Exception]).opt(new URL(u))
 
     url.some(u => ((u.getHost, u.getPath, parseQueryString(u.getQuery ?? ""), u.getPort, u.getProtocol)).success[String])
-      .none("failed to parse url \"%s\"".format(u).failure[(String, String, ValidationNEL[String,Map[String,String]], Int, String)])
+      .none("failed to parse url \"%s\"".format(u).failure[(String, String, ValidationNel[String,Map[String,String]], Int, String)])
   }
 }
 
