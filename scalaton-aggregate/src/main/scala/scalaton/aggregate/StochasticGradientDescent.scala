@@ -42,29 +42,55 @@ trait SGDModule{
     w - (g(w, (y, x)) * alpha)
   }
 
-  val LinearRegressionGradient: GradientFunction = { case (w, (y, x)) => x * ((w dot x) - y) }
-  val LinearRegressionUpdate = SGDUpdate(LinearRegressionGradient)
-  val LinearPredictor: PredictFunction = w => x => w dot x
-
   def SGDFit(update: UpdateFunction, initW: Int => Double = _ => 0, alpha: LearningRate = 0.01)(examples: Iterable[SGDExample]): SGDWeights =
     examples.foldLeft(none[SGDWeights]){
       case (Some(w0), ex) => update(w0, ex, alpha).some
       case (None, ex) => update(DenseVector(((0 until ex._2.length) map initW): _*), ex, alpha).some
     }.get
 
-
-
   def combineSGDWeights(ws: Seq[SGDWeights]): SGDWeights =
     (ws reduce (_ + _)) / ws.size.toDouble
+
+
+  object glm{
+    trait GLMOpt{
+      def apply(initW: Int => Double = _ => 0, alpha: LearningRate = 0.01) =
+        SGDFit(update, initW, alpha) _
+
+      val gradient: GradientFunction = { case (w, (y, x)) => x * (predict(w)(x) - y) }
+
+      val update = SGDUpdate(gradient)
+
+      val predict: PredictFunction
+    }
+
+    object gaussian extends GLMOpt {
+      val predict: PredictFunction = w => x => w dot x
+    }
+
+    object bernoulli extends GLMOpt{
+      val exp = breeze.generic.UFunc(math.exp _)
+
+      def logisticFunction(x: DenseVector[Double], w: DenseVector[Double]) =
+        1.0 / (1.0 + exp(- w dot x))
+
+      val predict: PredictFunction = w => x => logisticFunction(x, w)
+    }
+
+  }
+
 }
 
 object sgd extends SGDModule
 
 // set.seed(0);n <- 10000; x1 <- runif(n); x2 <- runif(n); e <- rnorm(n); y <- 10 * x1 + 2 * x2 + 10*e - 30; write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
 
+// set.seed(0);n<-10000;y <- as.integer(runif(n) < 0.1); x1 <- ifelse(y == 1, rnorm(n) + 1, rnorm(n)); x2 <- ifelse(y == 1, 2*rnorm(n) + 3, rnorm(n)); write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
+
 /*
 import breeze.linalg._
 import scalaton.aggregate.sgd._
 val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => SGDExample(p(0),p.drop(1)))
-SGDFit(LinearRegressionUpdate,alpha =  0.01)(examples)
+glm.gaussian(alpha =  0.01)(examples)
+glm.bernoulli(alpha =  0.01)(examples)
 */
