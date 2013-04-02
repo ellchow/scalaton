@@ -25,16 +25,17 @@ import Scalaz._
 
 trait SGDModule{
 
-  type SGDFeatures = DenseVector[Double]
-  type SGDWeights = DenseVector[Double]
+  type SGDFeatures = Vector[Double]
+  type SGDWeights = Vector[Double]
   type SGDExample = (Double, SGDFeatures)
   type LearningRate = Double
 
   type UpdateFunction = (SGDWeights, SGDExample, LearningRate) => SGDWeights
-  type GradientFunction = (DenseVector[Double], SGDExample) => DenseVector[Double]
+  type GradientFunction = (Vector[Double], SGDExample) => Vector[Double]
   type PredictFunction = SGDWeights => SGDFeatures => Double
 
   def SGDExample(y: Double, x: Seq[Double]): SGDExample = (y, DenseVector((1.0 +: x) : _*))
+  def SGDWeights(w: Seq[Double]): SGDWeights = DenseVector((0.0 +: w) : _*)
 
   def SGDUpdate(g: GradientFunction): UpdateFunction = (w, example, alpha) => {
     val (y, x) = example
@@ -42,19 +43,12 @@ trait SGDModule{
     w - (g(w, (y, x)) * alpha)
   }
 
-  def SGDFit(update: UpdateFunction, initW: Int => Double = _ => 0, alpha: LearningRate = 0.01)(examples: Iterable[SGDExample]): SGDWeights =
-    examples.foldLeft(none[SGDWeights]){
-      case (Some(w0), ex) => update(w0, ex, alpha).some
-      case (None, ex) => update(DenseVector(((0 until ex._2.length) map initW): _*), ex, alpha).some
-    }.get
-
-  def combineSGDWeights(ws: Seq[SGDWeights]): SGDWeights =
-    (ws reduce (_ + _)) / ws.size.toDouble
-
+  def SGDFit(update: UpdateFunction, initW: SGDWeights, alpha: LearningRate = 0.01)(examples: Iterable[SGDExample]): SGDWeights =
+    examples.foldLeft(initW)((w0, ex) => update(w0, ex, alpha))
 
   object glm{
     trait GLMOpt{
-      def apply(initW: Int => Double = _ => 0, alpha: LearningRate = 0.01) =
+      def apply(initW: SGDWeights, alpha: LearningRate = 0.01) =
         SGDFit(update, initW, alpha) _
 
       val gradient: GradientFunction = { case (w, (y, x)) => x * (predict(w)(x) - y) }
@@ -71,7 +65,7 @@ trait SGDModule{
     object bernoulli extends GLMOpt{
       val exp = breeze.generic.UFunc(math.exp _)
 
-      def logisticFunction(x: DenseVector[Double], w: DenseVector[Double]) =
+      def logisticFunction(x: Vector[Double], w: Vector[Double]) =
         1.0 / (1.0 + exp(- w dot x))
 
       val predict: PredictFunction = w => x => logisticFunction(x, w)
@@ -91,6 +85,6 @@ object sgd extends SGDModule
 import breeze.linalg._
 import scalaton.aggregate.sgd._
 val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => SGDExample(p(0),p.drop(1)))
-glm.gaussian(alpha =  0.01)(examples)
+glm.gaussian(SGDWeights(Seq(0,0)),alpha =  0.01)(examples)
 glm.bernoulli(alpha =  0.01)(examples)
 */
