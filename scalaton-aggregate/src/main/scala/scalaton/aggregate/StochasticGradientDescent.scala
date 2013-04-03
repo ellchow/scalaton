@@ -16,30 +16,52 @@
 
 package scalaton.aggregate
 
+import collection.immutable.{Vector => SVector}
+
 import breeze.linalg._
 
 import scalaz._
 import Scalaz._
 
 trait SGDModule{
-  type Features = Vector[Double]
-  type Target = Double
-  type Example = (Target, Features)
-  type Weights = Vector[Double]
-  type Gradient = Vector[Double]
-  type TotalPenalty = Double
-  type ActualPenalty = Vector[Double]
-  type NumExamples = Long
-  type RegularizationParameter = Double
+  object sgdtypes{
+    type Features = Vector[Double]
+    type Target = Double
+    type Example = (Target, Features)
+    type Weights = Vector[Double]
+    type Gradient = Vector[Double]
+    type TotalPenalty = Double
+    type ActualPenalty = Vector[Double]
+    type NumExamples = Long
+    type RegularizationParameter = Double
 
-  type LearningRateFunction = NumExamples => Double
-  type PenaltyFunction = (Weights, TotalPenalty, ActualPenalty) => (Weights, ActualPenalty)
-  type GradientFunction = (Weights, Example) => Gradient
+    type LearningRateFunction = NumExamples => Double
+    type PenaltyFunction = (Weights, TotalPenalty, ActualPenalty) => (Weights, ActualPenalty)
+    type GradientFunction = (Weights, Example) => Gradient
+  }
+  import sgdtypes._
 
   object sgd{
     def example(y: Double, x: Seq[Double]): Example = (y, DenseVector((1.0 +: x) : _*))
 
+    def example(y: Double, x: Seq[(Int,Double)], size: Int): Example = {
+      val (indices, values) = x.foldLeft((SVector[Int](0),SVector[Double](1.0))){
+        case ((i, v), (ii, vv)) => (i :+ (ii + 1), v :+ vv)
+      }
+      val z = new SparseVector(indices.toArray, values.toArray, indices.size)
+      (y, z)
+    }
+
     def weights(w: Seq[Double]): Weights = DenseVector((0.0 +: w) : _*)
+
+    def weights(w: Seq[(Int,Double)], size: Int): Weights = {
+      val (indices, values) = w.foldLeft((SVector[Int](0),SVector[Double](0.0))){
+        case ((i, v), (ii, vv)) => (i :+ (ii + 1), v :+ vv)
+      }
+
+      val z = new SparseVector(indices.toArray, values.toArray, size + 1)
+      z
+    }
 
     def update(gradient: GradientFunction)(learningRate: LearningRateFunction, penalize: PenaltyFunction, c: RegularizationParameter)(w0: Weights, u0: TotalPenalty, q0: ActualPenalty, k0: NumExamples)(ex: Example) = {
       val eta = learningRate(k0)
@@ -64,6 +86,7 @@ trait SGDModule{
 
   object glm{
     val gaussian = sgd.update{ case (w, (y, x)) => x * ((w dot x) - y) } _
+
     val bernoulli = sgd.update{ case (w, (y, x)) =>
                                 x * (logistic(w dot x) - y)
                               } _
@@ -99,7 +122,7 @@ trait SGDModule{
 
 }
 
-object sgd extends SGDModule
+object stochgraddesc extends SGDModule
 
 // set.seed(0);n <- 10000; x1 <- runif(n); x2 <- runif(n); e <- rnorm(n); y <- 10 * x1 + 2 * x2 + 10*e - 30; write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
 
@@ -107,12 +130,18 @@ object sgd extends SGDModule
 // glm.gaussian(learnrate.constant(0.1), penalty.zero, 0)(sgd.weights(Seq(0,0,0)),0,sgd.weights(Seq(0,0,0)),0)(sgd.example(1.8,Seq(0,1,1)))
 
 /*
-import breeze.linalg._
-import scalaton.aggregate.sgd._
+import scalaton.aggregate.stochgraddesc._
 
 val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
+
 sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.01), sgd.weights(Seq(0,0,0)))(examples)
 println("\n\n\n")
-sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.zero, 0.000000001), sgd.weights(Seq(0,0,0)))(examples)
+sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.zero, 0), sgd.weights(Seq(0,0,0)))(examples)
 
+
+import scalaton.aggregate.stochgraddesc._
+val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),(p.drop(1) :+ util.Random.nextDouble).zipWithIndex.map(_.swap), 3))
+sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.zero, 0), sgd.weights(Seq(0 -> 0.0, 2 -> 0.0),3))(examples)
+
+sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.01), sgd.weights(Seq(0 -> 0, 1 -> 0, 2 -> 0),3))(examples)
 */
