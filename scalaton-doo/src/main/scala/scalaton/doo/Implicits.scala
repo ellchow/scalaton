@@ -16,8 +16,6 @@
 
 package scalaton.doo
 
-import scala.language.reflectiveCalls
-
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
@@ -51,6 +49,13 @@ trait ImplicitConversions{
       val dl = x
 
       def limit(n: Int = 0) = sampling.limit(dl, n)
+    }
+
+  implicit def enrichDListWithPartitionAtRandom[A : Manifest : WireFormat](x: DList[A]) =
+    new EnrichedDList[A]{
+      val dl = x
+
+      def partitionAtRandom(n: Int, seed: Int = 0) = sampling.partitionAtRandom(dl, n, seed)
     }
 
   implicit def enrichDListWithBloomJoin[A : Manifest : WireFormat : Grouping, BL : Manifest : WireFormat](x: DList[(A, BL)])(implicit hashable: Hashable[A,Bits32]) =
