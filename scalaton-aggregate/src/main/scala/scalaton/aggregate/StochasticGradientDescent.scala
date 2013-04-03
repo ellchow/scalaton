@@ -28,28 +28,35 @@ trait SGDModule{
   type SGDFeatures = Vector[Double]
   type SGDWeights = Vector[Double]
   type SGDExample = (Double, SGDFeatures)
-  type LearningRate = Double
+  type SGDStep = (SGDWeights, Long)
+  type LearningRate = Long => Double
 
-  type UpdateFunction = (SGDWeights, SGDExample, LearningRate) => SGDWeights
+  type UpdateFunction = (SGDStep, SGDExample, LearningRate) => SGDStep
   type GradientFunction = (Vector[Double], SGDExample) => Vector[Double]
   type PredictFunction = SGDWeights => SGDFeatures => Double
 
   def SGDExample(y: Double, x: Seq[Double]): SGDExample = (y, DenseVector((1.0 +: x) : _*))
   def SGDWeights(w: Seq[Double]): SGDWeights = DenseVector((0.0 +: w) : _*)
 
-  def SGDUpdate(g: GradientFunction): UpdateFunction = (w, example, alpha) => {
+  def SGDUpdate(g: GradientFunction): UpdateFunction = (step, example, alpha) => {
+    val (w, k) = step
     val (y, x) = example
+    val a = alpha(k)
 
-    w - (g(w, (y, x)) * alpha)
+    val z = (w - (g(w, (y, x)) * a), k + 1)
+
+    if(k % 1000 == 1) println(z)
+
+    z
   }
 
-  def SGDFit(update: UpdateFunction, initW: SGDWeights, alpha: LearningRate = 0.01)(examples: Iterable[SGDExample]): SGDWeights =
-    examples.foldLeft(initW)((w0, ex) => update(w0, ex, alpha))
+  def SGDFit(update: UpdateFunction, init: SGDStep, alpha: LearningRate = _ => 0.01)(examples: Iterable[SGDExample]): SGDStep =
+    examples.foldLeft(init)((w0, ex) => update(w0, ex, alpha))
 
   object glm{
     trait GLMOpt{
-      def apply(initW: SGDWeights, alpha: LearningRate = 0.01) =
-        SGDFit(update, initW, alpha) _
+      def apply(init: SGDStep, alpha: LearningRate = _ => 0.01) =
+        SGDFit(update, init, alpha) _
 
       val gradient: GradientFunction = { case (w, (y, x)) => x * (predict(w)(x) - y) }
 
@@ -84,7 +91,7 @@ object sgd extends SGDModule
 /*
 import breeze.linalg._
 import scalaton.aggregate.sgd._
-val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => SGDExample(p(0),p.drop(1)))
-glm.gaussian(SGDWeights(Seq(0,0)),alpha =  0.01)(examples)
+val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => SGDExample(p(0),p.drop(1) :+ util.Random.nextDouble))
+glm.gaussian((SGDWeights(Seq(0,0,0)), 0L),alpha = _ => 0.01)(examples)
 glm.bernoulli(alpha =  0.01)(examples)
 */
