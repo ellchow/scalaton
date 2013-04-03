@@ -39,15 +39,13 @@ trait SGDModule{
   def SGDWeights(w: Seq[Double]): SGDWeights = DenseVector((0.0 +: w) : _*)
 
   def SGDUpdate(g: GradientFunction): UpdateFunction = (step, example, alpha) => {
-    val (w, k) = step
+    val (w0, k) = step
     val (y, x) = example
     val a = alpha(k)
 
-    val z = (w - (g(w, (y, x)) * a), k + 1)
+    val w1 = (w0 - (g(w0, (y, x)) * a), k + 1)
 
-    if(k % 1000 == 1) println(z)
-
-    z
+    w1
   }
 
   def SGDFit(update: UpdateFunction, init: SGDStep, alpha: LearningRate = _ => 0.01)(examples: Iterable[SGDExample]): SGDStep =
