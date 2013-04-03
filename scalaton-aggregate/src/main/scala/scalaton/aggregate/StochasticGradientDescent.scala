@@ -16,67 +16,88 @@
 
 package scalaton.aggregate
 
-import collection.mutable
-
 import breeze.linalg._
 
 import scalaz._
 import Scalaz._
 
 trait SGDModule{
+  type Features = Vector[Double]
+  type Target = Double
+  type Example = (Target, Features)
+  type Weights = Vector[Double]
+  type Gradient = Vector[Double]
+  type TotalPenalty = Double
+  type ActualPenalty = Vector[Double]
+  type NumExamples = Long
+  type RegularizationParameter = Double
 
-  type SGDFeatures = Vector[Double]
-  type SGDWeights = Vector[Double]
-  type SGDExample = (Double, SGDFeatures)
-  type SGDStep = (SGDWeights, Long)
-  type LearningRate = Long => Double
+  type LearningRateFunction = NumExamples => Double
+  type PenaltyFunction = (Weights, TotalPenalty, ActualPenalty) => (Weights, ActualPenalty)
+  type GradientFunction = (Weights, Example) => Gradient
 
-  type UpdateFunction = (SGDStep, SGDExample, LearningRate) => SGDStep
-  type GradientFunction = (Vector[Double], SGDExample) => Vector[Double]
-  type PredictFunction = SGDWeights => SGDFeatures => Double
+  object sgd{
+    def example(y: Double, x: Seq[Double]): Example = (y, DenseVector((1.0 +: x) : _*))
 
-  def SGDExample(y: Double, x: Seq[Double]): SGDExample = (y, DenseVector((1.0 +: x) : _*))
-  def SGDWeights(w: Seq[Double]): SGDWeights = DenseVector((0.0 +: w) : _*)
+    def weights(w: Seq[Double]): Weights = DenseVector((0.0 +: w) : _*)
 
-  def SGDUpdate(g: GradientFunction): UpdateFunction = (step, example, alpha) => {
-    val (w0, k) = step
-    val (y, x) = example
-    val a = alpha(k)
+    def update(gradient: GradientFunction)(learningRate: LearningRateFunction, penalize: PenaltyFunction, c: RegularizationParameter)(w0: Weights, u0: TotalPenalty, q0: ActualPenalty, k0: NumExamples)(ex: Example) = {
+      val eta = learningRate(k0)
+      val k1 = k0 + 1
+      val u1 = u0 + c * eta
+      val (y, x) = ex
 
-    val w1 = (w0 - (g(w0, (y, x)) * a), k + 1)
+      val (w1, q1) = penalize(w0 - (gradient(w0, (y, x)) * eta),
+                              u1,
+                              q0)
 
-    w1
+      (w1, u1, q1, k1)
+    }
+
+    def fit(f: (Weights, TotalPenalty, ActualPenalty, NumExamples) => Example => (Weights, TotalPenalty, ActualPenalty, NumExamples), init: Weights)(examples: Iterable[Example]) = {
+      examples.foldLeft((init, 0.0: TotalPenalty, SparseVector.zeros[Double](init.size) : ActualPenalty, 0L: NumExamples)){
+        case ((w, u, q, k), ex) =>
+          val z = f(w, u, q, k)(ex)
+          if(k % 1000 == 0) println("*** " + z)
+          z
+      }
+    }
   }
-
-  def SGDFit(update: UpdateFunction, init: SGDStep, alpha: LearningRate = _ => 0.01)(examples: Iterable[SGDExample]): SGDStep =
-    examples.foldLeft(init)((w0, ex) => update(w0, ex, alpha))
 
   object glm{
-    trait GLMOpt{
-      def apply(init: SGDStep, alpha: LearningRate = _ => 0.01) =
-        SGDFit(update, init, alpha) _
-
-      val gradient: GradientFunction = { case (w, (y, x)) => x * (predict(w)(x) - y) }
-
-      val update = SGDUpdate(gradient)
-
-      val predict: PredictFunction
-    }
-
-    object gaussian extends GLMOpt {
-      val predict: PredictFunction = w => x => w dot x
-    }
-
-    object bernoulli extends GLMOpt{
-      val exp = breeze.generic.UFunc(math.exp _)
-
-      def logisticFunction(x: Vector[Double], w: Vector[Double]) =
-        1.0 / (1.0 + exp(- w dot x))
-
-      val predict: PredictFunction = w => x => logisticFunction(x, w)
-    }
-
+    val gaussian = sgd.update{ case (w, (y, x)) => x * ((w dot x) - y) } _
+    val bernoulli = sgd.update{ case (w, (y, x)) =>
+                                x * (logistic(w dot x) - y)
+                              } _
+    def logistic(z: Double) = 1.0 / (1.0 + math.exp(- z))
   }
+
+  object learnrate{
+    def constant(c: Double): LearningRateFunction = _ => c
+  }
+
+  object penalty{
+    val zero: PenaltyFunction = (w, u, q) => (w, q)
+
+    // cumulative l1 regularization as described in http://aclweb.org/anthology-new/P/P09/P09-1054.pdf
+    val cumulative: PenaltyFunction = (w, u, q) => {
+      val w1 = w.copy
+      val q1 = q.copy
+      w1.activeKeysIterator.toList.foreach{ i =>
+        val z = w(i)
+
+        if(w1(i) gt 0.0){
+          w1(i) = 0.0 max (w1(i) - (u + q1(i)))
+        }else if(w1(i) lt 0.0){
+          w1(i) = 0.0 min (w1(i) + (u - q1(i)))
+        }
+        q1(i) = q1(i) + w1(i) - z
+      }
+
+      (w1, q1)
+    }
+  }
+
 
 }
 
@@ -85,11 +106,15 @@ object sgd extends SGDModule
 // set.seed(0);n <- 10000; x1 <- runif(n); x2 <- runif(n); e <- rnorm(n); y <- 10 * x1 + 2 * x2 + 10*e - 30; write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
 
 // set.seed(0);n<-10000;y <- as.integer(runif(n) < 0.1); x1 <- ifelse(y == 1, rnorm(n) + 1, rnorm(n)); x2 <- ifelse(y == 1, 2*rnorm(n) + 3, rnorm(n)); write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
+// glm.gaussian(learnrate.constant(0.1), penalty.zero, 0)(sgd.weights(Seq(0,0,0)),0,sgd.weights(Seq(0,0,0)),0)(sgd.example(1.8,Seq(0,1,1)))
 
 /*
 import breeze.linalg._
 import scalaton.aggregate.sgd._
-val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => SGDExample(p(0),p.drop(1) :+ util.Random.nextDouble))
-glm.gaussian((SGDWeights(Seq(0,0,0)), 0L),alpha = _ => 0.01)(examples)
-glm.bernoulli(alpha =  0.01)(examples)
+
+val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
+sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.1), sgd.weights(Seq(0,0,0)))(examples)
+println("\n\n\n")
+sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.zero, 0.000000001), sgd.weights(Seq(0,0,0)))(examples)
+
 */
