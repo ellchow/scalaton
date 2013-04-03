@@ -57,9 +57,7 @@ trait SGDModule{
     def fit(f: (Weights, TotalPenalty, ActualPenalty, NumExamples) => Example => (Weights, TotalPenalty, ActualPenalty, NumExamples), init: Weights)(examples: Iterable[Example]) = {
       examples.foldLeft((init, 0.0: TotalPenalty, SparseVector.zeros[Double](init.size) : ActualPenalty, 0L: NumExamples)){
         case ((w, u, q, k), ex) =>
-          val z = f(w, u, q, k)(ex)
-          if(k % 1000 == 0) println("*** " + z)
-          z
+          f(w, u, q, k)(ex)
       }
     }
   }
@@ -113,7 +111,7 @@ import breeze.linalg._
 import scalaton.aggregate.sgd._
 
 val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
-sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.1), sgd.weights(Seq(0,0,0)))(examples)
+sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.01), sgd.weights(Seq(0,0,0)))(examples)
 println("\n\n\n")
 sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.zero, 0.000000001), sgd.weights(Seq(0,0,0)))(examples)
 
