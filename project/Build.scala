@@ -41,9 +41,10 @@ object Resolvers {
   val scalaTools = "scala tools" at "http://scala-tools.org/repo-releases"
   val typesafe = "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
   val nictaAvro = "nicta's avro" at "http://nicta.github.com/scoobi/releases"
+  val cloudera = "cloudera" at "https://repository.cloudera.com/content/repositories/releases/"
   val localm2 = "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
 
-  val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, scalaTools, typesafe, nictaAvro, localm2)
+  val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, cloudera, scalaTools, typesafe, nictaAvro, localm2)
 }
 
 object Dependencies {

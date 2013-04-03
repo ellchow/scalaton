@@ -57,6 +57,27 @@ trait SamplingFunctions {
 
     dl parallelDo limitFun
   }
+
+  def partitionAtRandom[A : Manifest : WireFormat](dl: DList[A], n: Int, seed: Int = 0): DList[A] = {
+    require(n > 0, "number of partitions must be > 0")
+
+    def addRandomFun = new DoFn[A, ((Int, Int), A)] {
+      val rand1 = new util.Random(seed)
+      val rand2 = new util.Random(seed + 1)
+
+      def setup() {}
+
+      def process(input: A, emitter: Emitter[((Int, Int), A)]) {
+        emitter.emit(((rand1 nextInt n, rand2 nextInt), input))
+      }
+
+      def cleanup(emitter: Emitter[((Int, Int), A)]) {}
+
+    }
+
+    (dl parallelDo addRandomFun).groupByKeyWith(grouping.secondarySort[Int,Int]).mapFlatten(_._2)
+  }
+
 }
 
 object sampling extends SamplingFunctions
