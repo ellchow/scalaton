@@ -49,6 +49,12 @@ trait ImplicitConversions{
     def partitionAtRandom(n: Int, seed: Int = 0) = sampling.partitionAtRandom(dl, n, seed)
 
     def limit(n: Int = 0) = sampling.limit(dl, n)
+
+    def parallelFold[B : Manifest : WireFormat](init: B)(f: (B, A) => B) =
+      helpers.parallelFold(dl, init)(f)
+
+    def parallelFoldMonoid[B : Manifest : WireFormat : Monoid](f: (B, A) => B) =
+      helpers.parallelFoldMonoid(dl)(f)
   }
 
 
