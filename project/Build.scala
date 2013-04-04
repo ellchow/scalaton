@@ -42,9 +42,10 @@ object Resolvers {
   val typesafe = "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
   val nictaAvro = "nicta's avro" at "http://nicta.github.com/scoobi/releases"
   val cloudera = "cloudera" at "https://repository.cloudera.com/content/repositories/releases/"
+  val radlab = "radlab repo" at "http://scads.knowsql.org/nexus/content/groups/public/"
   val localm2 = "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
 
-  val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, cloudera, scalaTools, typesafe, nictaAvro, localm2)
+  val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, cloudera, scalaTools, typesafe, nictaAvro, radlab, localm2)
 }
 
 object Dependencies {
@@ -52,7 +53,6 @@ object Dependencies {
   val scoobi = "com.nicta" %% "scoobi" % "0.7.0-cdh4-SNAPSHOT"
   val spire = "org.spire-math" %% "spire" % "0.3.0"
   val breezemath = "org.scalanlp" %% "breeze-math" % "0.3-SNAPSHOT"
-  // val breezelearn = "org.scalanlp" %% "breeze-learn" % "0.3-SNAPSHOT"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0-M8"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
@@ -60,6 +60,7 @@ object Dependencies {
   val specs2 = "org.specs2" %% "specs2" % "1.12.3" % "test"
   val apacheCommonsIo = "org.apache.commons" % "commons-io" % "1.3.2"
   val clHashMap = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.3.2"
+  val berkAvro = "edu.berkeley.cs" %% "avro-plugin" % "2.1.4-SNAPSHOT"
 }
 
 object ProjectBuild extends Build{
@@ -84,7 +85,7 @@ object ProjectBuild extends Build{
 
   val dooDeps = Seq(
     scalaz7, specs2,
-    scoobi
+    scoobi, berkAvro
   )
 
   val compilerOptions = Seq(
@@ -94,6 +95,11 @@ object ProjectBuild extends Build{
     "-language:higherKinds",
     "-language:implicitConversions"
   )
+
+  scalacOptions <++= update map { report =>
+    val pluginClasspath = report matching configurationFilter(Configurations.CompilerPlugin.name)
+    pluginClasspath.map("-Xplugin:" + _.getAbsolutePath).toSeq
+  }
 
   val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
 
@@ -135,7 +141,10 @@ object ProjectBuild extends Build{
       resolvers := allResolvers,
       libraryDependencies ++= dooDeps,
       scalacOptions := compilerOptions,
-      publishTo := publishLoc)
+      publishTo := publishLoc,
+      // seq(sbtavro.SbtAvro.avroSettings : _*),
+      addCompilerPlugin("edu.berkeley.cs" %% "avro-plugin" % "2.1.4-SNAPSHOT" % "plugin")
+    )
   ) dependsOn (utilProject, aggregateProject, zedProject)
 
 }
