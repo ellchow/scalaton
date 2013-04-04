@@ -41,57 +41,59 @@ trait HdfsFunctions{
   def write(out: FSDataOutputStream, s: String): Unit =
     out.write(s.getBytes("UTF8"))
 
-  def write(path: String, s: String, overwrite: Boolean = false, conf: HConf = new HConf): Validation[Throwable,Unit] =
-    fromTryCatch{
-      val fs = connect(conf)
-      val p = out(fs, path, overwrite)
+  def exists(path: String, conf: HConf = new HConf) = {
+    val fs = connect(conf)
+    val z = fs.exists(new HPath(path))
+    fs.close
+    z
+  }
 
-      (fs, p)
-    }.fold(
-      _.failure[Unit],
-      { case (fs, p) =>
-        val w = fromTryCatch(write(p, s))
-        fs.close
-        p.close
-        w
-      }
-    )
+  def isComplete(path: String, conf: HConf = new HConf) = {
+    val fs = connect(conf)
+    val z = fs.exists(new HPath(path, "_SUCCESS"))
+    fs.close
+    z
+  }
 
-  def getLines(path: String, conf: HConf = new HConf): Validation[Throwable, Iterable[String]] = fromTryCatch{
+  def write(path: String, s: String, overwrite: Boolean = false, conf: HConf = new HConf): Unit = {
+    val fs = connect(conf)
+    val p = out(fs, path, overwrite)
+
+    write(p, s)
+
+    fs.close
+    p.close
+  }
+
+  def getLines(path: String, conf: HConf = new HConf): Iterable[String] = {
     val fs = connect(conf)
     val p = in(fs, path)
 
-    (fs, p)
-  }.fold(
-    _.failure[Iterable[String]],
-    { case (fs, p) =>
-      fromTryCatch{
-        val r = reader.inputStream(p)
+    val r = reader.inputStream(p)
 
-        new Iterable[String]{
-        def iterator = new Iterator[String]{
-          private var nextLine = r readLine
+    new Iterable[String]{
+      def iterator = new Iterator[String]{
+        private var nextLine = r readLine
 
-          def hasNext = {
-            val test = nextLine != null
-            if(!test){
-              p.close
-              fs.close
-            }
-            test
+        def hasNext = {
+          val test = nextLine != null
+          if(!test){
+            p.close
+            fs.close
           }
-
-          def next = {
-            val out = nextLine
-
-            nextLine = r readLine
-
-            out
-          }
+          test
         }
-      }}
+
+        def next = {
+          val out = nextLine
+
+          nextLine = r readLine
+
+          out
+        }
+      }
     }
-  )
+  }
 }
 
 object hdfs extends HdfsFunctions
