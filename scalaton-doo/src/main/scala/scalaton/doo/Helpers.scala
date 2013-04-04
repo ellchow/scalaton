@@ -47,7 +47,7 @@ trait HelperFunctions {
   def parallelFoldMonoid[A : Manifest : WireFormat, B : Manifest : WireFormat : Monoid](dl: DList[A])(f: (B, A) => B) =
     parallelFold(dl, implicitly[Monoid[B]].zero)(f)
 
-  def cacheDList[A](dl: DList[A], path: String, overwrite: Boolean = false)(implicit amanifest: Manifest[A], awireformat: WireFormat[A], aavroschema: AvroSchema[A],sconf: ScoobiConfiguration): DList[A] = {
+  def cacheDList[A : Manifest : WireFormat : AvroSchema](dl: DList[A], path: String, overwrite: Boolean = false)(implicit sconf: ScoobiConfiguration): DList[A] = {
     val logger = LoggerFactory.getLogger("cacheDList")
 
     if(overwrite || !hdfs.exists(path) || !hdfs.isComplete(path)){
