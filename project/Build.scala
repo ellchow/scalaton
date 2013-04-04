@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings {
   val buildOrganization = "scalaton"
   val buildVersion      = "0.1-SNAPSHOT"
-  val buildScalaVersion = "2.10.0"
+  val buildScalaVersion = "2.10.1"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := buildOrganization,
@@ -49,15 +49,14 @@ object Resolvers {
 
 object Dependencies {
   val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0-M9"
-  val scoobi = "com.nicta" %% "scoobi" % "0.7.0-cdh4-SNAPSHOT"
+  val scoobi = "com.nicta" %% "scoobi" % "0.7.0-cdh3-SNAPSHOT"
   val spire = "org.spire-math" %% "spire" % "0.3.0"
   val breezemath = "org.scalanlp" %% "breeze-math" % "0.3-SNAPSHOT"
-  // val breezelearn = "org.scalanlp" %% "breeze-learn" % "0.3-SNAPSHOT"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0-M8"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
   val scalatime = "com.github.nscala-time" %% "nscala-time" % "0.2.0"
-  val specs2 = "org.specs2" %% "specs2" % "1.12.3" % "test"
+  val specs2 = "org.specs2" %% "specs2" % "1.14" % "test"
   val apacheCommonsIo = "org.apache.commons" % "commons-io" % "1.3.2"
   val clHashMap = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.3.2"
 }

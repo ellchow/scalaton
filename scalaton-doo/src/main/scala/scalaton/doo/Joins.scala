@@ -27,6 +27,7 @@ import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 import scalaton.aggregate.hashed.mutable.sketch._
 
 import com.nicta.scoobi.Scoobi._
+import com.nicta.scoobi.core.Reduction
 
 import scalaz.{DList => _, _}
 import Scalaz._
@@ -43,7 +44,9 @@ trait JoinFunctions{
     implicit val cbsWF = AnythingFmt[CompressedBitSet @@ SBF]
 
     val leftKeys = helpers.parallelFoldMonoid[A, CompressedBitSet @@ SBF](left map ( _._1 ))((acc, x) => insert(acc, x))
-      .materialise.map{ _ reduce(_ |+| _)}
+      .reduce(new Reduction[CompressedBitSet @@ SBF]{
+        val reduce = (x: CompressedBitSet @@ SBF, y: CompressedBitSet @@ SBF) => x |+| y
+      })
 
     val rightFiltered = leftKeys.join(right).mapFlatten{ case (ks, (a, br)) =>
                                                          contains(ks, a) ? (a, br).some | none[(A,BR)] }
@@ -73,7 +76,9 @@ trait JoinFunctions{
     val rightKeysSample = right.map(_._1) sample sampleRate
 
     val rightDist = helpers.parallelFoldMonoid[A, SketchTable[Long] @@ CMS](rightKeysSample)((acc, x) => update(acc, x, weight))
-      .materialise.map{ _ reduce(_ |+| _)}
+      .reduce(new Reduction[SketchTable[Long] @@ CMS]{
+        val reduce = (x: SketchTable[Long] @@ CMS, y: SketchTable[Long] @@ CMS) => x |+| y
+      })
 
     val rightScattered = rightDist.join(right) map { case (dist, (a, br)) =>
                                                      val n = reps(lookup(dist, a))
