@@ -24,9 +24,9 @@ import Scalaz._
 
 trait HelperFunctions {
 
-  def accumulate[A : Manifest : WireFormat, B : Manifest : WireFormat : Monoid](dl: DList[A])(f: (B, A) => B): DObject[B] = {
-    def accumulateFun = new DoFn[A, B] {
-      private var b = implicitly[Monoid[B]].zero
+  def parallelFold[A : Manifest : WireFormat, B : Manifest : WireFormat](dl: DList[A], init: B)(f: (B, A) => B) = {
+    def foldFun = new DoFn[A, B]{
+      private var b = init
 
       def setup() {}
 
@@ -37,10 +37,15 @@ trait HelperFunctions {
       def cleanup(emitter: Emitter[B]) {
         emitter emit b
       }
+
     }
 
-    (dl parallelDo accumulateFun).materialise map (_ reduce (_ |+| _))
+    dl parallelDo foldFun
   }
+
+  def parallelFoldMonoid[A : Manifest : WireFormat, B : Manifest : WireFormat : Monoid](dl: DList[A])(f: (B, A) => B) =
+    parallelFold(dl, implicitly[Monoid[B]].zero)(f)
+
 }
 
 
