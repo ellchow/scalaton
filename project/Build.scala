@@ -52,7 +52,6 @@ object Dependencies {
   val scoobi = "com.nicta" %% "scoobi" % "0.7.0-cdh4-SNAPSHOT"
   val spire = "org.spire-math" %% "spire" % "0.3.0"
   val breezemath = "org.scalanlp" %% "breeze-math" % "0.3-SNAPSHOT"
-  // val breezelearn = "org.scalanlp" %% "breeze-learn" % "0.3-SNAPSHOT"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0-M8"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"

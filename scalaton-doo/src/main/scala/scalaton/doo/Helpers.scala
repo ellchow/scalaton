@@ -21,6 +21,7 @@ import com.nicta.scoobi.Scoobi._
 import scalaz.{DList => _, _}
 import Scalaz._
 
+import org.slf4j.LoggerFactory
 
 trait HelperFunctions {
 
@@ -45,6 +46,18 @@ trait HelperFunctions {
 
   def parallelFoldMonoid[A : Manifest : WireFormat, B : Manifest : WireFormat : Monoid](dl: DList[A])(f: (B, A) => B) =
     parallelFold(dl, implicitly[Monoid[B]].zero)(f)
+
+  def cacheDList[A](dl: DList[A], path: String, overwrite: Boolean = false)(implicit amanifest: Manifest[A], awireformat: WireFormat[A], aavroschema: AvroSchema[A],sconf: ScoobiConfiguration): DList[A] = {
+    val logger = LoggerFactory.getLogger("cacheDList")
+
+    if(overwrite || !hdfs.exists(path) || !hdfs.isComplete(path)){
+      logger.info("computing and writing output to $path%s")
+      persist(toAvroFile(dl, path,overwrite=true))
+    }else{
+      logger.info("reading cached result from $path%s")
+      fromAvroFile(path)
+    }
+  }
 
 }
 
