@@ -42,7 +42,8 @@ trait JoinFunctions{
     implicit val sbfinst = sbf.sparse[A, Bits32, SBF](sbf.optimalParameters(expectedNumKeys, 0.1))
     implicit val cbsWF = AnythingFmt[CompressedBitSet @@ SBF]
 
-    val leftKeys = helpers.accumulate[A, CompressedBitSet @@ SBF](left map ( _._1 ))((acc, x) => insert(acc, x))
+    val leftKeys = helpers.parallelFoldMonoid[A, CompressedBitSet @@ SBF](left map ( _._1 ))((acc, x) => insert(acc, x))
+      .materialise.map{ _ reduce(_ |+| _)}
 
     val rightFiltered = leftKeys.join(right).mapFlatten{ case (ks, (a, br)) =>
                                                          contains(ks, a) ? (a, br).some | none[(A,BR)] }
@@ -71,7 +72,8 @@ trait JoinFunctions{
 
     val rightKeysSample = right.map(_._1) sample sampleRate
 
-    val rightDist = helpers.accumulate[A, SketchTable[Long] @@ CMS](rightKeysSample)((acc, x) => update(acc, x, weight))
+    val rightDist = helpers.parallelFoldMonoid[A, SketchTable[Long] @@ CMS](rightKeysSample)((acc, x) => update(acc, x, weight))
+      .materialise.map{ _ reduce(_ |+| _)}
 
     val rightScattered = rightDist.join(right) map { case (dist, (a, br)) =>
                                                      val n = reps(lookup(dist, a))
