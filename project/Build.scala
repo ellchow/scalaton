@@ -134,7 +134,8 @@ object ProjectBuild extends Build{
       resolvers := allResolvers,
       libraryDependencies ++= dooDeps,
       scalacOptions := compilerOptions,
-      publishTo := publishLoc)
+      publishTo := publishLoc
+    )
   ) dependsOn (utilProject, aggregateProject, zedProject)
 
 }
