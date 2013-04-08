@@ -21,6 +21,7 @@ import scalaton.util.hashing._
 import scalaton.util.hashing32._
 
 import com.nicta.scoobi.Scoobi._
+import com.nicta.scoobi.core.Reduction
 
 import scalaz.{DList => _, _}
 import Scalaz._
@@ -70,6 +71,9 @@ trait ImplicitConversions{
   implicit def enrichDList2WithHashable32GroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](x: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]) =
     DList2WithHashable32GroupingA(x)
 
+
+
+  implicit def funToReduction[A](f: (A, A) => A) = Reduction(f)
 
 }
 
