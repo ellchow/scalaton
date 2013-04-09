@@ -17,6 +17,7 @@
 package scalaton.doo
 
 import com.nicta.scoobi.Scoobi._
+import com.nicta.scoobi.core.Reduction
 
 import scalaz.{DList => _, _}
 import Scalaz._
@@ -45,6 +46,25 @@ trait HelperFunctions {
   def parallelFoldMonoid[A : Manifest : WireFormat, B : Manifest : WireFormat : Monoid](dl: DList[A])(f: (B, A) => B) =
     parallelFold(dl, implicitly[Monoid[B]].zero)(f)
 
+  def groupByKeyThenCombine[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat : Semigroup](dl: DList[(A,B)]): DList[(A, B)] = {
+
+    def combineFun = new DoFn[(A, B), (A, B)]{
+      private var combined = Map[A,B]()
+
+      def setup() {}
+
+      def process(ab: (A, B), emitter: Emitter[(A, B)]){
+        combined = combined |+| Map(ab)
+      }
+
+      def cleanup(emitter: Emitter[(A, B)]) {
+        combined foreach emitter.emit
+      }
+
+    }
+
+    (dl parallelDo combineFun).groupByKey.map{ case (a, bs) => (a, bs reduce (_ |+| _))}
+  }
 }
 
 object helpers extends HelperFunctions
