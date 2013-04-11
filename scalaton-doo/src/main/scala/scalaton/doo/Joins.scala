@@ -16,8 +16,6 @@
 
 package scalaton.doo
 
-import scala.language.reflectiveCalls
-
 import scalaton.util._
 import scalaton.util.hashing._
 
