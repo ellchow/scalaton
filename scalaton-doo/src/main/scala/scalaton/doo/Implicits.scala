@@ -21,6 +21,7 @@ import scalaton.util.hashing._
 import scalaton.util.hashing32._
 
 import com.nicta.scoobi.Scoobi._
+import com.nicta.scoobi.core.Reduction
 
 import scalaz.{DList => _, _}
 import Scalaz._
@@ -43,6 +44,10 @@ trait ImplicitConversions{
     def bloomJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], expectedNumKeys: Int) = joins.bloomJoin(dl, right, expectedNumKeys)
 
     def skewedJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], sampleRate: Double, maxPerReducer: Int) = joins.skewedJoin(dl, right, sampleRate, maxPerReducer)
+  }
+
+  private[doo] case class DList2WithHashable32GroupingASemigroupB[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat : Semigroup](val dl: DList[(A,B)]){
+    def groupByKeyThenCombine = helpers.groupByKeyThenCombine(dl)
   }
 
   private[doo] case class DListRich[A : Manifest : WireFormat](val dl: DList[A]){
@@ -70,6 +75,9 @@ trait ImplicitConversions{
   implicit def enrichDList2WithHashable32GroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](x: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]) =
     DList2WithHashable32GroupingA(x)
 
+
+
+  implicit def funToReduction[A](f: (A, A) => A) = Reduction(f)
 
 }
 
