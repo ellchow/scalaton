@@ -124,24 +124,3 @@ trait SGDModule{
 
 object stochgraddesc extends SGDModule
 
-// set.seed(0);n <- 10000; x1 <- runif(n); x2 <- runif(n); e <- rnorm(n); y <- 10 * x1 + 2 * x2 + 10*e - 30; write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
-
-// set.seed(0);n<-10000;y <- as.integer(runif(n) < 0.1); x1 <- ifelse(y == 1, rnorm(n) + 1, rnorm(n)); x2 <- ifelse(y == 1, 2*rnorm(n) + 3, rnorm(n)); write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
-// glm.gaussian(learnrate.constant(0.1), penalty.zero, 0)(sgd.weights(Seq(0,0,0)),0,sgd.weights(Seq(0,0,0)),0)(sgd.example(1.8,Seq(0,1,1)))
-
-/*
-import scalaton.aggregate.stochgraddesc._
-
-val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
-
-sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.01), sgd.weights(Seq(0,0,0)))(examples)
-println("\n\n\n")
-sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.zero, 0), sgd.weights(Seq(0,0,0)))(examples)
-
-
-import scalaton.aggregate.stochgraddesc._
-val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),(p.drop(1) :+ util.Random.nextDouble).zipWithIndex.map(_.swap), 3))
-sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.zero, 0), sgd.weights(Seq(0 -> 0.0, 2 -> 0.0),3))(examples)
-
-sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.01), sgd.weights(Seq(0 -> 0, 1 -> 0, 2 -> 0),3))(examples)
-*/
