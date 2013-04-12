@@ -46,6 +46,10 @@ trait ImplicitConversions{
     def skewedJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], sampleRate: Double, maxPerReducer: Int) = joins.skewedJoin(dl, right, sampleRate, maxPerReducer)
   }
 
+  private[doo] case class DList2WithHashable32GroupingASemigroupB[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat : Semigroup](val dl: DList[(A,B)]){
+    def groupByKeyThenCombine = helpers.groupByKeyThenCombine(dl)
+  }
+
   private[doo] case class DListRich[A : Manifest : WireFormat](val dl: DList[A]){
     def partitionAtRandom(n: Int, seed: Int = 0) = sampling.partitionAtRandom(dl, n, seed)
 
