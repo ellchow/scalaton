@@ -48,7 +48,7 @@ trait SGDModule{
       val (indices, values) = x.foldLeft((SVector[Int](0),SVector[Double](1.0))){
         case ((i, v), (ii, vv)) => (i :+ (ii + 1), v :+ vv)
       }
-      val z = new SparseVector(indices.toArray, values.toArray, indices.size)
+      val z = new SparseVector(indices.toArray, values.toArray, size + 1)
       (y, z)
     }
 
