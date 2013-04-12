@@ -87,9 +87,8 @@ trait SGDModule{
   object glm{
     val gaussian = sgd.update{ case (w, (y, x)) => x * ((w dot x) - y) } _
 
-    val bernoulli = sgd.update{ case (w, (y, x)) =>
-                                x * (logistic(w dot x) - y)
-                              } _
+    val bernoulli = sgd.update{ case (w, (y, x)) => x * (logistic(w dot x) - y) } _
+
     def logistic(z: Double) = 1.0 / (1.0 + math.exp(- z))
   }
 
