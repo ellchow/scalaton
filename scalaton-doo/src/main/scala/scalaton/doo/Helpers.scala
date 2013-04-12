@@ -47,23 +47,9 @@ trait HelperFunctions {
     parallelFold(dl, implicitly[Monoid[B]].zero)(f)
 
   def groupByKeyThenCombine[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat : Semigroup](dl: DList[(A,B)]): DList[(A, B)] = {
+    val partial = parallelFold(dl, Map[A,B]())( (combined, ab) => combined |+| Map(ab) ) mapFlatten ( _ toSeq )
 
-    def combineFun = new DoFn[(A, B), (A, B)]{
-      private var combined = Map[A,B]()
-
-      def setup() {}
-
-      def process(ab: (A, B), emitter: Emitter[(A, B)]){
-        combined = combined |+| Map(ab)
-      }
-
-      def cleanup(emitter: Emitter[(A, B)]) {
-        combined foreach emitter.emit
-      }
-
-    }
-
-    (dl parallelDo combineFun).groupByKey.map{ case (a, bs) => (a, bs reduce (_ |+| _))}
+    partial.groupByKey map { case (a, bs) => (a, bs reduce (_ |+| _))}
   }
 }
 
