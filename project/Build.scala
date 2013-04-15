@@ -138,6 +138,15 @@ object ProjectBuild extends Build{
     )
   ) dependsOn (utilProject, aggregateProject, zedProject)
 
+
+  lazy val root = Project(
+    "everything",
+    file("."),
+    settings = buildSettings ++ Seq(
+      scalacOptions := compilerOptions,
+      publishTo := publishLoc)
+  ) aggregate(utilProject, zedProject, aggregateProject, dooProject)
+
 }
 
 
