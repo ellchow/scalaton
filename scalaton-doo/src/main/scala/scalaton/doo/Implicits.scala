@@ -16,6 +16,10 @@
 
 package scalaton.doo
 
+import com.github.nscala_time.time.Imports._
+
+import java.io._
+
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
@@ -26,11 +30,9 @@ import com.nicta.scoobi.core.Reduction
 import scalaz.{DList => _, _}
 import Scalaz._
 
-trait EnrichedDList[A]{
-  val dl: DList[A]
-}
-
 trait ImplicitConversions{
+
+  // DLists
 
   private[doo] case class DList1WithHashable32[A : Manifest : WireFormat](val dl: DList[A])(implicit hashable: Hashable[A,Bits32]){
     def sample(rate: Double, seed: Int = 0) = sampling.sample(dl, rate, seed)
@@ -75,7 +77,48 @@ trait ImplicitConversions{
   implicit def enrichDList2WithHashable32GroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](x: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]) =
     DList2WithHashable32GroupingA(x)
 
+  // Wireformats
 
+  implicit val jodaLocalDateWF = AnythingFmt[LocalDate]
+
+  implicit def validationFmt[E : WireFormat, A : WireFormat] = new ValidationWireFormat[E, A]
+  class ValidationWireFormat[E, A](implicit wt1: WireFormat[E], wt2: WireFormat[A]) extends WireFormat[Validation[E, A]] {
+    def toWire(x: Validation[E, A], out: DataOutput) = x match {
+      case Failure(x) => { out.writeBoolean(true); wt1.toWire(x, out) }
+      case Success(x) => { out.writeBoolean(false); wt2.toWire(x, out) }
+    }
+
+    def fromWire(in: DataInput): Validation[E, A] = {
+      val isFailure = in.readBoolean()
+      if (isFailure) {
+        val x: E = wt1.fromWire(in)
+        Failure(x)
+      } else {
+        val x: A = wt2.fromWire(in)
+        Success(x)
+      }
+    }
+
+    override def toString = "Validation["+wt1+","+wt2+"]"
+  }
+
+  implicit def nonEmptyListWF[A : WireFormat] = new NonEmptyListWireFormat[A]
+  class NonEmptyListWireFormat[A](implicit wt: WireFormat[A]) extends WireFormat[NonEmptyList[A]]{
+    def toWire(x: NonEmptyList[A], out: DataOutput) = {
+      wt.toWire(x head, out)
+      implicitly[WireFormat[List[A]]].toWire(x tail, out)
+    }
+
+    def fromWire(in: DataInput): NonEmptyList[A] = {
+      val h = wt.fromWire(in)
+      val t = implicitly[WireFormat[List[A]]].fromWire(in)
+      NonEmptyList(h, t : _*)
+    }
+
+    override def toString = "NonEmptyList["+wt+"]"
+  }
+
+  // Reductions
 
   implicit def funToReduction[A](f: (A, A) => A) = Reduction(f)
 
