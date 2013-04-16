@@ -37,25 +37,31 @@ trait ImplicitConversions{
 
   // DLists
 
-  private[doo] case class DList1WithHashable32[A : Manifest : WireFormat](val dl: DList[A])(implicit hashable: Hashable[A,Bits32]){
+  class DList1WithHashable32[A : Manifest : WireFormat](val dl: DList[A])(implicit hashable: Hashable[A,Bits32]){
     def sample(rate: Double, seed: Int = 0) = sampling.sample(dl, rate, seed)
   }
+  implicit def enrichDListWithHashable32[A : Manifest : WireFormat](x: DList[A])(implicit hashable: Hashable[A,Bits32]) =
+    new DList1WithHashable32(x)
 
-  private[doo] case class DList2WithHashable32A[A : Manifest : WireFormat, B : Manifest : WireFormat](val dl: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]){
+  class DList2WithHashable32A[A : Manifest : WireFormat, B : Manifest : WireFormat](val dl: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]){
     def sampleBy(rate: Double, seed: Int = 0) = sampling.sampleBy(dl, rate, seed)
   }
 
-  private[doo] case class DList2WithHashable32GroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]){
+  class DList2WithHashable32GroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]){
     def bloomJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], expectedNumKeys: Int) = joins.bloomJoin(dl, right, expectedNumKeys)
 
     def skewedJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], sampleRate: Double, maxPerReducer: Int) = joins.skewedJoin(dl, right, sampleRate, maxPerReducer)
   }
+  implicit def enrichDList2WithHashable32A[A : Manifest : WireFormat, B : Manifest : WireFormat](x: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]) =
+    new DList2WithHashable32A(x)
 
-  private[doo] case class DList2WithHashable32GroupingASemigroupB[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat : Semigroup](val dl: DList[(A,B)]){
+  class DList2WithHashable32GroupingASemigroupB[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat : Semigroup](val dl: DList[(A,B)]){
     def groupByKeyThenCombine = helpers.groupByKeyThenCombine(dl)
   }
+  implicit def enrichDList2WithHashable32GroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](x: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]) =
+    new DList2WithHashable32GroupingA(x)
 
-  private[doo] case class DListRich[A : Manifest : WireFormat](val dl: DList[A]){
+  class DListRich[A : Manifest : WireFormat](val dl: DList[A]){
     def partitionAtRandom(n: Int, seed: Int = 0) = sampling.partitionAtRandom(dl, n, seed)
 
     def limit(n: Int = 0) = sampling.limit(dl, n)
@@ -66,19 +72,9 @@ trait ImplicitConversions{
     def parallelFoldMonoid[B : Manifest : WireFormat : Monoid](f: (B, A) => B) =
       helpers.parallelFoldMonoid(dl)(f)
   }
-
-
   implicit def enrichDList[A : Manifest : WireFormat](x: DList[A]) =
-    DListRich(x)
+    new DListRich(x)
 
-  implicit def enrichDListWithHashable32[A : Manifest : WireFormat](x: DList[A])(implicit hashable: Hashable[A,Bits32]) =
-    DList1WithHashable32(x)
-
-  implicit def enrichDList2WithHashable32A[A : Manifest : WireFormat, B : Manifest : WireFormat](x: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]) =
-    DList2WithHashable32A(x)
-
-  implicit def enrichDList2WithHashable32GroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](x: DList[(A,B)])(implicit hashable: Hashable[A,Bits32]) =
-    DList2WithHashable32GroupingA(x)
 
   // SeqSchema for anything with WireFormat
 
