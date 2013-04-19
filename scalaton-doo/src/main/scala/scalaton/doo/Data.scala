@@ -70,7 +70,8 @@ trait DataFunctions{
 
     val out = dl.map{x => unpackToString(x, header)}
 
-    hdfs.write(path + "/" + headerPath, new ProductFlatIterator(header).mkString(sep) + "\n")
+
+    hdfs.write(path + "/" + headerPath, new ProductFlatIterator(header).mkString(sep) + "\n", overwrite)
 
     toTextFile(out, path + "/" + dataPath, overwrite)
   }
