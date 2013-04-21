@@ -48,10 +48,8 @@ trait ImplicitConversions{
       helpers.parallelFoldMonoid(dl)(f)
 
     def sample(rate: Double, seed: Int = 0)(implicit hashable: Hashable[A,Bits32]) = sampling.sample(dl, rate, seed)
-  }
 
-  implicit class DList2Rich[A : Manifest : WireFormat, B : Manifest : WireFormat](val dl: DList[(A,B)]){
-    def sampleBy(rate: Double, seed: Int = 0)(implicit hashable: Hashable[A,Bits32]) = sampling.sampleBy(dl, rate, seed)
+    def sampleBy[B : Manifest : WireFormat](f: A => B)(rate: Double, seed: Int = 0)(implicit hashable: Hashable[B,Bits32]) = sampling.sampleBy(dl.map(a => (f(a), a)), rate, seed)
   }
 
   implicit class DList2RichGroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){
