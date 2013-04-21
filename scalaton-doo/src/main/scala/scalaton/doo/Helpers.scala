@@ -46,7 +46,7 @@ trait HelperFunctions {
   def parallelFoldMonoid[A : Manifest : WireFormat, B : Manifest : WireFormat : Monoid](dl: DList[A])(f: (B, A) => B) =
     parallelFold(dl, implicitly[Monoid[B]].zero)(f)
 
-  def groupByKeyThenCombine[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat : Semigroup](dl: DList[(A,B)]): DList[(A, B)] = {
+  def groupByKeyThenCombine[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](dl: DList[(A,B)])(implicit semigroupB: Semigroup[B]): DList[(A, B)] = {
     val partial = parallelFold(dl, Map[A,B]())( (combined, ab) => combined |+| Map(ab) ) mapFlatten ( _ toSeq )
 
     partial.groupByKey map { case (a, bs) => (a, bs reduce (_ |+| _))}

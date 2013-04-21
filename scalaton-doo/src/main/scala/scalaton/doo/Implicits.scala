@@ -51,8 +51,8 @@ trait ImplicitConversions{
     def skewedJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], sampleRate: Double, maxPerReducer: Int) = joins.skewedJoin(dl, right, sampleRate, maxPerReducer)
   }
 
-  implicit class DList2WithHashable32GroupingASemigroupB[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat : Semigroup](val dl: DList[(A,B)]){
-    def groupByKeyThenCombine = helpers.groupByKeyThenCombine(dl)
+  implicit class DList2WithHashable32GroupingASemigroupB[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){
+    def groupByKeyThenCombine(implicit semigroupB: Semigroup[B]) = helpers.groupByKeyThenCombine(dl)
   }
 
   implicit class DListRich[A : Manifest : WireFormat](val dl: DList[A]){
@@ -133,6 +133,9 @@ trait ImplicitConversions{
 
     override def toString = "NonEmptyList["+wt+"]"
   }
+
+  implicit def scalazTaggedTypeWireFormat[T : WireFormat, U]: WireFormat[scalaz.@@[T,U]] =
+    implicitly[WireFormat[T]].asInstanceOf[WireFormat[scalaz.@@[T,U]]]
 
   // Reductions
 

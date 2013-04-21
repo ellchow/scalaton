@@ -24,7 +24,7 @@ import scalaton.aggregate.hashed.mutable.bloomfilter._
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 import scalaton.aggregate.hashed.mutable.sketch._
 
-import com.nicta.scoobi.Scoobi._
+import com.nicta.scoobi.Scoobi.{taggedTypeWireFormat => _, _}
 import com.nicta.scoobi.core.Reduction
 
 import scalaz.{DList => _, _}
@@ -39,7 +39,7 @@ trait JoinFunctions{
 
     trait SBF
     implicit val sbfinst = sbf.sparse[A, Bits32, SBF](sbf.optimalParameters(expectedNumKeys, 0.1))
-    implicit val cbsWF = AnythingFmt[CompressedBitSet @@ SBF]
+    implicit val cbsWF = AnythingFmt[CompressedBitSet]
 
     val leftKeys = helpers.parallelFoldMonoid[A, CompressedBitSet @@ SBF](left map ( _._1 ))((acc, x) => insert(acc, x))
       .reduce(Reduction(_ |+| _))
@@ -65,7 +65,7 @@ trait JoinFunctions{
 
     trait CMS
     implicit val cmsinst = countminsketch[A, Bits32, CMS](countminsketch.optimalParameters(0.05, 0.05))
-    implicit val tblWF = AnythingFmt[SketchTable[Long] @@ CMS]
+    // implicit val tblWF = AnythingFmt[SketchTable[Long] @@ CMS]
 
     val weight = (1 / sampleRate) toLong
 
