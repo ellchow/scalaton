@@ -42,6 +42,7 @@ object Resolvers {
   val typesafe = "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
   val nictaAvro = "nicta's avro" at "http://nicta.github.com/scoobi/releases"
   val cloudera = "cloudera" at "https://repository.cloudera.com/content/repositories/releases/"
+
   val localm2 = "local m2 repo" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
 
   val allResolvers = Seq(sonatypeReleases, sonatypeSnapshots, cloudera, scalaTools, typesafe, nictaAvro, localm2)
@@ -94,7 +95,8 @@ object ProjectBuild extends Build{
     "-language:implicitConversions"
   )
 
-  val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
+  // val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
+  val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/git/mvn-repos/snapshots" )))
 
   lazy val utilProject = Project (
     "util",
