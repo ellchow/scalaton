@@ -24,7 +24,7 @@ import scalaton.aggregate.hashed.mutable.bloomfilter._
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 import scalaton.aggregate.hashed.mutable.sketch._
 
-import com.nicta.scoobi.Scoobi.{taggedTypeWireFormat => _, _}
+import com.nicta.scoobi.Scoobi._
 import com.nicta.scoobi.core.Reduction
 
 import scalaz.{DList => _, _}

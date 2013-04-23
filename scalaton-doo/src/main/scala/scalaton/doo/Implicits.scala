@@ -127,9 +127,6 @@ trait ImplicitConversions{
     override def toString = "NonEmptyList["+wt+"]"
   }
 
-  implicit def scalazTaggedTypeWireFormat[T : WireFormat, U]: WireFormat[scalaz.@@[T,U]] =
-    implicitly[WireFormat[T]].asInstanceOf[WireFormat[scalaz.@@[T,U]]]
-
   // Reductions
 
   implicit def funToReduction[A](f: (A, A) => A) = Reduction(f)
