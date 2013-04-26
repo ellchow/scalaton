@@ -62,5 +62,4 @@ class HyperLogLogSpec extends Specification{
     }
   }
 
-
 }
