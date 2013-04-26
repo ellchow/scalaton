@@ -60,32 +60,6 @@ trait ImplicitConversions{
     def groupByKeyThenCombine(implicit semigroupB: Semigroup[B]) = helpers.groupByKeyThenCombine(dl)
   }
 
-  // SeqSchema for anything with WireFormat
-
-  implicit def anyWFSeqSchema[A : WireFormat]: SeqSchema[A] = new SeqSchema[A] {
-    type SeqType = BytesWritable
-
-    val b = mutable.ArrayBuffer[Byte]().mapResult(_.toArray)
-
-    def toWritable(a: A) = {
-      val bs = new ByteArrayOutputStream
-
-      implicitly[WireFormat[A]].toWire(a, new DataOutputStream(bs))
-
-      new BytesWritable(bs.toByteArray)
-    }
-
-    def fromWritable(xs: BytesWritable): A = {
-      b.clear()
-      xs.getBytes.take(xs.getLength).foreach { x => b += x }
-      val bArr = b.result()
-
-      val bais = new ByteArrayInputStream(bArr)
-      implicitly[WireFormat[A]].fromWire(new DataInputStream(bais))
-    }
-    val mf: Manifest[SeqType] = implicitly
-  }
-
   // Wireformats
 
   implicit val jodaLocalDateWF = AnythingFmt[LocalDate]

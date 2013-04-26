@@ -26,17 +26,6 @@ import Scalaz._
 import org.slf4j.LoggerFactory
 
 trait DataFunctions{
-  def cacheDList[A : Manifest : WireFormat : AvroSchema](dl: DList[A], path: String, overwrite: Boolean = false)(implicit sconf: ScoobiConfiguration): DList[A] = {
-    val logger = LoggerFactory.getLogger("cacheDList")
-
-    if(overwrite || !hdfs.exists(path) || !hdfs.isComplete(path)){
-      logger.info("computing and writing output to $path%s")
-      persist(toAvroFile(dl, path,overwrite=true))
-    }else{
-      logger.info("reading cached result from $path%s")
-      fromAvroFile(path)
-    }
-  }
 
   def toDelimitedTextFileWithHeader[A <: Product : Manifest](dl: DList[A], header: Product,
                                                              path: String, sep: String = "\t",
