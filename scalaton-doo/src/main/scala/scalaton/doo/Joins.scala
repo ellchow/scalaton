@@ -38,8 +38,8 @@ trait JoinFunctions{
     implicit hashableA: Hashable[A, Bits32]) = {
 
     trait SBF
-    implicit val sbfinst = sbf.sparse[A, Bits32, SBF](sbf.optimalParameters(expectedNumKeys, 0.1))
-    implicit val cbsWF = AnythingFmt[CompressedBitSet]
+    implicit lazy val sbfinst = sbf.sparse[A, Bits32, SBF](sbf.optimalParameters(expectedNumKeys, 0.1))
+    implicit val cbsWF = AnythingFmt[CompressedBitSet @@ SBF]
 
     val leftKeys = helpers.parallelFoldMonoid[A, CompressedBitSet @@ SBF](left map ( _._1 ))((acc, x) => insert(acc, x))
       .reduce(Reduction(_ |+| _))
@@ -64,8 +64,7 @@ trait JoinFunctions{
     def reps(x: Long): Int = ((x / maxPerReducer) max 1).toInt min 100
 
     trait CMS
-    implicit val cmsinst = countminsketch[A, Bits32, CMS](countminsketch.optimalParameters(0.05, 0.05))
-    // implicit val tblWF = AnythingFmt[SketchTable[Long] @@ CMS]
+    implicit lazy val cmsinst = countminsketch[A, Bits32, CMS](countminsketch.optimalParameters(0.05, 0.05))
 
     val weight = (1 / sampleRate) toLong
 
