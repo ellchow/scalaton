@@ -22,7 +22,9 @@ import Scalaz._
 import scalaton.util.hashing._
 import scalaton.zed.monoids._
 
-/** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9 **/
+/** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9
+  * NOTE: hashing32 does not work well! use hashing64 or hashing128
+  * **/
 trait HyperLogLogT[A,H1,D]
 extends HashedCollection[A,H1,Bits32]
 with InsertsElement[A,H1,Bits32,D]
