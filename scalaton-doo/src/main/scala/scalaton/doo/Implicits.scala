@@ -30,13 +30,16 @@ import scalaton.util.hashing32._
 import com.nicta.scoobi.Scoobi._
 import com.nicta.scoobi.core.{Reduction, ScoobiConfiguration}
 
+import com.typesafe.scalalogging.slf4j._
+
 import scalaz.{DList => _, _}
 import Scalaz._
 
 trait ImplicitConversions{
 
   // DLists
-  implicit class DListRich[A : Manifest : WireFormat](val dl: DList[A]){
+  implicit class DListRich[A : Manifest : WireFormat](val dl: DList[A]) extends Logging{
+
     def partitionAtRandom(n: Int, seed: Int = 0) = sampling.partitionAtRandom(dl, n, seed)
 
     def limit(n: Int = 0) = sampling.limit(dl, n)
@@ -52,23 +55,24 @@ trait ImplicitConversions{
     def sampleBy[B : Manifest : WireFormat](f: A => B)(rate: Double, seed: Int = 0)(implicit hashable: Hashable[B,Bits32]) = sampling.sampleBy(dl.map(a => (f(a), a)), rate, seed)
 
     def cache(path: String, overwrite: Boolean = false, conf: HConf = new HConf)(implicit sc: ScoobiConfiguration): DList[A] = {
-      if(overwrite){
-        println(s"deleting $path")
+      if(overwrite) {
+        logger info s"deleting cached data from $path"
+
         hdfs.delete(path, true, conf)
       }
 
       if(hdfs.exists(path, conf)){
+        logger info s"loading cached data from $path"
+
         valueFromSequenceFile[A](path)
       }else{
+        logger info s"caching data to $path"
+
         persist(dl.map(x => (1, x)).toSequenceFile(path, overwrite))
 
         dl
       }
-
     }
-
-
-
 
   }
 

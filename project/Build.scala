@@ -60,6 +60,8 @@ object Dependencies {
   val specs2 = "org.specs2" %% "specs2" % "1.14" % "test"
   val apacheCommonsIo = "org.apache.commons" % "commons-io" % "1.3.2"
   val clHashMap = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.3.2"
+  val logback = "ch.qos.logback" % "logback-classic" % "1.0.9"
+  val scalalogging = "com.typesafe" %% "scalalogging-slf4j" % "1.0.1"
 }
 
 object ProjectBuild extends Build{
@@ -84,7 +86,7 @@ object ProjectBuild extends Build{
 
   val dooDeps = Seq(
     scalaz7, specs2,
-    scoobi
+    scoobi, scalalogging
   )
 
   val compilerOptions = Seq(
