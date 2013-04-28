@@ -86,7 +86,7 @@ object ProjectBuild extends Build{
 
   val dooDeps = Seq(
     scalaz7, specs2,
-    scoobi, scalalogging
+    scoobi, scalalogging, logback
   )
 
   val compilerOptions = Seq(
