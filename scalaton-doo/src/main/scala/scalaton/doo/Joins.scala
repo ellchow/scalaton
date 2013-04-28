@@ -77,7 +77,7 @@ trait JoinFunctions{
                                                      val n = reps(lookup(dist, a))
 
                                                      ((a, util.Random.nextInt(n)), br)
-                                                }
+                                                   }
 
     val leftSprayed = rightDist.join(left) mapFlatten { case (dist, (a, bl)) =>
                                                             val n = reps(lookup(dist, a))

@@ -41,6 +41,15 @@ trait HdfsFunctions{
   def write(out: FSDataOutputStream, s: String): Unit =
     out.write(s.getBytes("UTF8"))
 
+
+  def delete(path: String, recursive: Boolean, conf: HConf = new HConf): Boolean = {
+    val fs = connect(conf)
+    val z = fs.delete(new HPath(path), recursive)
+    fs.close
+    z
+  }
+
+
   def exists(path: String, conf: HConf = new HConf) = {
     val fs = connect(conf)
     val z = fs.exists(new HPath(path))

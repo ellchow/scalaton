@@ -35,6 +35,27 @@ trait MonoidInstances{
 
   implicit val maxByteMonoid: Monoid[Byte @@ Tags.Max] = Monoid instance ((l, r) => Tag(l max r), Tags.Max(Byte.MinValue))
   implicit val minByteMonoid: Monoid[Byte @@ Tags.Min] = Monoid instance ((l, r) => Tag(l min r), Tags.Min(Byte.MaxValue))
+  /*
+  implicit def mapTaggedMonoid[K, V, T](implicit semigroupVT: Semigroup[V @@ T]): Monoid[Map[K, V] @@ T] = new Monoid[Map[K, V] @@ T] {
+    def zero: Map[K, V] @@ T  = Tag(Map[K, V]())
+
+    def append(m1: Map[K, V] @@ T, m2: => Map[K, V] @@ T) = {
+      // Eagerly consume m2 as the value is used more than once.
+      val m2Instance: Map[K, V] = m2
+      // semigroups are not commutative, so order may matter.
+      val (from, to, semigroup) = {
+        if (m1.size > m2Instance.size) (m2Instance, m1, (a: V, b: V) => semigroupVT.append(Tag(a), Tag(b)))
+        else (m1, m2Instance, ((a: V, b: V) => semigroupVT.append(Tag(a), Tag(b))).flip)
+      }
+
+      val z = from.foldLeft(to) {
+        case (to, (k, v)) => to + (k -> to.get(k).map(semigroup(_, v)).getOrElse(v))
+      }
+
+      Tag(z)
+    }
+  }
+  */
 }
 
 object monoids

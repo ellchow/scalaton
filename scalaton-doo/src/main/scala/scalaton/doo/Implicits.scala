@@ -21,14 +21,14 @@ import collection.mutable
 import com.github.nscala_time.time.Imports._
 
 import java.io._
-import org.apache.hadoop.io.BytesWritable
+import org.apache.hadoop.conf.{Configuration => HConf}
 
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
 
 import com.nicta.scoobi.Scoobi._
-import com.nicta.scoobi.core.Reduction
+import com.nicta.scoobi.core.{Reduction, ScoobiConfiguration}
 
 import scalaz.{DList => _, _}
 import Scalaz._
@@ -50,6 +50,26 @@ trait ImplicitConversions{
     def sample(rate: Double, seed: Int = 0)(implicit hashable: Hashable[A,Bits32]) = sampling.sample(dl, rate, seed)
 
     def sampleBy[B : Manifest : WireFormat](f: A => B)(rate: Double, seed: Int = 0)(implicit hashable: Hashable[B,Bits32]) = sampling.sampleBy(dl.map(a => (f(a), a)), rate, seed)
+
+    def cache(path: String, overwrite: Boolean = false, conf: HConf = new HConf)(implicit sc: ScoobiConfiguration): DList[A] = {
+      if(overwrite){
+        println(s"deleting $path")
+        hdfs.delete(path, true, conf)
+      }
+
+      if(hdfs.exists(path, conf)){
+        valueFromSequenceFile[A](path)
+      }else{
+        persist(dl.map(x => (1, x)).toSequenceFile(path, overwrite))
+
+        dl
+      }
+
+    }
+
+
+
+
   }
 
   implicit class DList2RichGroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){
