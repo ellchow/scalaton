@@ -68,7 +68,7 @@ trait ImplicitConversions{
       }else{
         logger info s"caching data to $path"
 
-        dl.map(x => (0: Byte, x)).toSequenceFile(path, overwrite).map(_._2)
+        dl.map(x => (0: Byte, x)).toSequenceFile(path, overwrite, checkpoint = true).map(_._2)
       }
     }
 

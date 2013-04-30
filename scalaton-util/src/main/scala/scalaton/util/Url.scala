@@ -52,7 +52,7 @@ trait UrlModule{
                      encodeIfPossible(v, encoding) }.mkString("&")
 
   def parseQueryString(queryString: String, encoding: Option[String] = "UTF-8".some): ValidationNel[String,Map[String,String]] =
-    str.splitByChar(queryString, '&').foldLeft(Map[String,String]().successNel[String]){ (acc, next) =>
+    str.splitByChar(queryString, '&').view.filter(_.nonEmpty).foldLeft(Map[String,String]().successNel[String]){ (acc, next) =>
       val pair = str.splitByChar(next, '=')
       if (pair.size == 2 && pair(0).nonEmpty){
         for{
@@ -72,9 +72,13 @@ trait UrlModule{
     (new URL(protocol, host, port, file + qry)) toString
   }
 
-  def unapply(u: String) = {
+  def apply(x: (String, String, Map[String,String], Int, String)): String = apply(x._1, x._2, x._3, x._4, x._5)
+
+
+  def parse(u: String) = {
     val url = catching(classOf[Exception]).opt(new URL(u))
 
+    // (host, path, queryParams, port, protocol)
     url.some(u => ((u.getHost, u.getPath, parseQueryString(u.getQuery ?? ""), u.getPort, u.getProtocol)).success[String])
       .none("failed to parse url \"%s\"".format(u).failure[(String, String, ValidationNel[String,Map[String,String]], Int, String)])
   }
