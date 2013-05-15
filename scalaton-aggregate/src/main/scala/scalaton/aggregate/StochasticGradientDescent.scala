@@ -89,6 +89,8 @@ trait SGDModule{
 
     val bernoulli = sgd.update{ case (w, (y, x)) => x * (logistic(w dot x) - y) } _
 
+    val poisson = sgd.update{ case (w, (y, x)) => x * math.exp(w dot x) - y } _
+
     def logistic(z: Double) = 1.0 / (1.0 + math.exp(- z))
   }
 
