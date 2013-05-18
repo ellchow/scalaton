@@ -44,8 +44,8 @@ trait SGDModule{
   object sgd{
     def example(y: Double, x: Seq[Double]): Example = (y, DenseVector((1.0 +: x) : _*))
 
-    def example(y: Double, x: Seq[(Int,Double)], size: Int): Example = {
-      val (indices, values) = x.foldLeft((SVector[Int](0),SVector[Double](1.0))){
+    def example(y: Double, x: Seq[(Int,Double)], size: Int, unsorted: Boolean): Example = {
+      val (indices, values) = (unsorted ? x.sorted | x).foldLeft((SVector[Int](0),SVector[Double](1.0))){
         case ((i, v), (ii, vv)) => (i :+ (ii + 1), v :+ vv)
       }
       val z = new SparseVector(indices.toArray, values.toArray, size + 1)
@@ -54,8 +54,8 @@ trait SGDModule{
 
     def weights(w: Seq[Double]): Weights = DenseVector((0.0 +: w) : _*)
 
-    def weights(w: Seq[(Int,Double)], size: Int): Weights = {
-      val (indices, values) = w.foldLeft((SVector[Int](0),SVector[Double](0.0))){
+    def weights(w: Seq[(Int,Double)], size: Int, unsorted: Boolean): Weights = {
+      val (indices, values) = (unsorted ? w.sorted | w).foldLeft((SVector[Int](0),SVector[Double](0.0))){
         case ((i, v), (ii, vv)) => (i :+ (ii + 1), v :+ vv)
       }
 
