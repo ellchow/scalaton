@@ -79,8 +79,8 @@ with HashingTags{
       HashCode(MurmurHash32(seed toInt)(a))
   }
 
-  implicit def seqHashable32[A](implicit h: Hashable[A, Int]) = new Hashable[Seq[A], Int]{
-    def digest(a: Seq[A], seed: Long): Int @@ HashCode =
+  implicit def seqHashable32[A,F[A] <: Seq[A]](implicit h: Hashable[A, Int]) = new Hashable[F[A], Int]{
+    def digest(a: F[A], seed: Long): Int @@ HashCode =
       HashCode(a.foldLeft(1)((soFar, next) => combine32Hashes(soFar, h.digest(next, seed))))
 
   }
@@ -126,8 +126,8 @@ with HashingTags{
       HashCode(MurmurHash64(seed toInt)(a))
   }
 
-  implicit def seqHashable64[A](implicit h: Hashable[A, Long]) = new Hashable[Seq[A], Long]{
-    def digest(a: Seq[A], seed: Long): Long @@ HashCode =
+  implicit def seqHashable64[A,F[A] <: Seq[A]](implicit h: Hashable[A, Long]) = new Hashable[F[A], Long]{
+    def digest(a: F[A], seed: Long): Long @@ HashCode =
       HashCode(a.foldLeft(1L)((soFar, next) => combine64Hashes(soFar, h.digest(next, seed))))
 
   }
@@ -173,8 +173,8 @@ with HashingTags{
       HashCode(MurmurHash128(seed)(a))
   }
 
-  implicit def seqHashable128[A](implicit h: Hashable[A, (Long, Long)]) = new Hashable[Seq[A], (Long, Long)]{
-    def digest(a: Seq[A], seed: Long): (Long, Long) @@ HashCode =
+  implicit def seqHashable128[A,F[A] <: Seq[A]](implicit h: Hashable[A, (Long,Long)]) = new Hashable[F[A], (Long,Long)]{
+    def digest(a: F[A], seed: Long): (Long,Long) @@ HashCode =
       HashCode(a.foldLeft((1L,1L))((soFar, next) => combine128Hashes(soFar, h.digest(next, seed))))
 
   }
