@@ -78,6 +78,13 @@ with HashingTags{
     def digest(a: String, seed: Long): Int @@ HashCode =
       HashCode(MurmurHash32(seed toInt)(a))
   }
+
+  implicit def seqHashable32[A](implicit h: Hashable[A, Int]) = new Hashable[Seq[A], Int]{
+    def digest(a: Seq[A], seed: Long): Int @@ HashCode =
+      HashCode(a.foldLeft(1)((soFar, next) => combine32Hashes(soFar, h.digest(next, seed))))
+
+  }
+
 }
 
 trait Hashable64Instances
@@ -118,6 +125,13 @@ with HashingTags{
     def digest(a: String, seed: Long): Long @@ HashCode =
       HashCode(MurmurHash64(seed toInt)(a))
   }
+
+  implicit def seqHashable64[A](implicit h: Hashable[A, Long]) = new Hashable[Seq[A], Long]{
+    def digest(a: Seq[A], seed: Long): Long @@ HashCode =
+      HashCode(a.foldLeft(1L)((soFar, next) => combine64Hashes(soFar, h.digest(next, seed))))
+
+  }
+
 }
 
 trait Hashable128Instances
@@ -158,6 +172,13 @@ with HashingTags{
     def digest(a: String, seed: Long): (Long, Long) @@ HashCode =
       HashCode(MurmurHash128(seed)(a))
   }
+
+  implicit def seqHashable128[A](implicit h: Hashable[A, (Long, Long)]) = new Hashable[Seq[A], (Long, Long)]{
+    def digest(a: Seq[A], seed: Long): (Long, Long) @@ HashCode =
+      HashCode(a.foldLeft((1L,1L))((soFar, next) => combine128Hashes(soFar, h.digest(next, seed))))
+
+  }
+
 }
 
 
