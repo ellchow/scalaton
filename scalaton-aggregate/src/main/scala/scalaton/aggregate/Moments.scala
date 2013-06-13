@@ -28,10 +28,13 @@ trait MomentsModule{
     val delta = xb.mean - xa.mean
 
     val n = xa.n + xb.n
+
     val mean = {
       val (xsmall, xlarge) = ((xa.n lt xb.n) ? (xa, xb) | (xb, xa))
+
       val ratio = xsmall.n.toDouble / n
-      if(ratio lt stabilityRatio )
+
+      if(ratio lt stabilityRatio)
         xlarge.mean + (xsmall.mean - xlarge.mean) * ratio
       else
         (xa.n * xa.mean + xb.n * xb.mean) / n
@@ -51,7 +54,8 @@ trait MomentsModule{
 
     Moments(n, mean, m2, m3, m4)
   },
-    Moments(0,0,0,0,0))
+    Moments(0,0,0,0,0)
+  )
 
   object Moments{
     def apply(x: Double): Moments = Moments(1L, x, 0.0, 0.0, 0.0)

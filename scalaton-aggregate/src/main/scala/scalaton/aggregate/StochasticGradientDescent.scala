@@ -42,26 +42,20 @@ trait SGDModule{
   import sgdtypes._
 
   object sgd{
-    def example(y: Double, x: Seq[Double]): Example = (y, DenseVector((1.0 +: x) : _*))
-
-    def example(y: Double, x: Seq[(Int,Double)], size: Int, unsorted: Boolean): Example = {
-      val (indices, values) = (unsorted ? x.sorted | x).foldLeft((SVector[Int](0),SVector[Double](1.0))){
-        case ((i, v), (ii, vv)) => (i :+ (ii + 1), v :+ vv)
-      }
-      val z = new SparseVector(indices.toArray, values.toArray, size + 1)
-      (y, z)
-    }
-
     def weights(w: Seq[Double]): Weights = DenseVector((0.0 +: w) : _*)
 
     def weights(w: Seq[(Int,Double)], size: Int, unsorted: Boolean): Weights = {
-      val (indices, values) = (unsorted ? w.sorted | w).foldLeft((SVector[Int](0),SVector[Double](0.0))){
-        case ((i, v), (ii, vv)) => (i :+ (ii + 1), v :+ vv)
-      }
+      val (indices, values) = (unsorted ? w.sorted | w)
+        .foldLeft((SVector[Int](0), SVector[Double](0.0))){ case ((i, v), (ii, vv)) =>
+                                                            (i :+ (ii + 1), v :+ vv)
+                                                          }
 
-      val z = new SparseVector(indices.toArray, values.toArray, size + 1)
-      z
+      new SparseVector(indices.toArray, values.toArray, size + 1)
     }
+
+    def example(y: Double, x: Seq[Double]): Example = (y, DenseVector((1.0 +: x) : _*))
+
+    def example(y: Double, x: Seq[(Int,Double)], size: Int, unsorted: Boolean): Example = (y, weights(x, size, unsorted))
 
     def update(gradient: GradientFunction)(learningRate: LearningRateFunction, penalize: PenaltyFunction, c: RegularizationParameter)(w0: Weights, u0: TotalPenalty, q0: ActualPenalty, k0: NumExamples)(ex: Example) = {
       val eta = learningRate(k0)
@@ -78,8 +72,7 @@ trait SGDModule{
 
     def fit(f: (Weights, TotalPenalty, ActualPenalty, NumExamples) => Example => (Weights, TotalPenalty, ActualPenalty, NumExamples), init: Weights)(examples: Iterable[Example]) = {
       examples.foldLeft((init, 0.0: TotalPenalty, SparseVector.zeros[Double](init.size) : ActualPenalty, 0L: NumExamples)){
-        case ((w, u, q, k), ex) =>
-          f(w, u, q, k)(ex)
+        case ((w, u, q, k), ex) => f(w, u, q, k)(ex)
       }
     }
   }
@@ -108,19 +101,17 @@ trait SGDModule{
       w1.activeKeysIterator.toList.foreach{ i =>
         val z = w(i)
 
-        if(w1(i) gt 0.0){
+        if(w1(i) gt 0.0)
           w1(i) = 0.0 max (w1(i) - (u + q1(i)))
-        }else if(w1(i) lt 0.0){
+        else if(w1(i) lt 0.0)
           w1(i) = 0.0 min (w1(i) + (u - q1(i)))
-        }
+
         q1(i) = q1(i) + w1(i) - z
       }
 
       (w1, q1)
     }
   }
-
-
 }
 
 object stochgraddesc extends SGDModule

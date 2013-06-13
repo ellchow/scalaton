@@ -41,7 +41,7 @@ trait FeatureHashingModule{
   }
 
   def hashFeatures[A,H1](features: Iterable[A], min: Int = 0, max: Int = Int.MaxValue, seed: Long = 0L)
-                          (implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): Seq[(Int,Double)] =
+                        (implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): Seq[(Int,Double)] =
     features.map(f => hashFeature(f, min, max, seed)(h,hconv)).toSeq
 
   def ngrams[A](features: Seq[A], n: Int = 2) = {
