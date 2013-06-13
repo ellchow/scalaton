@@ -50,7 +50,7 @@ object Resolvers {
 
 object Dependencies {
   val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0"
-  val scoobi = "com.nicta" %% "scoobi" % "0.7.0-cdh3-SNAPSHOT"
+  val scoobi = "com.nicta" %% "scoobi" % "0.7.0-RC2-cdh3-SNAPSHOT"
   val breezemath = "org.scalanlp" %% "breeze-math" % "0.3"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
