@@ -117,3 +117,17 @@ trait SGDModule{
 
 object stochgraddesc extends SGDModule
 
+/*
+
+// in R
+// set.seed(0);n <- 10000; x1 <- runif(n); x2 <- runif(n); e <- rnorm(n); y <- 10 * x1 + 5 * x2 + 10*e - 30; write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
+
+import scalaton.aggregate.stochgraddesc._
+
+val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
+
+val z = sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.01), sgd.weights(Seq(0,0,0)))(examples)
+
+z._1
+
+*/
