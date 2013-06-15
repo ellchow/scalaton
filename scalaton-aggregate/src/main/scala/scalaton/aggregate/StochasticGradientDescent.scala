@@ -90,6 +90,9 @@ trait SGDModule{
 
   object learnrate{
     def constant(c: Double): LearningRateFunction = _ => c
+
+    def exponential(n0: Double, alpha: Double, N: Int): LearningRateFunction =
+      k => n0 * math.pow(alpha, -k / N)
   }
 
   object penalty{
@@ -126,8 +129,10 @@ import scalaton.aggregate.stochgraddesc._
 
 val examples = io.Source.fromFile("/home/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
 
-val z = sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.01), sgd.weights(Seq(0,0,0)))(examples)
+val z = sgd.fit(glm.gaussian(learnrate.exponential(0.1,0.8,40000), penalty.cumulative, 0.01), sgd.weights(Seq(0,0,0)))(examples ++ examples ++ examples)
+z._1
 
+val z = sgd.fit(glm.gaussian(learnrate.constant(0.01), penalty.cumulative, 0.01), sgd.weights(Seq(0,0,0)))(examples ++ examples)
 z._1
 
 */
