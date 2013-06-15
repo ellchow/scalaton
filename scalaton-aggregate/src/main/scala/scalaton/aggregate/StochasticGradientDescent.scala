@@ -36,7 +36,7 @@ trait SGDModule{
     type RegularizationParameter = Double
 
     type LearningRateFunction = NumExamples => Double
-    type PenaltyFunction = (Weights, TotalPenalty, ActualPenalty) => (Weights, ActualPenalty)
+    type PenaltyFunction = (Weights, Features, TotalPenalty, ActualPenalty) => (Weights, ActualPenalty)
     type GradientFunction = (Weights, Example) => Gradient
   }
   import sgdtypes._
@@ -64,6 +64,7 @@ trait SGDModule{
       val (y, x) = ex
 
       val (w1, q1) = penalize(w0 - (gradient(w0, (y, x)) * eta),
+                              x,
                               u1,
                               q0)
 
@@ -92,13 +93,13 @@ trait SGDModule{
   }
 
   object penalty{
-    val zero: PenaltyFunction = (w, u, q) => (w, q)
+    val zero: PenaltyFunction = (w, x, u, q) => (w, q)
 
     // cumulative l1 regularization as described in http://aclweb.org/anthology-new/P/P09/P09-1054.pdf
-    val cumulative: PenaltyFunction = (w, u, q) => {
+    val cumulative: PenaltyFunction = (w, x, u, q) => {
       val w1 = w.copy
       val q1 = q.copy
-      w1.activeKeysIterator.toList.foreach{ i =>
+      x.activeKeysIterator.toList.foreach{ i =>
         val z = w(i)
 
         if(w1(i) gt 0.0)
