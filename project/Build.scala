@@ -55,7 +55,7 @@ object Dependencies {
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
-  val scalatime = "com.github.nscala-time" %% "nscala-time" % "0.2.0"
+  val scalatime = "com.github.nscala-time" %% "nscala-time" % "0.4.0"
   val specs2 = "org.specs2" %% "specs2" % "1.14" % "test"
   val apacheCommonsIo = "org.apache.commons" % "commons-io" % "1.3.2"
   val clHashMap = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.3.2"
