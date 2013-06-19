@@ -58,7 +58,7 @@ trait SamplingFunctions {
     dl parallelDo limitFun
   }
 
-  def partitionAtRandom[A : Manifest : WireFormat](dl: DList[A], n: Int, seed: Int = 0): DList[A] = {
+  def partitionAtRandom[A : Manifest : WireFormat](dl: DList[A], n: Int, seed: Int = 0) = {
     require(n > 0, "number of partitions must be > 0")
 
     def addRandomFun = new DoFn[A, ((Int, Int), A)] {
@@ -75,7 +75,7 @@ trait SamplingFunctions {
 
     }
 
-    (dl parallelDo addRandomFun).groupByKeyWith(grouping.secondarySort[Int,Int]).mapFlatten(_._2)
+    (dl parallelDo addRandomFun).groupByKeyWith(grouping.secondarySort[Int,Int]) //.mapFlatten(_._2)
   }
 
 }
