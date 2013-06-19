@@ -55,21 +55,21 @@ trait ImplicitConversions{
     def sampleBy[B : Manifest : WireFormat](f: A => B)(rate: Double, seed: Int = 0)(implicit hashable: Hashable[B,Bits32]) = sampling.sampleBy(dl.map(a => (f(a), a)), rate, seed)
 
     def cache(path: String, overwrite: Boolean = false, conf: HConf = new HConf)(implicit sc: ScoobiConfiguration): DList[A] = {
-      if(overwrite) {
-        logger info s"deleting cached data from $path"
 
+      if(hdfs.exists(path, conf) && !hdfs.isComplete(path, conf)){
+        logger info s"deleting incomplete data in $path"
         hdfs.delete(path, true, conf)
       }
 
       if(hdfs.exists(path, conf)){
-        logger info s"loading cached data from $path"
-
-        valueFromSequenceFile[A](path)
-      }else{
+        if(overwrite)
+          logger info s"overwriting cached data from $path"
+        else
+          logger info s"loading cached data from $path"
+      }else
         logger info s"caching data to $path"
 
-        dl.map(x => (0: Byte, x)).toSequenceFile(path, overwrite, checkpoint = true).map(_._2)
-      }
+      dl.map(x => (0: Byte, x)).toSequenceFile(path, overwrite, checkpoint = true).map(_._2)
     }
 
   }
