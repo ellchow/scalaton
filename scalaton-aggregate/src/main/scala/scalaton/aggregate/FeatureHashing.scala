@@ -16,17 +16,13 @@
 
 package scalaton.aggregate
 
-import collection.immutable.{Vector => SVector}
 import scala.annotation.tailrec
 
 import scalaton.util._
 import scalaton.util.hashing._
 
-import breeze.linalg._
-
 import scalaz._
 import Scalaz._
-
 
 trait FeatureHashingModule{
 
@@ -46,13 +42,13 @@ trait FeatureHashingModule{
 
   def ngrams[A](features: Seq[A], n: Int = 2) = {
     @tailrec
-    def loop(xs: SVector[Seq[A]], remaining: Seq[A]): SVector[Seq[A]]  =
+    def loop(xs: Vector[Seq[A]], remaining: Seq[A]): Vector[Seq[A]]  =
       if(remaining.nonEmpty && remaining.size >= n)
         loop(xs :+ (remaining take n), remaining drop 1)
       else
         xs
 
-    loop(SVector[Seq[A]](), features)
+    loop(Vector[Seq[A]](), features)
   }
 
   // def combinations[A,B](aFeatures: List[A], bFeatures: List[B]) =

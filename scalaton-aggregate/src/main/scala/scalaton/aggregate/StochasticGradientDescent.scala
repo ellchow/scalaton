@@ -16,22 +16,23 @@
 
 package scalaton.aggregate
 
-import collection.immutable.{Vector => SVector}
-
-import breeze.linalg._
+import org.la4j.vector.{Vector => LAVector}
+import org.la4j.vector.sparse.CompressedVector
+import org.la4j.vector.dense.BasicVector
+import org.la4j.vector.functor.VectorProcedure
 
 import scalaz._
 import Scalaz._
 
 trait SGDModule{
   object sgdtypes{
-    type Features = Vector[Double]
+    type Features = LAVector
     type Target = Double
     type Example = (Target, Features)
-    type Weights = Vector[Double]
-    type Gradient = Vector[Double]
+    type Weights = LAVector
+    type Gradient = LAVector
     type TotalPenalty = Double
-    type ActualPenalty = Vector[Double]
+    type ActualPenalty = LAVector
     type NumExamples = Long
     type RegularizationParameter = Double
 
@@ -42,20 +43,21 @@ trait SGDModule{
   import sgdtypes._
 
   object sgd{
-    def weights(w: Seq[Double]): Weights = DenseVector((0.0 +: w) : _*)
+    def weights(w: Seq[Double]): Weights = new BasicVector((Seq(1.0) ++ w) toArray)
 
-    def weights(w: Seq[(Int,Double)], size: Int, unsorted: Boolean): Weights = {
-      val (indices, values) = (unsorted ? w.sorted | w)
-        .foldLeft((SVector[Int](0), SVector[Double](0.0))){ case ((i, v), (ii, vv)) =>
-                                                            (i :+ (ii + 1), v :+ vv)
-                                                          }
+    def weights(w: Seq[(Int,Double)], size: Int): Weights = {
+      val x = new CompressedVector(size + 1).safe
 
-      new SparseVector(indices.toArray, values.toArray, size + 1)
+      x.set(0, 1)
+
+      w foreach { case (k, v) => x.set(k + 1, v) }
+
+      x
     }
 
-    def example(y: Double, x: Seq[Double]): Example = (y, DenseVector((1.0 +: x) : _*))
+    def example(y: Double, x: Seq[Double]): Example = (y, weights(x))
 
-    def example(y: Double, x: Seq[(Int,Double)], size: Int, unsorted: Boolean): Example = (y, weights(x, size, unsorted))
+    def example(y: Double, x: Seq[(Int,Double)], size: Int): Example = (y, weights(x, size))
 
     def update(gradient: GradientFunction)(learningRate: LearningRateFunction, penalize: PenaltyFunction, c: RegularizationParameter)(w0: Weights, u0: TotalPenalty, q0: ActualPenalty, k0: NumExamples)(ex: Example) = {
       val eta = learningRate(k0)
@@ -63,7 +65,7 @@ trait SGDModule{
       val u1 = u0 + c * eta
       val (y, x) = ex
 
-      val (w1, q1) = penalize(w0 - (gradient(w0, (y, x)) * eta),
+      val (w1, q1) = penalize(w0 subtract (gradient(w0, (y, x)) multiply eta),
                               x,
                               u1,
                               q0)
@@ -72,18 +74,18 @@ trait SGDModule{
     }
 
     def fit(f: (Weights, TotalPenalty, ActualPenalty, NumExamples) => Example => (Weights, TotalPenalty, ActualPenalty, NumExamples), init: Weights)(examples: Iterable[Example]) = {
-      examples.foldLeft((init, 0.0: TotalPenalty, SparseVector.zeros[Double](init.size) : ActualPenalty, 0L: NumExamples)){
+      examples.foldLeft((init, 0.0: TotalPenalty, new CompressedVector(init.length) : ActualPenalty, 0L: NumExamples)){
         case ((w, u, q, k), ex) => f(w, u, q, k)(ex)
       }
     }
   }
 
   object glm{
-    val gaussian = sgd.update{ case (w, (y, x)) => x * ((w dot x) - y) } _
+    val gaussian = sgd.update{ case (w, (y, x)) => x multiply((w product x) - y) } _
 
-    val bernoulli = sgd.update{ case (w, (y, x)) => x * (logistic(w dot x) - y) } _
+    val bernoulli = sgd.update{ case (w, (y, x)) => x multiply (logistic(w product x) - y) } _
 
-    val poisson = sgd.update{ case (w, (y, x)) => x * math.exp(w dot x) - y } _
+    val poisson = sgd.update{ case (w, (y, x)) => x multiply (math.exp(w product x) - y) } _
 
     def logistic(z: Double) = 1.0 / (1.0 + math.exp(- z))
   }
@@ -98,20 +100,27 @@ trait SGDModule{
   object penalty{
     val zero: PenaltyFunction = (w, x, u, q) => (w, q)
 
-    // cumulative l1 regularization as described in http://aclweb.org/anthology-new/P/P09/P09-1054.pdf
+    /* cumulative l1 regularization as described in http://aclweb.org/anthology-new/P/P09/P09-1054.pdf */
     val cumulative: PenaltyFunction = (w, x, u, q) => {
-      val w1 = w.copy
-      val q1 = q.copy
-      x.activeKeysIterator.toList.foreach{ i =>
-        val z = w(i)
+      val w1 = w copy
+      val q1 = q copy
 
-        if(w1(i) gt 0.0)
-          w1(i) = 0.0 max (w1(i) - (u + q1(i)))
-        else if(w1(i) lt 0.0)
-          w1(i) = 0.0 min (w1(i) + (u - q1(i)))
+      val f = new VectorProcedure{
+        def apply(i: Int, value: Double){
+          val z = w.get(i)
 
-        q1(i) = q1(i) + w1(i) - z
+          if(value =/= 0.0){
+            if(w1.get(i) gt 0.0)
+              w1.set(i, 0.0 max (w1.get(i) - (u + q1.get(i))))
+            else
+              w1.set(i, 0.0 min (w1.get(i) + (u - q1.get(i))))
+
+            q1.set(i, q1.get(i) + w1.get(i) - z)
+          }
+        }
       }
+
+      x each f
 
       (w1, q1)
     }

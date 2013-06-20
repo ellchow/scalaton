@@ -50,8 +50,9 @@ object Resolvers {
 
 object Dependencies {
   val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0"
-  val scoobi = "com.nicta" %% "scoobi" % "0.7.0-RC2-cdh3-SNAPSHOT"
+  val scoobi = "com.nicta" %% "scoobi" % "0.7.0-RC2-cdh3"
   val breezemath = "org.scalanlp" %% "breeze-math" % "0.3"
+  val la4j = "org.la4j" % "la4j" % "0.4.0"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0"
   val javaewah = "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6"
   val opencsv = "net.sf.opencsv" % "opencsv" % "2.3"
@@ -75,7 +76,7 @@ object ProjectBuild extends Build{
 
   val aggregateDeps = Seq(
     scalaz7, specs2,
-    javaewah, breezemath
+    javaewah, la4j
   )
 
   val zedDeps = Seq(
