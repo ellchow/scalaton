@@ -102,8 +102,8 @@ trait SGDModule{
 
     /* cumulative l1 regularization as described in http://aclweb.org/anthology-new/P/P09/P09-1054.pdf */
     val cumulative: PenaltyFunction = (w, x, u, q) => {
-      val w1 = w copy
-      val q1 = q copy
+      val w1 = w // copy
+      val q1 = q // copy
 
       val f = new VectorProcedure{
         def apply(i: Int, value: Double){
