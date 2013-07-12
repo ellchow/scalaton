@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings {
   val buildOrganization = "scalaton"
   val buildVersion      = "0.1-SNAPSHOT"
-  val buildScalaVersion = "2.10.1"
+  val buildScalaVersion = "2.10.2"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := buildOrganization,
@@ -49,8 +49,8 @@ object Resolvers {
 }
 
 object Dependencies {
-  val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.0"
-  val scoobi = "com.nicta" %% "scoobi" % "0.7.0-RC2-cdh3"
+  val scalaz7 = "org.scalaz" %% "scalaz-core" % "7.0.1"
+  val scoobi = "com.nicta" %% "scoobi" % "0.7.1-cdh3"
   val breezemath = "org.scalanlp" %% "breeze-math" % "0.3"
   val la4j = "org.la4j" % "la4j" % "0.4.0"
   val scalaz7effect = "org.scalaz" %% "scalaz-effect" % "7.0.0"
