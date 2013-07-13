@@ -1,0 +1,28 @@
+h1. scalaton
+
+built on scala 2.10.2
+
+<pre>
+resolvers ++= Seq(
+  "scalaton snapshot repo"  at "http://ellchow.github.io/scalaton/snapshots",
+  "scalaton release repo"  at "http://ellchow.github.io/scalaton/releases")
+
+libraryDependencies ++= Seq(
+  "scalaton" %% "util" % "0.1-SNAPSHOT",
+  "scalaton" %% "aggregate" % "0.1-SNAPSHOT",
+  "scalaton" %% "doo" % "0.1-SNAPSHOT"
+)
+
+</pre>
+
+h2. util
+
+general utilities like Hashable typeclass, Enums, Url encoding/decoding
+
+h2. aggregate
+
+aggregation/approximate/streaming algorithms
+
+h2. doo
+
+helpers on top of scoobi (hadoop dsl)
