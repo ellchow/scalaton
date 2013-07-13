@@ -39,7 +39,6 @@ trait JoinFunctions{
 
     trait SBF
     implicit lazy val sbfinst = sbf.sparse[A, Bits32, SBF](sbf.optimalParameters(expectedNumKeys, 0.1))
-    implicit val cbsWF = AnythingFmt[CompressedBitSet @@ SBF]
 
     val leftKeys = helpers.parallelFoldMonoid[A, CompressedBitSet @@ SBF](left map ( _._1 ))((acc, x) => insert(acc, x))
       .reduce(Reduction(_ |+| _))
@@ -61,7 +60,7 @@ trait JoinFunctions{
       override def groupCompare(first: (A, Int), second: (A, Int)) = sortCompare(first, second)
     }
 
-    def reps(x: Long): Int = ((x / maxPerReducer) max 1).toInt min 100
+    def reps(x: Long): Int = ((x / maxPerReducer) max 1).toInt min 10
 
     trait CMS
     implicit lazy val cmsinst = countminsketch[A, Bits32, CMS](countminsketch.optimalParameters(0.05, 0.05))

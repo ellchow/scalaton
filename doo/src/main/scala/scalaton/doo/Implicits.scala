@@ -16,8 +16,6 @@
 
 package scalaton.doo
 
-import collection.mutable
-
 import com.github.nscala_time.time.Imports._
 
 import java.io._
@@ -26,6 +24,8 @@ import org.apache.hadoop.conf.{Configuration => HConf}
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
+
+import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 import com.nicta.scoobi.Scoobi._
 import com.nicta.scoobi.core.{Reduction, ScoobiConfiguration}
@@ -117,6 +117,9 @@ trait ImplicitConversions{
 
     override def toString = "NonEmptyList["+wt+"]"
   }
+
+
+  implicit val compressedBitSetWF = AnythingFmt[CompressedBitSet]
 
   // Reductions
 
