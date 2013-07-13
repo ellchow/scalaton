@@ -40,8 +40,6 @@ trait ImplicitConversions{
   // DLists
   implicit class DListRich[A : Manifest : WireFormat](val dl: DList[A]) extends Logging{
 
-    def partitionAtRandom(n: Int, seed: Int = 0) = sampling.partitionAtRandom(dl, n, seed)
-
     def limit(n: Int = 0) = sampling.limit(dl, n)
 
     def parallelFold[B : Manifest : WireFormat](init: B)(f: (B, A) => B) =
@@ -50,7 +48,7 @@ trait ImplicitConversions{
     def parallelFoldMonoid[B : Manifest : WireFormat : Monoid](f: (B, A) => B) =
       helpers.parallelFoldMonoid(dl)(f)
 
-    def sample(rate: Double, seed: Int = 0)(implicit hashable: Hashable[A,Bits32]) =
+    def sample(rate: Double, seed: Int = 0) =
       sampling.sample(dl, rate, seed)
 
     def sampleBy[B : Manifest : WireFormat](f: A => B)(rate: Double, seed: Int = 0)(implicit hashable: Hashable[B,Bits32]) =

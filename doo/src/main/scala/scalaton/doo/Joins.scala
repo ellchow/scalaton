@@ -75,6 +75,8 @@ trait JoinFunctions{
     val rightScattered = rightDist.join(right) map { case (dist, (a, br)) =>
                                                      val n = reps(lookup(dist, a))
 
+                                                     util.Random.setSeed(0)
+
                                                      ((a, util.Random.nextInt(n)), br)
                                                    }
 
