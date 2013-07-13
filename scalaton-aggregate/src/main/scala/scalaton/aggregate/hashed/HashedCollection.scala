@@ -63,12 +63,12 @@ trait DoubleHashModdedCollection[A,H1] extends HashModdedCollection[A,H1]{
 }
 
 
-trait HashedCollectionOperations[A,H1,H2,D]{
+trait HashedCollectionOperations[A,H1]{
   type H = Hashable[A,H1]
   type HC = HashCodeConverter[H1,Int]
 }
 
-trait InsertsElement[A,H1,H2,D] extends HashedCollectionOperations[A,H1,H2,D]{
+trait InsertsElement[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
   def insert(d: D, a: A)(implicit h: H, hconv: HC): D
 }
 
@@ -77,7 +77,7 @@ trait InsertsElementFunction{
     i.insert(d, a)
 }
 
-trait ChecksMembership[A,H1,H2,D] extends HashedCollectionOperations[A,H1,H2,D]{
+trait ChecksMembership[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
   def contains(d: D, a: A)(implicit h: H, hconv: HC): Boolean
 }
 
@@ -86,7 +86,7 @@ trait ChecksMembershipFunction{
     c.contains(d,a)
 }
 
-trait Sized[A,H1,H2,D] extends HashedCollectionOperations[A,H1,H2,D]{
+trait Sized[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
   def cardinality(d: D): Long
 }
 
@@ -94,7 +94,7 @@ trait SizedFunction{
   def cardinality[A,H1,H2,D](d: D)(implicit s: Sized[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): Long = s.cardinality(d)
 }
 
-trait UpdatesElementValue[A,H1,H2,D,V1] extends HashedCollectionOperations[A,H1,H2,D]{
+trait UpdatesElementValue[A,H1,H2,D,V1] extends HashedCollectionOperations[A,H1]{
   def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D
 }
 
@@ -103,7 +103,7 @@ trait UpdatesElementValueFunction{
     u.update(d,a,v1)
 }
 
-trait LooksUpElementValue[A,H1,H2,D,V2] extends HashedCollectionOperations[A,H1,H2,D]{
+trait LooksUpElementValue[A,H1,H2,D,V2] extends HashedCollectionOperations[A,H1]{
   def lookup(d: D, a: A)(implicit h: H, hconv: HC): V2
 }
 
