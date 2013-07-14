@@ -23,6 +23,8 @@ import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 import scala.util.{Random => SRandom}
 
 import org.specs2.mutable._
+import org.specs2.ScalaCheck
+import org.scalacheck._
 
 import scalaz._
 import Scalaz._
@@ -33,7 +35,7 @@ import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.bloomfilter.sbf
 import scalaton.aggregate.hashed.mutable.bloomfilter.{sbf => msbf}
 
-class StandardBloomFilterSpec extends Specification{
+class StandardBloomFilterSpec extends Specification with ScalaCheck{
   trait DSBF
   trait SSBF
 
@@ -44,55 +46,28 @@ class StandardBloomFilterSpec extends Specification{
 
     implicit val sbfinstance = sbf[String,Bits128,DSBF]((5,625), 0L)
 
-    "not contain anything" in {
-      SRandom.setSeed(0)
-
-      0 to 1000 foreach { i =>
-         contains(sbfinstance.zero,
-                  SRandom nextDouble() toString) must beFalse
-      }
-    }
-
-    "is only equal to another empty bloom filter" in {
-      val bfz = tagDense(BitSet.empty)
-      (sbfinstance.zero === bfz) must beTrue
-
-      0 to 1000 foreach { i =>
-        (sbfinstance.zero === singleton(tagDense(SRandom nextDouble() toString))) must beFalse
-      }
-    }
-
-    "be empty when added with another empty bloom filter" in {
-      ((sbfinstance.zero |+| sbfinstance.zero) === sbfinstance.zero) must beTrue
-    }
+    "not contain anything" ! prop { (a: String) => contains(sbfinstance.zero, a) must beFalse }
 
     "contain the item after adding it" in {
       contains(singleton(tagDense("a")), "a") must beTrue
     }
 
-    "be equal to the other bloom filter after add another" in {
-      ((sbfinstance.zero |+| singleton(tagDense("a"))) === singleton(tagDense("a"))) must beTrue
-    }
-
+    "not equal to a nonempty bloom filter" ! prop { (a: String) => (insert(sbfinstance.zero, a) === sbfinstance.zero) must beFalse}
   }
 
   "a nonempty bloom filter" should {
 
     def testTruePositives[D](sbfinst: StandardBloomFilterT[String,Bits128,D]) = {
-      SRandom.setSeed(0)
       implicit val sbfinstance = sbfinst
 
-      0 to 10 foreach { i =>
-        val items = 0 to 10 map { _ => SRandom nextDouble() toString }
-        val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
+      val items = 0 to 10 map { _ => SRandom nextDouble() toString }
+      val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
 
-        items foreach { i => contains(bf, i) must beTrue }
-      }
+      items foreach { i => contains(bf, i) must beTrue }
     }
 
     def testFPProb[D](sbfinst: StandardBloomFilterT[(String,String),Bits128,D],
                       numItems: Int, fpProb: Double) = {
-      SRandom.setSeed(0)
       implicit val sbfinstance = sbfinst
 
       val fps = (0 until 5000).view map { _ =>
