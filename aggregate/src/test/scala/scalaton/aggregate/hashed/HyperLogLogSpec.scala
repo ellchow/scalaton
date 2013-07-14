@@ -41,7 +41,7 @@ class HyperLogLogSpec extends Specification{
 
   "a hyper log log estimator" should {
 
-    def testErrorRate[D](hllinst: HyperLogLogT[String,Bits128,D]){
+    def testErrorRate[D](hllinst: HyperLogLogT[String,Bits128,D]) = {
       implicit val hllinstance = hllinst
 
 
@@ -56,9 +56,9 @@ class HyperLogLogSpec extends Specification{
     }
 
     "track cardinality with reasonable error rate" in {
-      Seq(7,8,9) foreach( m => testErrorRate(hll.dense[String,Bits128,DHYLL](m)) )
+      Seq(7,8,9) map ( m => testErrorRate(hll.dense[String,Bits128,DHYLL](m)) )
 
-      Seq(7,10,16) foreach( m => testErrorRate(hll.sparse[String,Bits128,SHYLL](m)) )
+      Seq(7,10,16) map ( m => testErrorRate(hll.sparse[String,Bits128,SHYLL](m)) )
     }
   }
 

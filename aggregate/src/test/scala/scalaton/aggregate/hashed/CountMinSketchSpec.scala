@@ -64,14 +64,16 @@ class CountMinSketchSpec extends Specification with ScalaCheck{
     }
 
     "should estimate within error bounds" in {
-      for{
+      val parameters = for{
         eps <- Seq(0.05, 0.01, 0.001)
         delta <- Seq(0.95, 0.999)
-      }{
+      } yield (eps, delta)
+
+      parameters flatMap { case (eps, delta) =>
         val params = countminsketch.optimalParameters(eps,delta)
         implicit val cmsinstance = countminsketch[String, Bits128, CMS](params, 0)
 
-        for(_ <- (0 to 10)){
+        for(_ <- (0 to 10)) yield {
           val items = (0 to 5000).view.map( _ => (math.sqrt(SRandom.nextInt(10000)).toInt.toString, (SRandom.nextInt(20) + 1).toLong))
 
           val trueCounts = items groupBy (_._1) map { case (k, vs) => (k, vs.map(_._2).sum) } toMap

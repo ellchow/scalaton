@@ -63,7 +63,7 @@ class StandardBloomFilterSpec extends Specification with ScalaCheck{
       val items = 0 to 10 map { _ => SRandom nextDouble() toString }
       val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
 
-      items foreach { i => contains(bf, i) must beTrue }
+      items map { i => contains(bf, i) must beTrue }
     }
 
     def testFPProb[D](sbfinst: StandardBloomFilterT[(String,String),Bits128,D],
@@ -87,7 +87,7 @@ class StandardBloomFilterSpec extends Specification with ScalaCheck{
       implicit val sbfinstance = sbfinst
       var bf = sbfinstance.zero
 
-      for(i <- 1 to 100){
+      for(i <- 1 to 100) yield {
         bf = insert(bf, scala.util.Random.nextDouble.toString)
 
         math.abs(cardinality(bf) - i) must beLessThan(math.max(math.round(1.05 * i), 1).toLong)
@@ -103,7 +103,7 @@ class StandardBloomFilterSpec extends Specification with ScalaCheck{
     }
 
     "should be below false-positive rate with high confidence" in {
-      Seq(0.1, 0.05, 0.01, 0.005) foreach{ fpProb =>
+      Seq(0.1, 0.05, 0.01, 0.005) map { fpProb =>
         val numItems = 20
         val params = sbf.optimalParameters(numItems, fpProb)
 
