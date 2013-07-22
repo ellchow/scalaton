@@ -85,7 +85,7 @@ trait DataFunctions{
       }.mkString(sep)
     }
 
-    hdfs.write(path + "/" + headerPath, header.mkString(sep) + "\n")
+    hdfs.write(path + "/" + headerPath, header.mkString(sep) + "\n", overwrite = overwrite)
 
     toTextFile(out, path + "/" + dataPath, overwrite)
   }
