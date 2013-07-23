@@ -49,6 +49,16 @@ trait HdfsFunctions{
     z
   }
 
+  def fileStatus(path: String, conf: HConf = new HConf) = {
+    val fs = connect(conf)
+    val z = fs.getFileStatus(new HPath(path))
+    fs.close
+    z
+  }
+
+  def isDirectory(path: String, conf: HConf = new HConf) = {
+    fileStatus(path, conf).isDir
+  }
 
   def exists(path: String, conf: HConf = new HConf) = {
     val fs = connect(conf)
