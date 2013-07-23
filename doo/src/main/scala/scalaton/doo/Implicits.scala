@@ -55,6 +55,9 @@ trait ImplicitConversions{
       sampling.sampleBy(dl.map(a => (f(a), a)), rate, seed)
 
     def checkpointToSequenceFile(path: String, overwrite: Boolean = false)(implicit sc: ScoobiConfiguration): DList[A] = {
+      if(overwrite && hdfs.exists(path, sc.configuration))
+        hdfs.delete(path, true, sc.configuration)
+
       val withDummyKey = dl.map(x => (0: Byte, x))
 
       val checkpointed = withDummyKey.toSequenceFile(path, overwrite, checkpoint = true)
