@@ -51,6 +51,20 @@ trait HelperFunctions {
 
     partial.groupByKey map { case (a, bs) => (a, bs reduce (_ |+| _))}
   }
+
+  def filterWithCounters[A : Manifest : WireFormat](dl: DList[A], filters: List[(String, A => Boolean)]) = {
+    @annotation.tailrec
+    def loop(x: DList[A], fs: List[(String, A => Boolean)]): DList[A] = fs match {
+      case (group, f) :: rest => loop(x.parallelDo((a: A, counters: Counters) => {
+        counters.incrementCounter(group, f(a) toString, 1)
+        a
+      }).filter(f), rest)
+
+      case Nil => x
+    }
+
+    loop(dl, filters)
+  }
 }
 
 object helpers extends HelperFunctions
