@@ -65,6 +65,18 @@ trait ImplicitConversions{
       checkpointed.map(_._2)
     }
 
+    def hcountN(filters: List[(String, A => Boolean)]) =
+      helpers.hcountN(dl, filters)
+
+    def applyAll[L](functions: List[DList[A] => DList[A]]): DList[A] =
+      helpers.applyAll(dl, functions)
+
+    def filterN(filters: List[(String, A => Boolean)], emitCounters: Boolean = false) =
+      helpers.filterN(dl, filters, emitCounters)
+
+    def split(filters: List[(String, A => Boolean)], emitCounters: Boolean = false) =
+      helpers.split(dl, filters, emitCounters)
+
   }
 
   implicit class DList2RichGroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){

@@ -49,22 +49,41 @@ trait HelperFunctions {
   def groupByKeyThenCombine[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](dl: DList[(A,B)])(implicit semigroupB: Semigroup[B]): DList[(A, B)] = {
     val partial = parallelFold(dl, Map[A,B]())( (combined, ab) => combined |+| Map(ab) ) mapFlatten ( _ toSeq )
 
-    partial.groupByKey map { case (a, bs) => (a, bs reduce (_ |+| _))}
+    partial.groupByKey map { case (a, bs) => (a, bs reduce (_ |+| _)) }
   }
 
-  def filterWithCounters[A : Manifest : WireFormat](dl: DList[A], filters: List[(String, A => Boolean)]) = {
+  def hcount[A : Manifest : WireFormat, L](dl: DList[A], group: String, f: A => L): DList[A] =
+    dl.parallelDo((a: A, counters: Counters) => {
+      counters.incrementCounter(group, f(a) toString, 1)
+      a
+    })
+
+  def applyAll[A : Manifest : WireFormat, L](dl: DList[A], functions: List[DList[A] => DList[A]]): DList[A] = {
     @annotation.tailrec
-    def loop(x: DList[A], fs: List[(String, A => Boolean)]): DList[A] = fs match {
-      case (group, f) :: rest => loop(x.parallelDo((a: A, counters: Counters) => {
-        counters.incrementCounter(group, f(a) toString, 1)
-        a
-      }).filter(f), rest)
+    def loop(x: DList[A], fs: List[DList[A] => DList[A]]): DList[A] = fs match {
+      case f :: rest => loop(f(x), rest)
 
       case Nil => x
     }
 
-    loop(dl, filters)
+    loop(dl, functions)
   }
+
+  def hcountN[A : Manifest : WireFormat](dl: DList[A], filters: List[(String, A => Boolean)]): DList[A] =
+    applyAll(dl, filters.map{ case (group, f) => ((x: DList[A]) => hcount(x, group, f)) })
+
+  def filterN[A : Manifest : WireFormat](dl: DList[A], filters: List[(String, A => Boolean)], emitCounters: Boolean = false): DList[A] = {
+    val z = emitCounters ? hcountN(dl, filters) | dl
+
+    applyAll(z, filters.map{ case (group, f) => ((x: DList[A]) => x filter f) })
+  }
+
+  def split[A : Manifest : WireFormat](dl: DList[A], filters: List[(String, A => Boolean)], emitCounters: Boolean = false) = {
+    val z = emitCounters ? hcountN(dl, filters) | dl
+
+    filters map { case (label, f) => (label, dl filter f) }
+  }
+
 }
 
 object helpers extends HelperFunctions
