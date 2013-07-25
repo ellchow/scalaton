@@ -41,78 +41,65 @@ trait HdfsFunctions{
   def write(out: FSDataOutputStream, s: String): Unit =
     out.write(s.getBytes("UTF8"))
 
-
-  def delete(path: String, recursive: Boolean, conf: HConf = new HConf): Boolean = {
+  def exec[A](f: FileSystem => A, conf: HConf = new HConf) = {
     val fs = connect(conf)
-    val z = fs.delete(new HPath(path), recursive)
+    val a = f(fs)
     fs.close
-    z
+    a
   }
 
-  def fileStatus(path: String, conf: HConf = new HConf) = {
-    val fs = connect(conf)
-    val z = fs.getFileStatus(new HPath(path))
-    fs.close
-    z
-  }
+  def delete(path: String, recursive: Boolean, conf: HConf = new HConf): Boolean =
+    exec(fs => fs.delete(new HPath(path), recursive), conf)
 
-  def isDirectory(path: String, conf: HConf = new HConf) = {
+
+  def fileStatus(path: String, conf: HConf = new HConf) =
+    exec(fs => fs.getFileStatus(new HPath(path)), conf)
+
+  def isDirectory(path: String, conf: HConf = new HConf) =
     fileStatus(path, conf).isDir
-  }
 
-  def exists(path: String, conf: HConf = new HConf) = {
-    val fs = connect(conf)
-    val z = fs.exists(new HPath(path))
-    fs.close
-    z
-  }
+  def exists(path: String, conf: HConf = new HConf) =
+    exec(fs => fs.exists(new HPath(path)), conf)
 
-  def isComplete(path: String, conf: HConf = new HConf) = {
-    val fs = connect(conf)
-    val z = fs.exists(new HPath(path, "_SUCCESS"))
-    fs.close
-    z
-  }
+  def isComplete(path: String, conf: HConf = new HConf) =
+    exec(fs => fs.exists(new HPath(path, "_SUCCESS")), conf)
 
-  def write(path: String, s: String, overwrite: Boolean = false, conf: HConf = new HConf): Unit = {
-    val fs = connect(conf)
-    val p = out(fs, path, overwrite)
+  def write(path: String, s: String, overwrite: Boolean = false, conf: HConf = new HConf): Unit =
+    exec(fs => {
+      val p = out(fs, path, overwrite)
+      write(p, s)
+      p.close
+    })
 
-    write(p, s)
+  def getLines(path: String, conf: HConf = new HConf): Iterable[String] =
+    exec(fs => {
+      val p = in(fs, path)
 
-    fs.close
-    p.close
-  }
+      val r = reader.inputStream(p)
 
-  def getLines(path: String, conf: HConf = new HConf): Iterable[String] = {
-    val fs = connect(conf)
-    val p = in(fs, path)
+      new Iterable[String]{
+        def iterator = new Iterator[String]{
+          private var nextLine = r readLine
 
-    val r = reader.inputStream(p)
+          def hasNext = {
+            val test = nextLine != null
 
-    new Iterable[String]{
-      def iterator = new Iterator[String]{
-        private var nextLine = r readLine
+            if(!test)
+              p.close
 
-        def hasNext = {
-          val test = nextLine != null
-          if(!test){
-            p.close
-            fs.close
+            test
           }
-          test
-        }
 
-        def next = {
-          val out = nextLine
+          def next = {
+            val out = nextLine
 
-          nextLine = r readLine
+            nextLine = r readLine
 
-          out
+            out
+          }
         }
       }
-    }
-  }
+    })
 }
 
 object hdfs extends HdfsFunctions
