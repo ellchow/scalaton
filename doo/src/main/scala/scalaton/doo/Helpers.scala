@@ -16,6 +16,8 @@
 
 package scalaton.doo
 
+import scala.collection.JavaConversions._
+
 import com.nicta.scoobi.Scoobi._
 import com.nicta.scoobi.core.Reduction
 
@@ -83,6 +85,19 @@ trait HelperFunctions {
 
     filters map { case (label, f) => (label, dl filter f) }
   }
+
+  def counterKeys(sc: ScoobiConfiguration, removeSysCounters: Boolean = true): List[(String, String)] = {
+    lazy val sysCounters = Set("org.apache.hadoop.mapreduce.lib.input.FileInputFormat$Counter", "org.apache.hadoop.mapred.Task$Counter", "org.apache.hadoop.mapreduce.lib.output.FileOutputFormat$Counter", "FileSystemCounters")
+
+    for{
+      g <- sc.counters.getGroupNames.toList
+      c <- sc.counters.getGroup(g).iterator.map(_.getName)
+      if removeSysCounters && !sysCounters.contains(g)
+    } yield (g, c)
+  }
+
+  def readCounter(group: String, counter: String)(implicit sc: ScoobiConfiguration) =
+    sc.counters.getGroup(group).findCounter(counter).getValue
 
 }
 
