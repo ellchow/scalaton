@@ -62,12 +62,7 @@ object ProjectBuild extends Build{
 
   /** Projects **/
 
-  val getPublishLoc = { (v: String) =>
-    if (v.trim.endsWith("SNAPSHOT"))
-      Some(Resolver.file("ellchow mvn snaphsots", new File( "./publish-repo/snapshots" )))
-    else
-      Some(Resolver.file("ellchow mvn releases", new File( "./publish-repo/releases" )))
-  }
+  val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
 
   lazy val utilProject = Project (
     "util",
@@ -75,7 +70,7 @@ object ProjectBuild extends Build{
     settings = buildSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
       libraryDependencies ++= Dependencies.util,
       scalacOptions := compilerOptions,
-      publishTo <<= version(getPublishLoc)
+      publishTo := publishLoc
     )
   )
 
@@ -85,7 +80,7 @@ object ProjectBuild extends Build{
     settings = buildSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
       libraryDependencies ++= Dependencies.aggregate,
       scalacOptions := compilerOptions,
-      publishTo <<= version(getPublishLoc)
+      publishTo := publishLoc
     )
   ) dependsOn(utilProject)
 
@@ -95,9 +90,19 @@ object ProjectBuild extends Build{
     settings = buildSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
       libraryDependencies ++= Dependencies.doo,
       scalacOptions := compilerOptions,
-      publishTo <<= version(getPublishLoc)
+      publishTo := publishLoc
     )
   ) dependsOn(utilProject, aggregateProject)
+
+  lazy val root = Project(
+    "root",
+    file("."),
+    settings = buildSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+      scalacOptions := compilerOptions,
+      publishTo := publishLoc
+    )
+  ) aggregate(utilProject, aggregateProject, dooProject)
+
 
 }
 
