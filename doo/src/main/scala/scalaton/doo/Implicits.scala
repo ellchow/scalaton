@@ -38,7 +38,7 @@ import Scalaz._
 trait ImplicitConversions{
 
   // DLists
-  implicit class DListRich[A : Manifest : WireFormat](val dl: DList[A]) extends Logging{
+  implicit class DListOps[A : Manifest : WireFormat](val dl: DList[A]) extends Logging{
 
     def limit(n: Int = 0) = sampling.limit(dl, n)
 
@@ -79,7 +79,7 @@ trait ImplicitConversions{
 
   }
 
-  implicit class DList2RichGroupingA[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){
+  implicit class DList2GroupingAOps[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){
     def bloomJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], expectedNumKeys: Int)(implicit hashable: Hashable[A,Bits32]) =
       joins.bloomJoin(dl, right, expectedNumKeys)
 
