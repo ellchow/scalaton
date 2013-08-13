@@ -23,6 +23,7 @@ import com.nicta.scoobi.core.Reduction
 
 import scalaz.{DList => _, _}
 import Scalaz._
+import Validation.fromTryCatch
 
 trait HelperFunctions {
 

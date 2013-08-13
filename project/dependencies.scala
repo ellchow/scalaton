@@ -41,7 +41,7 @@ object Dependencies{
   )
 
   val doo = common ++ Seq(
-    "com.nicta" %% "scoobi" % "0.7.1-cdh3"
+    "com.nicta" %% "scoobi" % "0.8.0-cdh3-SNAPSHOT"
   )
 
 }
