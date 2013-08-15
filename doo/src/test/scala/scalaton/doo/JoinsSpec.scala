@@ -18,17 +18,17 @@ import implicits._
 
 class JoinsSpec extends HadoopSpecification {
 
-  // "bloom join should return the same DList as inner join" >>  { implicit conf: ScoobiConfiguration =>
-  //   val leftSize = 100
-  //   val rightSize = 100
-  //   val leftMax = 20
-  //   val rightMax = 20
+  "bloom join should return the same DList as inner join" >>  { implicit conf: ScoobiConfiguration =>
+    val leftSize = 100
+    val rightSize = 100
+    val leftMax = 20
+    val rightMax = 20
 
-  //   val left = DList((0 until leftSize).map(_ => SRandom.nextInt(leftMax)).zipWithIndex : _*)
-  //   val right = DList((0 until rightSize).map(_ => SRandom.nextInt(rightMax)).zipWithIndex : _*)
+    val left = DList((0 until leftSize).map(_ => SRandom.nextInt(leftMax)).zipWithIndex : _*)
+    val right = DList((0 until rightSize).map(_ => SRandom.nextInt(rightMax)).zipWithIndex : _*)
 
-  //    left.bloomJoin(right, 200).run.sorted must_== left.join(right).run.sorted
-  // }
+     left.bloomJoin(right, 200).run.sorted must_== left.join(right).run.sorted
+  }
 
   "skewed join should return the same DList as inner join" >>  { implicit conf: ScoobiConfiguration =>
     val leftSize = 100
