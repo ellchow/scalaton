@@ -60,31 +60,44 @@ trait JoinFunctions{
       override def groupCompare(first: (A, Int), second: (A, Int)) = sortCompare(first, second)
     }
 
-    def reps(x: Long): Int = ((x / maxPerReducer) max 1).toInt min 10
-
     trait CMS
     implicit lazy val cmsinst = countminsketch[A, Bits32, CMS](countminsketch.optimalParameters(0.05, 0.05))
 
-    val weight = (1 / sampleRate) toLong
+    def reps(x: Long): Int = ((x / maxPerReducer) max 1).toInt min 10
+
+    def addRandomIntToKey(seed: Int) = new DoFn[(SketchTable[Long] @@ CMS, (A, BR)), ((A, Int), BR)] {
+      val rgen = new util.Random(seed)
+
+      def setup() {}
+
+      def process(input: (SketchTable[Long] @@ CMS, (A, BR)), emitter: Emitter[((A, Int), BR)]): Unit =
+        input match {
+          case (dist, (a, br)) =>
+            val n = reps(lookup(dist, a))
+
+            val i = util.Random.nextInt(n)
+
+            emitter emit (((a, i), br))
+        }
+
+      def cleanup(emitter: Emitter[((A, Int), BR)]) {}
+    }
+
+
+    def weight = (1 / sampleRate) toLong
 
     val rightKeysSample = right.map(_._1) sample sampleRate
 
     val rightDist = helpers.parallelFoldMonoid[A, SketchTable[Long] @@ CMS](rightKeysSample)((acc, x) => update(acc, x, weight))
       .reduce(Reduction(_ |+| _))
 
-    val rightScattered = rightDist.join(right) map { case (dist, (a, br)) =>
-                                                     val n = reps(lookup(dist, a))
-
-                                                     util.Random.setSeed(0)
-
-                                                     ((a, util.Random.nextInt(n)), br)
-                                                   }
+    val rightScattered = (rightDist.join(right) parallelDo addRandomIntToKey(0)).map(identity) // fails w/o .map(identity)?
 
     val leftSprayed = rightDist.join(left) mapFlatten { case (dist, (a, bl)) =>
                                                             val n = reps(lookup(dist, a))
 
-                                                            (0 until n) map (i => ((a, i), bl))
-                                                          }
+                                                        (0 until n) map (i => ((a, i), bl))
+                                                      }
 
     leftSprayed.join(rightScattered) map { case ((a, i), v) => (a, v)}
   }

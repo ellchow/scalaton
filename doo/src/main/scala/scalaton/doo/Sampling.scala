@@ -33,6 +33,12 @@ trait SamplingFunctions {
     dl.filter{ x => util.Random.nextDouble < rate }
   }
 
+  // def resample[A : Manifest : WireFormat](dl: DList[A], rate: Double, seed: Int = 0) = {
+  //   util.Random.setSeed(seed)
+
+  //   dl.filter{ x => util.Random.nextDouble < rate }
+  // }
+
   def sampleBy[A : Manifest : WireFormat, B : Manifest : WireFormat](dl: DList[(A,B)], rate: Double, seed: Int = 0)(implicit hashable: Hashable[A,Bits32]) = {
     val n = (Int.MaxValue * rate)
 
