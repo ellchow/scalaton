@@ -14,7 +14,7 @@
  limitations under the License.
 */
 
-package scalaton.zed
+package scalaton.util
 
 import com.github.nscala_time.time.Imports._
 
