@@ -24,6 +24,7 @@ import org.apache.hadoop.conf.{Configuration => HConf}
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
+import scalaton.aggregate.moments._
 
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
@@ -133,6 +134,8 @@ trait ImplicitConversions{
 
 
   implicit val compressedBitSetWF = AnythingFmt[CompressedBitSet]
+
+  implicit val momentsWF = mkCaseWireFormat((n: Long, mean: Double, m2: Double, m3: Double, m4: Double) => Moments(n,mean,m2,m3,m4), Moments.unapply _)
 
   // Reductions
 

@@ -19,6 +19,8 @@ package scalaton.aggregate
 import scalaz._
 import Scalaz._
 
+import org.apache.commons.math3.distribution.PoissonDistribution
+
 trait MomentsModule{
 
   // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Higher-order_statistics
@@ -73,6 +75,30 @@ trait MomentsModule{
     def kurtosis = (n * m4) / (m2 * m2) - 3
 
     def consume(x: Double) = Moments(x) |+| this
+  }
+
+  trait BootstrappedMoments[T] extends Monoid[Map[Int,Moments] @@ T]{
+    val b: Int
+    val poisson: PoissonDistribution
+
+    def tag(m: Map[Int,Moments]) = Tag[Map[Int,Moments], T](m)
+
+    val zero = tag(Map[Int,Moments]())
+
+    def append(xa: Map[Int,Moments] @@ T, xb: => Map[Int,Moments] @@ T) =
+      tag((xa: Map[Int,Moments]) |+| (xb: Map[Int,Moments]))
+
+  }
+
+  object BootstrappedMoments{
+    def apply[T](x: Double)(implicit bmMonoid: BootstrappedMoments[T]): Map[Int,Moments] @@ T = {
+      val xs = for{
+        i <- (0 until bmMonoid.b).view
+        _ <- (0 until bmMonoid.poisson.sample).view
+      } yield Map(i -> Moments(x))
+
+      bmMonoid.tag(xs.reduce(_ |+| _))
+    }
   }
 }
 
