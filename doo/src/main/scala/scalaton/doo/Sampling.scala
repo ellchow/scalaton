@@ -48,7 +48,7 @@ trait SamplingFunctions {
   def sampleBy[A : Manifest : WireFormat, B : Manifest : WireFormat](dl: DList[(A,B)], rate: Double, seed: Int = 0)(implicit hashable: Hashable[A,Bits32]) = {
     val n = (Int.MaxValue * rate)
 
-    dl.filter{ case (a, _) => math.abs(hash[A, Bits32](a)) lt n }
+    dl.filter{ case (a, _) => math.abs(hash[A, Bits32](a)) < n }
   }
 
   def limit[A : Manifest : WireFormat](dl: DList[A], limit: Int) = {
