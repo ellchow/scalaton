@@ -50,7 +50,7 @@ trait JoinFunctions{
   }
 
   def skewedJoin[A : Manifest : WireFormat : Grouping, BL : Manifest : WireFormat, BR : Manifest : WireFormat](
-    left: DList[(A,BL)], right: DList[(A,BR)], sampleRate: Double = 0.01, maxPerReducer: Int = 100000, maxReps: Int = 100)(
+    left: DList[(A,BL)], right: DList[(A,BR)], sampleRate: Double = 0.01, maxPerGroup: Int = 100000, maxReps: Int = 100)(
     implicit hashableA: Hashable[A, Bits32]) = {
 
     implicit val aiGrouping = new Grouping[(A, Int)] {
@@ -63,7 +63,7 @@ trait JoinFunctions{
     trait CMS
     implicit lazy val cmsinst = countminsketch[A, Bits32, CMS](countminsketch.optimalParameters(0.05, 0.05))
 
-    def reps(x: Long): Int = ((x / maxPerReducer) max 1).toInt min maxReps
+    def reps(x: Long): Int = ((x / maxPerGroup) max 1).toInt min maxReps
 
     def addRandomIntToKey(seed: Int) = new DoFn[(SketchTable[Long] @@ CMS, (A, BR)), ((A, Int), BR)] {
       val rgen = new util.Random(seed)

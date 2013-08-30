@@ -87,7 +87,6 @@ trait MomentsModule{
 
     def append(xa: Map[Int,Moments] @@ T, xb: => Map[Int,Moments] @@ T) =
       tag((xa: Map[Int,Moments]) |+| (xb: Map[Int,Moments]))
-
   }
 
   object BootstrappedMoments{
