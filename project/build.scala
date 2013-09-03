@@ -9,7 +9,7 @@ import spray.revolver.RevolverPlugin.Revolver
 
 object ProjectBuild extends Build{
   /** Settings **/
-  val Organization = "scalaton"
+  val Organization = "com.github.ellchow"
   val Version      = "0.1-SNAPSHOT"
   val ScalaVersion = "2.10.2"
 
