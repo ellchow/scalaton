@@ -2,15 +2,14 @@ h1. scalaton
 
 built on scala 2.10.2
 
+hosted on sonatype
+
 <pre>
-resolvers ++= Seq(
-  "scalaton snapshot repo"  at "http://ellchow.github.io/scalaton/snapshots",
-  "scalaton release repo"  at "http://ellchow.github.io/scalaton/releases")
 
 libraryDependencies ++= Seq(
-  "scalaton" %% "util" % "0.1-SNAPSHOT",
-  "scalaton" %% "aggregate" % "0.1-SNAPSHOT",
-  "scalaton" %% "doo" % "0.1-SNAPSHOT"
+  "com.github.ellchow" %% "scalaton-util" % "0.1-SNAPSHOT",
+  "com.github.ellchow" %% "scalaton-aggregate" % "0.1-SNAPSHOT",
+  "com.github.ellchow" %% "scalaton-doo" % "0.1-SNAPSHOT"
 )
 
 </pre>
