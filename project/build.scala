@@ -125,10 +125,11 @@ object ProjectBuild extends Build{
   ) dependsOn(utilProject, aggregateProject)
 
   lazy val root = Project(
-    "scalaton-root",
+    "scalaton",
     file("."),
     settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
-      scalacOptions := compilerOptions
+      scalacOptions := compilerOptions,
+      publishArtifact := false
     )
   ) aggregate(utilProject, aggregateProject, dooProject)
 
