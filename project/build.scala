@@ -4,9 +4,6 @@ import Keys._
 import sbtassembly.Plugin._
 import AssemblyKeys._
 
-import spray.revolver.RevolverPlugin.Revolver
-
-
 object ProjectBuild extends Build{
   /** Settings **/
   val Organization = "com.github.ellchow"
@@ -19,6 +16,42 @@ object ProjectBuild extends Build{
     scalaVersion := ScalaVersion,
     shellPrompt  := ShellPrompt.buildShellPrompt,
     resolvers := Dependencies.resolvers
+  )
+
+  val publishSettings = Seq(
+    publishMavenStyle := true,
+
+    publishTo <<= version { (v: String) =>
+      val nexus = "https://oss.sonatype.org/"
+      if (v.trim.endsWith("SNAPSHOT"))
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    },
+
+    pomIncludeRepository := { _ => false },
+
+    pomExtra := (
+      <url>https://github.com/ellchow/scalaton</url>
+      <licenses>
+        <license>
+          <name>Apache 2.0</name>
+          <url>http://www.opensource.org/licenses/Apache-2.0</url>
+          <distribution>repo</distribution>
+        </license>
+      </licenses>
+      <scm>
+      <url>git@github.com:ellchow/scalaton.git</url>
+      <connection>scm:git:git@github.com:ellchow/scalaton.git</connection>
+      </scm>
+      <developers>
+        <developer>
+          <id>ellchow</id>
+          <name>Elliot Chow</name>
+          <url>http://github.com/ellchow</url>
+        </developer>
+      </developers>
+    )
   )
 
   val customAssemblySettings = Seq(
@@ -62,44 +95,40 @@ object ProjectBuild extends Build{
 
   /** Projects **/
 
-  val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
+  // val publishLoc = Some(Resolver.file("local m2", new File( Path.userHome.absolutePath + "/.m2/repository" )))
 
   lazy val utilProject = Project (
-    "util",
+    "scalaton-util",
     file ("util"),
-    settings = buildSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
       libraryDependencies ++= Dependencies.util,
-      scalacOptions := compilerOptions,
-      publishTo := publishLoc
+      scalacOptions := compilerOptions
     )
   )
 
   lazy val aggregateProject = Project (
-    "aggregate",
+    "scalaton-aggregate",
     file ("aggregate"),
-    settings = buildSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
       libraryDependencies ++= Dependencies.aggregate,
-      scalacOptions := compilerOptions,
-      publishTo := publishLoc
+      scalacOptions := compilerOptions
     )
   ) dependsOn(utilProject)
 
   lazy val dooProject = Project (
-    "doo",
+    "scalaton-doo",
     file ("doo"),
-    settings = buildSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
       libraryDependencies ++= Dependencies.doo,
-      scalacOptions := compilerOptions,
-      publishTo := publishLoc
+      scalacOptions := compilerOptions
     )
   ) dependsOn(utilProject, aggregateProject)
 
   lazy val root = Project(
-    "root",
+    "scalaton-root",
     file("."),
-    settings = buildSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
-      scalacOptions := compilerOptions,
-      publishTo := publishLoc
+    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+      scalacOptions := compilerOptions
     )
   ) aggregate(utilProject, aggregateProject, dooProject)
 
