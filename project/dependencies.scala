@@ -21,6 +21,7 @@ object Dependencies{
 
   val common = Seq(
     "org.scalaz" % "scalaz-core_2.10" % "7.0.1",
+    "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full,
 
     "com.github.nscala-time" %% "nscala-time" % "0.2.0",
 

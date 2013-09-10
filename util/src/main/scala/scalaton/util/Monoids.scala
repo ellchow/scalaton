@@ -19,6 +19,7 @@ package scalaton.util
 import scalaz._
 import Scalaz._
 
+import shapeless._
 
 trait MonoidInstances{
   implicit val maxIntMonoid: Monoid[Int @@ Tags.Max] = Monoid instance ((l, r) => Tag(l max r), Tags.Max(Int.MinValue))
@@ -35,6 +36,17 @@ trait MonoidInstances{
 
   implicit val maxByteMonoid: Monoid[Byte @@ Tags.Max] = Monoid instance ((l, r) => Tag(l max r), Tags.Max(Byte.MinValue))
   implicit val minByteMonoid: Monoid[Byte @@ Tags.Min] = Monoid instance ((l, r) => Tag(l min r), Tags.Min(Byte.MaxValue))
+
+
+  implicit val hnilMonoid: Monoid[HNil] = Monoid instance((l, r) => HNil, HNil)
+  implicit def hlistMonoid[H : Monoid, T <: HList : Monoid]: Monoid[H :: T] = {
+    val hMonoid = implicitly[Monoid[H]]
+    val tMonoid = implicitly[Monoid[T]]
+
+    Monoid instance((l, r) => hMonoid.append(l.head, r.head) :: tMonoid.append(l.tail, r.tail), hMonoid.zero :: tMonoid.zero)
+  }
+
+
   /*
   implicit def mapTaggedMonoid[K, V, T](implicit semigroupVT: Semigroup[V @@ T]): Monoid[Map[K, V] @@ T] = new Monoid[Map[K, V] @@ T] {
     def zero: Map[K, V] @@ T  = Tag(Map[K, V]())
