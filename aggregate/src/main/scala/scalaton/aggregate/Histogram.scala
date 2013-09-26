@@ -73,7 +73,7 @@ trait HistogramModule{
         if(bs.size lte maxBuckets)
           bs
         else{
-          val (_, (k1, k2)) = ((Double.NegativeInfinity, (0.0, 0.0)) /: bs.zip(bs.drop(1))) {
+          val (_, (k1, k2)) = ((Double.NegativeInfinity, (0.0, 0.0)) /: bs.view.zip(bs.view.drop(1))) {
             case (maxSoFar, ((k1,v1), (k2,v2))) =>
               val w = gapSize((k1, hv.count(v1)),
                               (k2, hv.count(v2)))
