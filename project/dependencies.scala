@@ -39,7 +39,8 @@ object Dependencies{
 
   val aggregate = common ++ Seq(
     "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6",
-    "org.apache.commons" % "commons-math3" % "3.2"
+    "org.apache.commons" % "commons-math3" % "3.2",
+    "org.spire-math" %% "spire" % "0.6.0"
   )
 
   val doo = common ++ Seq(
