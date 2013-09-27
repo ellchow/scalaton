@@ -128,32 +128,31 @@ trait HistogramModule{
     }
 
     /** get buckets (in ascending order) from histogram up to buckets that contain counts for the point **/
-    protected def upTo(h: HistogramData[B] @@ T, p: P): collection.IterableView[(Double, B),Iterable[_]] = {
-      val pDouble = implicitly[Numeric[P]].toDouble(p)
-
+    protected def upTo(h: HistogramData[B] @@ T, p: Double): collection.IterableView[(Double, B),Iterable[_]] = {
       val delta = math.min(0.0001, 0.01 + (h.max - h.min))
       val lb = (h.min - delta, mon.zero)
       val ub = (h.max + delta, mon.zero)
       val bs  = h.buckets ++ TreeMap(lb, ub)
 
-      Seq(lb).view ++ bs.zip(bs.drop(1)).takeWhile{ _._1._1 lte implicitly[Numeric[P]].toDouble(p) }.map(_._2)
+      Seq(lb).view ++ bs.zip(bs.drop(1)).takeWhile{ _._1._1 lte p }.map(_._2)
     }
 
-    /** sum of counts from -Inf to p **/
-    def cumsum(h: HistogramData[B] @@ T, p: P): Double = {
-      val pDouble = implicitly[Numeric[P]].toDouble(p)
+    def cumsum[P: Numeric](h: HistogramData[B] @@ T, p: P): Double =
+      cumsum(h, implicitly[Numeric[P]].toDouble(p))
 
-      if(pDouble gte h.max){
+    /** sum of counts from -Inf to p **/
+    def cumsum(h: HistogramData[B] @@ T, p: Double): Double = {
+      if(p gte h.max){
         h.size
-      }else if(pDouble lt h.min){
+      }else if(p lt h.min){
         0
       }else{
         @annotation.tailrec
         def loop(bs: List[(Double, Double)], total: Double): Double = bs match {
           case (x0, y0) :: (x1, y1) :: Nil =>
-            val y = y0 + (y1 - y0) / (x1 - x0) * (pDouble - x0)
+            val y = y0 + (y1 - y0) / (x1 - x0) * (p - x0)
 
-            total + (y0 / 2) + ((y0 + y) / 2 * (pDouble - x0) / (x1 - x0))
+            total + (y0 / 2) + ((y0 + y) / 2 * (p - x0) / (x1 - x0))
           case (_, count) :: x :: rest =>
             loop(x :: rest, total + count)
 
@@ -166,7 +165,35 @@ trait HistogramModule{
       }
     }
 
-    // def uniform(h: HistogramData[B] @@ T, g: Double): List[Double]
+    /** find quantile using binary search **/
+    def quantile(h: HistogramData[B] @@ T, q0: Double, tol: Double = 0.001): Double = {
+      require(q0 gte 0.0)
+      if(q0 gte 1.0){
+        h.max
+      }else if(q0 == 0.0){
+        h.min
+      }else{
+        val total = h.size
+
+        @annotation.tailrec
+        def loop(lb: Double, ub: Double): Double = {
+          val x = lb + (ub - lb) / 2
+          println(x)
+
+          val q = cumsum(h, x) / total
+
+          if(((ub - lb) lt tol) || (math.abs(q - q0) lte tol)){
+            x
+          }else if(q gt q0){
+            loop(lb + (x - lb) / 2, x)
+          }else{
+            loop(x, x + (ub - x) / 2)
+          }
+        }
+
+        loop(h.min, h.max)
+      }
+    }
 
 
   }
