@@ -25,8 +25,6 @@ import Scalaz._
 import spire.math.Numeric
 
 trait HistogramModule{
-  import moments._
-
   /** value associated with a bucket in the histogram - must be able to retrieve the number of items **/
   abstract class HistogramValue[A : Monoid]{
     // extract number of items
@@ -200,32 +198,31 @@ trait HistogramModule{
 
 
   def insertN[A, B, T](h: HistogramData[B] @@ T, a: A, n: Int)
-                   (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
+                      (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
     hst.insertN(h, a, n)
 
   def insert[A, B, T](h: HistogramData[B] @@ T, as: A*)
-                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
+                     (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
     hst.insert(h, as)
 
 
 
 
   def merge[A, B, T](h1: HistogramData[B] @@ T, h2: HistogramData[B] @@ T)
-           (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
+                    (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
     hst.merge(h1, h2)
 
   def cumsum[A, B, T](h: HistogramData[B] @@ T, p: Double)
-                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
+                     (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
     hst.cumsum(h, p)
 
   def quantile[A, B, T](h: HistogramData[B] @@ T, q0: Double, tol: Double = 0.001)
-                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
+                       (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
     hst.quantile(h, q0, tol)
 
   def quantiles[A, B, T](h: HistogramData[B] @@ T, qs: Seq[Double], tol: Double = 0.001)
-               (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[Double] =
+                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[Double] =
     hst.quantiles(h, qs, tol)
-
 }
 
 object histogram extends HistogramModule
