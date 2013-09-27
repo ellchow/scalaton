@@ -62,8 +62,15 @@ trait HistogramModule{
 
     def gapSize(x: (Double, Long), y: (Double, Long)): Double = y._1 - x._1
 
-    def insert(h: HistogramData[B] @@ T, a: A): HistogramData[B] @@ T =
+    def insert(h: HistogramData[B] @@ T, a: A): HistogramData[B] @@ T = {
       merge(h, Tag(HistogramData[B](TreeMap(hp.pointAsDouble(a) -> hp.value(a)))) )
+    }
+
+    def insertN(h: HistogramData[B] @@ T, a: A, n: Int): HistogramData[B] @@ T = {
+      require(n gt 0)
+
+      (1 to n).foldLeft(h){ case (hh, _) => insert(hh, a) }
+    }
 
     def merge(h1: HistogramData[B] @@ T, h2: HistogramData[B] @@ T): HistogramData[B] @@ T = {
       val unmergedBuckets = implicitly[Monoid[Map[Double, B]]].append((h1.buckets : Map[Double, B]), (h2.buckets : Map[Double, B])).asInstanceOf[TreeMap[Double, B]]
@@ -73,12 +80,12 @@ trait HistogramModule{
         if(bs.size lte maxBuckets)
           bs
         else{
-          val (_, (k1, k2)) = ((Double.NegativeInfinity, (0.0, 0.0)) /: bs.view.zip(bs.view.drop(1))) {
-            case (maxSoFar, ((k1,v1), (k2,v2))) =>
+          val (_, (k1, k2)) = ((Double.PositiveInfinity, (0.0, 0.0)) /: bs.view.zip(bs.view.drop(1))) {
+            case (minSoFar, ((k1,v1), (k2,v2))) =>
               val w = gapSize((k1, hv.count(v1)),
                               (k2, hv.count(v2)))
 
-              (w gt maxSoFar._1) ? (w, (k1, k2)) | maxSoFar
+              (w lt minSoFar._1) ? (w, (k1, k2)) | minSoFar
           }
 
           val v1 = bs(k1)
