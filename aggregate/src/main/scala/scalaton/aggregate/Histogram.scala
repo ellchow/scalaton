@@ -126,6 +126,49 @@ trait HistogramModule{
 
       Tag(HistogramData[B](loop(unmergedBuckets), math.min(h1.min, h2.min), math.max(h1.max, h2.max)))
     }
+
+    /** get buckets (in ascending order) from histogram up to buckets that contain counts for the point **/
+    protected def upTo(h: HistogramData[B] @@ T, p: P): collection.IterableView[(Double, B),Iterable[_]] = {
+      val pDouble = implicitly[Numeric[P]].toDouble(p)
+
+      val delta = math.min(0.0001, 0.01 + (h.max - h.min))
+      val lb = (h.min - delta, mon.zero)
+      val ub = (h.max + delta, mon.zero)
+      val bs  = h.buckets ++ TreeMap(lb, ub)
+
+      Seq(lb).view ++ bs.zip(bs.drop(1)).takeWhile{ _._1._1 lte implicitly[Numeric[P]].toDouble(p) }.map(_._2)
+    }
+
+    /** sum of counts from -Inf to p **/
+    def cumsum(h: HistogramData[B] @@ T, p: P): Double = {
+      val pDouble = implicitly[Numeric[P]].toDouble(p)
+
+      if(pDouble gte h.max){
+        h.size
+      }else if(pDouble lt h.min){
+        0
+      }else{
+        @annotation.tailrec
+        def loop(bs: List[(Double, Double)], total: Double): Double = bs match {
+          case (x0, y0) :: (x1, y1) :: Nil =>
+            val y = y0 + (y1 - y0) / (x1 - x0) * (pDouble - x0)
+
+            total + (y0 / 2) + ((y0 + y) / 2 * (pDouble - x0) / (x1 - x0))
+          case (_, count) :: x :: rest =>
+            loop(x :: rest, total + count)
+
+          case _ => total
+        }
+
+        val bucketsUpToP = upTo(h, p).map{ case (k, v) => (k, implicitly[HistogramValue[B]].count(v).toDouble) }.toList
+
+        loop(bucketsUpToP, 0.0)
+      }
+    }
+
+    // def uniform(h: HistogramData[B] @@ T, g: Double): List[Double]
+
+
   }
 
   def simpleHistogram[A, T](n: Int)(implicit num: Numeric[A], hp: HistogramPoint[A,A,Long]) = new Histogram[A, A, Long, T](n){}
