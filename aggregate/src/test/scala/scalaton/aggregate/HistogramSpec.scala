@@ -83,9 +83,28 @@ class HistogramSpec extends Specification{
 
         x.buckets mustEqual TreeMap(((d * dn + c) / (dn + 1)) -> (dn + 1), e -> en)
       }
+
+      "maintain min and max bounds" in {
+        trait Hst
+        val h = simpleHistogram[Double, Hst](2)
+
+        for(_ <- 1 to 100)
+        yield{
+          val itemsX = (0 to 100) map (_ => 2 * util.Random.nextDouble - 1)
+          val itemsY = (0 to 100) map (_ => 2 * util.Random.nextDouble - 1)
+
+          val x = h.insert(h.empty, itemsX)
+          val y = h.insert(h.empty, itemsY)
+
+          val xy = h.merge(x, y)
+          val itemsXY = itemsX ++ itemsY
+
+          xy.min mustEqual itemsXY.min
+          xy.max mustEqual itemsXY.max
+
+        }
+      }
+
     }
-
-
-
   }
 }

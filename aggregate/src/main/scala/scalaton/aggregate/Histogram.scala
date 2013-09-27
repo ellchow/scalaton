@@ -17,6 +17,7 @@ limitations under the License.
 package scalaton.aggregate
 
 import collection.immutable.TreeMap
+import collection.mutable
 
 import scalaz._
 import Scalaz._
@@ -63,23 +64,24 @@ trait HistogramModule{
   }
 
   /** wrapper class holding actual histogram buckets and values **/
-  case class HistogramData[B : HistogramValue : Monoid](val buckets: TreeMap[Double, B]){
+  case class HistogramData[B : HistogramValue : Monoid](val buckets: TreeMap[Double, B], val min: Double, val max: Double){
     lazy val size = buckets.values.map(v => implicitly[HistogramValue[B]].count(v)).sum
   }
 
 
-  abstract class Histogram[A, P, B, T](implicit num: Numeric[P], mon: Monoid[B], hv: HistogramValue[B], hp: HistogramPoint[A,P,B]){
-    val maxBuckets: Int
+  abstract class Histogram[A, P, B, T](val maxBuckets: Int)(implicit num: Numeric[P], mon: Monoid[B], hv: HistogramValue[B], hp: HistogramPoint[A,P,B]){
+    require(maxBuckets gt 0)
 
     /** empty histogram **/
-    val empty: HistogramData[B] @@ T = Tag(HistogramData[B](TreeMap[Double,B]()))
+    val empty: HistogramData[B] @@ T = Tag(HistogramData[B](TreeMap[Double,B](), Double.PositiveInfinity, Double.NegativeInfinity))
 
     /** gap size for deciding which buckets are closest (to be merged) **/
     def gapSize(x: (Double, Long), y: (Double, Long)): Double = y._1 - x._1
 
     /** insert a point into the histogram **/
     def insert(h: HistogramData[B] @@ T, a: A): HistogramData[B] @@ T = {
-      merge(h, Tag(HistogramData[B](TreeMap(hp.pointAsDouble(a) -> hp.value(a)))) )
+      val pDouble = hp.pointAsDouble(a)
+      merge(h, Tag(HistogramData[B](TreeMap(pDouble -> hp.value(a)), pDouble, pDouble)) )
     }
 
     /** insert a point into the histogram n times **/
@@ -88,6 +90,12 @@ trait HistogramModule{
 
       (1 to n).foldLeft(h){ case (hh, _) => insert(hh, a) }
     }
+
+    def insert(h: HistogramData[B] @@ T, as: Iterable[A]): HistogramData[B] @@ T =
+      as.foldLeft(h){ case (hh, a) => insert(hh, a) }
+
+    def insert(h: HistogramData[B] @@ T, as: A*): HistogramData[B] @@ T =
+      insert(h, as)
 
     /** merge 2 histograms together **/
     def merge(h1: HistogramData[B] @@ T, h2: HistogramData[B] @@ T): HistogramData[B] @@ T = {
@@ -116,13 +124,13 @@ trait HistogramModule{
         }
       }
 
-      Tag(HistogramData[B](loop(unmergedBuckets)))
+      Tag(HistogramData[B](loop(unmergedBuckets), math.min(h1.min, h2.min), math.max(h1.max, h2.max)))
     }
   }
 
-  def simpleHistogram[A, T](n: Int)(implicit num: Numeric[A], hp: HistogramPoint[A,A,Long]) = new Histogram[A, A, Long, T]{ val maxBuckets = n }
+  def simpleHistogram[A, T](n: Int)(implicit num: Numeric[A], hp: HistogramPoint[A,A,Long]) = new Histogram[A, A, Long, T](n){}
 
-  def simpleHistogramWithTarget[A, Y, T](n: Int)(implicit num: Numeric[A], monY: Monoid[Y], hp: HistogramPoint[(A,Y), A, (Long, Y)]) = new Histogram[(A, Y), A, (Long, Y), T]{ val maxBuckets = n }
+  def simpleHistogramWithTarget[A, Y, T](n: Int)(implicit num: Numeric[A], monY: Monoid[Y], hp: HistogramPoint[(A,Y), A, (Long, Y)]) = new Histogram[(A, Y), A, (Long, Y), T](n){}
 }
 
 object hist extends HistogramModule
