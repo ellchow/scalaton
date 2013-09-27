@@ -26,19 +26,22 @@ import spire.implicits._
 trait HistogramModule{
   import moments._
 
-
+  /** value associated with a bucket in the histogram - must be able to retrieve the number of items **/
   abstract class HistogramValue[A : Monoid]{
+    // extract number of items
     def count(a: A): Long
   }
 
-  implicit def simpleHistogramValue = new HistogramValue[Long]{
-    def count(a: Long) = a
+  implicit def simpleHistogramValue[A : Numeric : Monoid] = new HistogramValue[A]{
+    def count(a: A) = implicitly[Numeric[A]].toLong(a)
   }
   implicit def histogramWithTargetValue[Y : Monoid] = new HistogramValue[(Long, Y)]{
     def count(a: (Long, Y)) = a._1
   }
 
-
+  /** object to be inserted into the histogram - must be able to retrieve the representation of point
+   *  as well as the value associated with the point
+   * **/
   abstract class HistogramPoint[A, P: Numeric, B : HistogramValue : Monoid]{
     def point(a: A): P
 
@@ -59,27 +62,34 @@ trait HistogramModule{
     def value(ay: (A, Y)) = (1L, ay._2)
   }
 
+  /** wrapper class holding actual histogram buckets and values **/
   case class HistogramData[B : HistogramValue : Monoid](val buckets: TreeMap[Double, B]){
     lazy val size = buckets.values.map(v => implicitly[HistogramValue[B]].count(v)).sum
   }
 
+
   abstract class Histogram[A, P, B, T](implicit num: Numeric[P], mon: Monoid[B], hv: HistogramValue[B], hp: HistogramPoint[A,P,B]){
     val maxBuckets: Int
 
-    def empty: HistogramData[B] @@ T = Tag(HistogramData[B](TreeMap[Double,B]()))
+    /** empty histogram **/
+    val empty: HistogramData[B] @@ T = Tag(HistogramData[B](TreeMap[Double,B]()))
 
+    /** gap size for deciding which buckets are closest (to be merged) **/
     def gapSize(x: (Double, Long), y: (Double, Long)): Double = y._1 - x._1
 
+    /** insert a point into the histogram **/
     def insert(h: HistogramData[B] @@ T, a: A): HistogramData[B] @@ T = {
       merge(h, Tag(HistogramData[B](TreeMap(hp.pointAsDouble(a) -> hp.value(a)))) )
     }
 
+    /** insert a point into the histogram n times **/
     def insertN(h: HistogramData[B] @@ T, a: A, n: Int): HistogramData[B] @@ T = {
       require(n gt 0)
 
       (1 to n).foldLeft(h){ case (hh, _) => insert(hh, a) }
     }
 
+    /** merge 2 histograms together **/
     def merge(h1: HistogramData[B] @@ T, h2: HistogramData[B] @@ T): HistogramData[B] @@ T = {
       val unmergedBuckets = implicitly[Monoid[Map[Double, B]]].append((h1.buckets : Map[Double, B]), (h2.buckets : Map[Double, B])).asInstanceOf[TreeMap[Double, B]]
 
