@@ -53,6 +53,12 @@ trait HistogramModule{
     def value(a: A) = 1L
   }
 
+  implicit def simpleHistogramWithTargetPoint[A : Numeric, Y : Monoid] = new HistogramPoint[(A, Y), A, (Long, Y)]{
+    def point(ay: (A, Y)) = ay._1
+
+    def value(ay: (A, Y)) = (1L, ay._2)
+  }
+
   case class HistogramData[B : HistogramValue : Monoid](val buckets: TreeMap[Double, B])
 
   abstract class Histogram[A, P, B, T](implicit num: Numeric[P], mon: Monoid[B], hv: HistogramValue[B], hp: HistogramPoint[A,P,B]){
@@ -104,6 +110,7 @@ trait HistogramModule{
 
   def simpleHistogram[A, T](n: Int)(implicit num: Numeric[A], hp: HistogramPoint[A,A,Long]) = new Histogram[A, A, Long, T]{ val maxBuckets = n }
 
+  def simpleHistogramWithTarget[A, Y, T](n: Int)(implicit num: Numeric[A], monY: Monoid[Y], hp: HistogramPoint[(A,Y), A, (Long, Y)]) = new Histogram[(A, Y), A, (Long, Y), T]{ val maxBuckets = n }
 }
 
 object hist extends HistogramModule
