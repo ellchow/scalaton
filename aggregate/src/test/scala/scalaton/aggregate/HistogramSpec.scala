@@ -26,7 +26,7 @@ import scalaz._
 import Scalaz._
 
 class HistogramSpec extends Specification{
-  import hist._
+  import histogram._
 
   def relativeError(x: Double, correct: Double) = math.abs((x - correct) / correct)
 

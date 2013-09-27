@@ -18,6 +18,8 @@ package scalaton.doo
 
 import com.github.nscala_time.time.Imports._
 
+import collection.immutable.TreeMap
+
 import java.io._
 import org.apache.hadoop.conf.{Configuration => HConf}
 
@@ -25,6 +27,7 @@ import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
 import scalaton.aggregate.moments._
+import scalaton.aggregate.histogram._
 
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
@@ -136,6 +139,25 @@ trait ImplicitConversions{
   implicit val compressedBitSetWF = AnythingFmt[CompressedBitSet]
 
   implicit val momentsWF = mkCaseWireFormat((n: Long, mean: Double, m2: Double, m3: Double, m4: Double) => Moments(n,mean,m2,m3,m4), Moments.unapply _)
+
+  implicit def histogramDataWF[B : WireFormat : HistogramValue : Monoid] = new HistogramDataWireFormat[B]
+
+  class HistogramDataWireFormat[B : WireFormat : HistogramValue : Monoid] extends WireFormat[HistogramData[B]]{
+    def toWire(x: HistogramData[B], out: DataOutput) = {
+      implicitly[WireFormat[TreeMap[Double, B]]].toWire(x.buckets, out)
+      out.writeDouble(x.min)
+      out.writeDouble(x.max)
+    }
+
+    def fromWire(in: DataInput): HistogramData[B] = {
+      val buckets = implicitly[WireFormat[TreeMap[Double, B]]].fromWire(in)
+      val min = in.readDouble()
+      val max = in.readDouble()
+
+      HistogramData[B](buckets, min, max)
+    }
+  }
+
 
   // Reductions
 

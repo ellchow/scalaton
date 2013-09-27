@@ -178,7 +178,6 @@ trait HistogramModule{
         @annotation.tailrec
         def loop(lb: Double, ub: Double): Double = {
           val x = lb + (ub - lb) / 2
-          println(x)
 
           val q = cumsum(h, x) / total
 
@@ -195,12 +194,15 @@ trait HistogramModule{
       }
     }
 
+    def quantiles(h: HistogramData[B] @@ T, qs: Seq[Double], tol: Double = 0.001): Seq[Double] =
+      qs.map(q => quantile(h, q, tol))
 
   }
 
   def simpleHistogram[A, T](n: Int)(implicit num: Numeric[A], hp: HistogramPoint[A,A,Long]) = new Histogram[A, A, Long, T](n){}
 
   def simpleHistogramWithTarget[A, Y, T](n: Int)(implicit num: Numeric[A], monY: Monoid[Y], hp: HistogramPoint[(A,Y), A, (Long, Y)]) = new Histogram[(A, Y), A, (Long, Y), T](n){}
+
 }
 
-object hist extends HistogramModule
+object histogram extends HistogramModule
