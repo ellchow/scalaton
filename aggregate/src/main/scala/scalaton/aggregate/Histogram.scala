@@ -24,6 +24,7 @@ import Scalaz._
 
 import spire.math.Numeric
 
+// module based on online histogram building algorithm as described by http://jmlr.org/papers/volume11/ben-haim10a/ben-haim10a.pdf
 trait HistogramModule{
   /** value associated with a bucket in the histogram - must be able to retrieve the number of items **/
   abstract class HistogramValue[A : Monoid]{
@@ -197,6 +198,8 @@ trait HistogramModule{
   def simpleHistogramWithTarget[A : Numeric, Y, T](n: Int)(implicit monY: Monoid[Y], hp: HistogramPoint[(A,Y), (Long, Y)]) = new Histogram[(A, Y), (Long, Y), T](n){}
 
 
+  //// Functions
+
   def insertN[A, B, T](h: HistogramData[B] @@ T, a: A, n: Int)
                       (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
     hst.insertN(h, a, n)
@@ -204,9 +207,6 @@ trait HistogramModule{
   def insert[A, B, T](h: HistogramData[B] @@ T, as: A*)
                      (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
     hst.insert(h, as)
-
-
-
 
   def merge[A, B, T](h1: HistogramData[B] @@ T, h2: HistogramData[B] @@ T)
                     (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
