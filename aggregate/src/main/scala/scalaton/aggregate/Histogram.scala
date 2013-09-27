@@ -59,7 +59,9 @@ trait HistogramModule{
     def value(ay: (A, Y)) = (1L, ay._2)
   }
 
-  case class HistogramData[B : HistogramValue : Monoid](val buckets: TreeMap[Double, B])
+  case class HistogramData[B : HistogramValue : Monoid](val buckets: TreeMap[Double, B]){
+    lazy val size = buckets.values.map(v => implicitly[HistogramValue[B]].count(v)).sum
+  }
 
   abstract class Histogram[A, P, B, T](implicit num: Numeric[P], mon: Monoid[B], hv: HistogramValue[B], hp: HistogramPoint[A,P,B]){
     val maxBuckets: Int
