@@ -29,6 +29,7 @@ import Scalaz._
 class HistogramSpec extends Specification{
   import histogram._
 
+
   "Histogram object" should {
     "maintain counts for exact bucket center matches" in {
       trait Hst

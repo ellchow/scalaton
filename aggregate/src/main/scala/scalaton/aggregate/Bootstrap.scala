@@ -34,7 +34,7 @@ trait BootstrappingModule{
       tag((xa: Map[Int, A]) |+| (xb: Map[Int, A]))
 
 
-    def from(x: A): Map[Int, A] @@ T = {
+    def single(x: A): Map[Int, A] @@ T = {
       val xs = for{
         i <- (0 until b).view
         _ <- (0 until poisson.sample).view
