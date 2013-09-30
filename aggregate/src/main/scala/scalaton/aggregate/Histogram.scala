@@ -40,6 +40,30 @@ trait HistogramModule{
     def count(a: (Long, Y)) = a._1
   }
 
+
+  abstract class TargetAverage[Y : Monoid]{
+    def weighted(y: Y, w: Double): Y
+
+    def average(y1: Y, y2: Y, w: Double): Y = {
+      require((w gte 0.0) && (w lte 1.0))
+
+      weighted(y1, w) |+| weighted(y2, (1 - w))
+    }
+  }
+
+  implicit def numericTargetAverage[Y : Numeric : Monoid] = new TargetAverage[Y]{
+    def weighted(y: Y, w: Double): Y =
+      implicitly[Numeric[Y]].times(y, implicitly[Numeric[Y]].fromDouble(w))
+  }
+
+  implicit def momentsTargetAverage = new TargetAverage[Moments]{
+    def weighted(y: Moments, w: Double) = y.copy(n = math.round(w * y.n).toLong)
+
+    override def average(y1: Moments, y2: Moments, w: Double): Moments =
+      super.average(y1, y2, w).copy(n = y1.n + y2.n)
+
+  }
+
   /** object to be inserted into the histogram - must be able to retrieve the representation of point
    *  as well as the value associated with the point
    * **/
@@ -203,7 +227,16 @@ trait HistogramModule{
 
   def simpleHistogram[A : Numeric, T](n: Int)(implicit hp: HistogramPoint[A,Long]) = new Histogram[A, Long, T](n){}
 
-  def simpleHistogramWithTarget[A : Numeric, Y, T](n: Int)(implicit monY: Monoid[Y], hp: HistogramPoint[(A,Y), (Long, Y)]) = new Histogram[(A, Y), (Long, Y), T](n){}
+  abstract class HistogramWithTarget[A, Y, T](override val maxBuckets: Int)(implicit mon: Monoid[(Long, Y)], hv: HistogramValue[(Long, Y)], hp: HistogramPoint[(A, Y), (Long, Y)], ave: TargetAverage[Y]) extends Histogram[(A, Y), (Long, Y), T](maxBuckets)(mon, hv, hp){
+    def averageTarget(h: HistogramData[(Long, Y)] @@ T, p: Double): Y = {
+      val ((x1, y1), (x2, y2)) = bucketsFor(h, p)
+
+      ave.average(y1._2, y2._2, 1 - (p - x1) / (x2 - x1))
+    }
+  }
+
+  def simpleHistogramWithTarget[A, Y, T](n: Int)(implicit num: Numeric[A], monY: Monoid[Y], hp: HistogramPoint[(A,Y), (Long, Y)], ave: TargetAverage[Y]) = new HistogramWithTarget[A, Y, T](n){}
+
 
   //// Functions
 
