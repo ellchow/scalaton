@@ -126,12 +126,20 @@ trait HistogramModule{
     }
 
     /** get buckets (in ascending order) from histogram up to buckets that contain counts for the point **/
-    protected def upTo(h: HistogramData[B] @@ T, p: Double): List[(Double, B)] = {
-      val delta = math.min(0.0001, 0.01 + (h.max - h.min))
-      val lb = (h.min - delta, mon.zero)
+    def upTo(h: HistogramData[B] @@ T, p: Double): List[(Double, B)] = {
+      require((p gte h.min) && (p lte h.max))
+
       val bs = h.buckets.toList
 
       (bs.head :: bs.zip(bs.drop(1)).takeWhile{ _._1._1 lte p }.map(_._2))
+
+
+    }
+
+    def bucketsFor(h: HistogramData[B] @@ T, p: Double): ((Double, B), (Double, B)) = {
+      val (a :: b :: Nil) = upTo(h,p).takeRight(2)
+
+      (a, b)
     }
 
     /** sum of counts from -Inf to p **/
