@@ -126,12 +126,12 @@ trait HistogramModule{
     }
 
     /** get buckets (in ascending order) from histogram up to buckets that contain counts for the point **/
-    protected def upTo(h: HistogramData[B] @@ T, p: Double): collection.IterableView[(Double, B),Iterable[_]] = {
+    protected def upTo(h: HistogramData[B] @@ T, p: Double): List[(Double, B)] = {
       val delta = math.min(0.0001, 0.01 + (h.max - h.min))
       val lb = (h.min - delta, mon.zero)
-      val bs  = h.buckets.view
+      val bs = h.buckets.toList
 
-      bs.zip(bs.drop(1)).takeWhile{ _._1._1 lte p }.map(_._2)
+      (bs.head :: bs.zip(bs.drop(1)).takeWhile{ _._1._1 lte p }.map(_._2))
     }
 
     /** sum of counts from -Inf to p **/
@@ -147,15 +147,14 @@ trait HistogramModule{
             val y = y0 + (y1 - y0) / (x1 - x0) * (p - x0)
 
             total + (y0 / 2) + ((y0 + y) / 2 * (p - x0) / (x1 - x0))
-          case (_, count) :: x :: rest =>
+          case (b, count) :: x :: rest =>
             loop(x :: rest, total + count)
 
           case _ => total
         }
-
         val bucketsUpToP = upTo(h, p).map{ case (k, v) => (k, implicitly[HistogramValue[B]].count(v).toDouble) }.toList
 
-        loop(bucketsUpToP, 0.0)
+        loop(bucketsUpToP, bucketsUpToP.head._2 / 2)
       }
     }
 
@@ -196,7 +195,7 @@ trait HistogramModule{
 
   def simpleHistogram[A : Numeric, T](n: Int)(implicit hp: HistogramPoint[A,Long]) = new Histogram[A, Long, T](n){}
 
-  def simpleHistogramWithTarget[A : Numeric, Y : TargetAverage, T](n: Int)(implicit monY: Monoid[Y], hp: HistogramPoint[(A,Y), (Long, Y)]) = new Histogram[(A, Y), (Long, Y), T](n){}
+  def simpleHistogramWithTarget[A : Numeric, Y, T](n: Int)(implicit monY: Monoid[Y], hp: HistogramPoint[(A,Y), (Long, Y)]) = new Histogram[(A, Y), (Long, Y), T](n){}
 
   //// Functions
 
