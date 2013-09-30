@@ -22,9 +22,11 @@ import Scalaz._
 import org.apache.commons.math3.distribution.PoissonDistribution
 
 trait BootstrappingModule{
+  type Poisson = org.apache.commons.math3.distribution.PoissonDistribution
+
   abstract class Bootstrapped[A : Monoid, T] extends Monoid[Map[Int, A] @@ T]{
     val b: Int
-    val poisson: PoissonDistribution
+    val poisson: Poisson
 
     def tag(m: Map[Int,A]) = Tag[Map[Int,A], T](m)
 
@@ -45,7 +47,7 @@ trait BootstrappingModule{
   }
 
   object bootstrapped{
-    def apply[A : Monoid, T](rounds: Int, poi: PoissonDistribution) = new Bootstrapped[A, T]{
+    def apply[A : Monoid, T](rounds: Int, poi: Poisson) = new Bootstrapped[A, T]{
       val b = rounds
       val poisson = poi
     }
