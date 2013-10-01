@@ -98,7 +98,7 @@ trait HistogramModule{
     val empty: HistogramData[B] @@ T = Tag(HistogramData[B](TreeMap[Double,B](), Double.PositiveInfinity, Double.NegativeInfinity))
 
     /** gap size for deciding which buckets are closest (to be merged) **/
-    def gapSize(x: (Double, Long), y: (Double, Long)): Double = y._1 - x._1
+    def gapSize(x: (Double, Long), y: (Double, Long)): Double //= y._1 - x._1
 
     /** insert a point into the histogram **/
     def insert(h: HistogramData[B] @@ T, a: A): HistogramData[B] @@ T = {
@@ -225,7 +225,9 @@ trait HistogramModule{
 
   }
 
-  def simpleHistogram[A : Numeric, T](n: Int)(implicit hp: HistogramPoint[A,Long]) = new Histogram[A, Long, T](n){}
+  def simpleHistogram[A : Numeric, T](n: Int, g: ((Double,Long),(Double,Long)) => Double = gapfn.distance)(implicit hp: HistogramPoint[A,Long]) = new Histogram[A, Long, T](n){
+    def gapSize(x: (Double, Long), y: (Double, Long)): Double = g(x,y)
+  }
 
   abstract class HistogramWithTarget[A, Y, T](override val maxBuckets: Int)(implicit mon: Monoid[(Long, Y)], hv: HistogramValue[(Long, Y)], hp: HistogramPoint[(A, Y), (Long, Y)], ave: TargetAverage[Y]) extends Histogram[(A, Y), (Long, Y), T](maxBuckets)(mon, hv, hp){
     def averageTarget(h: HistogramData[(Long, Y)] @@ T, p: Double): Y = {
@@ -235,8 +237,16 @@ trait HistogramModule{
     }
   }
 
-  def simpleHistogramWithTarget[A, Y, T](n: Int)(implicit num: Numeric[A], monY: Monoid[Y], hp: HistogramPoint[(A,Y), (Long, Y)], ave: TargetAverage[Y]) = new HistogramWithTarget[A, Y, T](n){}
+  def simpleHistogramWithTarget[A, Y, T](n: Int, g: ((Double,Long),(Double,Long)) => Double = gapfn.distance)(implicit num: Numeric[A], monY: Monoid[Y], hp: HistogramPoint[(A,Y), (Long, Y)], ave: TargetAverage[Y]) = new HistogramWithTarget[A, Y, T](n){
+    def gapSize(x: (Double, Long), y: (Double, Long)): Double = g(x, y)
+  }
 
+
+  object gapfn{
+    val distance: ((Double,Long),(Double,Long)) => Double = (x, y) => y._1 - x._1
+
+    val countWeightedDistance: ((Double,Long),(Double,Long)) => Double = (x, y) => distance(x,y) * math.log(1 + x._2 + y._2)
+  }
 
   //// Functions
 
