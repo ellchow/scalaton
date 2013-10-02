@@ -86,7 +86,7 @@ trait HistogramModule{
   }
 
   /** wrapper class holding actual histogram buckets and values **/
-  case class HistogramData[B : HistogramValue : Monoid](val buckets: TreeMap[Double, B], val min: Double, val max: Double){
+  case class HistogramData[A, B : HistogramValue : Monoid](val buckets: TreeMap[Double, B], val min: Double, val max: Double){
     lazy val size = buckets.values.map(v => implicitly[HistogramValue[B]].count(v)).sum
   }
 
@@ -95,32 +95,32 @@ trait HistogramModule{
     require(maxBuckets gt 0)
 
     /** empty histogram **/
-    val empty: HistogramData[B] @@ T = Tag(HistogramData[B](TreeMap[Double,B](), Double.PositiveInfinity, Double.NegativeInfinity))
+    val empty: HistogramData[A,B] @@ T = Tag(HistogramData[A,B](TreeMap[Double,B](), Double.PositiveInfinity, Double.NegativeInfinity))
 
     /** gap size for deciding which buckets are closest (to be merged) **/
     def gapSize(x: (Double, Long), y: (Double, Long)): Double //= y._1 - x._1
 
     /** insert a point into the histogram **/
-    def insert(h: HistogramData[B] @@ T, a: A): HistogramData[B] @@ T = {
+    def insert(h: HistogramData[A,B] @@ T, a: A): HistogramData[A,B] @@ T = {
       val pDouble = hp.point(a)
-      merge(h, Tag(HistogramData[B](TreeMap(pDouble -> hp.value(a)), pDouble, pDouble)) )
+      merge(h, Tag(HistogramData[A,B](TreeMap(pDouble -> hp.value(a)), pDouble, pDouble)) )
     }
 
     /** insert a point into the histogram n times **/
-    def insertN(h: HistogramData[B] @@ T, a: A, n: Int): HistogramData[B] @@ T = {
+    def insertN(h: HistogramData[A,B] @@ T, a: A, n: Int): HistogramData[A,B] @@ T = {
       require(n gt 0)
 
       (1 to n).foldLeft(h){ case (hh, _) => insert(hh, a) }
     }
 
-    def insert(h: HistogramData[B] @@ T, as: Iterable[A]): HistogramData[B] @@ T =
+    def insert(h: HistogramData[A,B] @@ T, as: Iterable[A]): HistogramData[A,B] @@ T =
       as.foldLeft(h){ case (hh, a) => insert(hh, a) }
 
-    def insert(h: HistogramData[B] @@ T, as: A*): HistogramData[B] @@ T =
+    def insert(h: HistogramData[A,B] @@ T, as: A*): HistogramData[A,B] @@ T =
       insert(h, as)
 
     /** merge 2 histograms together **/
-    def merge(h1: HistogramData[B] @@ T, h2: HistogramData[B] @@ T): HistogramData[B] @@ T = {
+    def merge(h1: HistogramData[A,B] @@ T, h2: HistogramData[A,B] @@ T): HistogramData[A,B] @@ T = {
       val unmergedBuckets = implicitly[Monoid[Map[Double, B]]].append((h1.buckets : Map[Double, B]), (h2.buckets : Map[Double, B])).asInstanceOf[TreeMap[Double, B]]
 
       @annotation.tailrec
@@ -146,11 +146,11 @@ trait HistogramModule{
         }
       }
 
-      Tag(HistogramData[B](loop(unmergedBuckets), math.min(h1.min, h2.min), math.max(h1.max, h2.max)))
+      Tag(HistogramData[A,B](loop(unmergedBuckets), math.min(h1.min, h2.min), math.max(h1.max, h2.max)))
     }
 
     /** get buckets (in ascending order) from histogram up to buckets that contain counts for the point **/
-    def upTo(h: HistogramData[B] @@ T, p: Double): List[(Double, B)] = {
+    def upTo(h: HistogramData[A,B] @@ T, p: Double): List[(Double, B)] = {
       require((p gte h.min) && (p lte h.max) && h.buckets.nonEmpty)
 
       val bs = h.buckets.toList
@@ -160,13 +160,13 @@ trait HistogramModule{
 
     }
 
-    def bucketsFor(h: HistogramData[B] @@ T, p: Double): Option[((Double, B), (Double, B))] = upTo(h,p).takeRight(2) match {
+    def bucketsFor(h: HistogramData[A,B] @@ T, p: Double): Option[((Double, B), (Double, B))] = upTo(h,p).takeRight(2) match {
       case (a :: b :: Nil) => (a, b).some
       case _ => none
     }
 
     /** sum of counts from -Inf to p **/
-    def cumsum(h: HistogramData[B] @@ T, p: Double): Double = {
+    def cumsum(h: HistogramData[A,B] @@ T, p: Double): Double = {
       if(p gte h.max){
         h.size
       }else if(p lt h.min){
@@ -190,7 +190,7 @@ trait HistogramModule{
     }
 
     /** find quantile using binary search **/
-    def quantile(h: HistogramData[B] @@ T, q0: Double, tol: Double = 0.001): Double = {
+    def quantile(h: HistogramData[A,B] @@ T, q0: Double, tol: Double = 0.001): Double = {
       require((q0 gte 0.0) && (q0 lte 1.0))
 
       if(q0 === 1.0){
@@ -219,7 +219,7 @@ trait HistogramModule{
       }
     }
 
-    def quantiles(h: HistogramData[B] @@ T, qs: Seq[Double], tol: Double = 0.001): Seq[Double] =
+    def quantiles(h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001): Seq[Double] =
       qs.map(q => quantile(h, q, tol))
 
   }
@@ -229,7 +229,7 @@ trait HistogramModule{
   }
 
   abstract class HistogramWithTarget[A, Y, T](override val maxBuckets: Int)(implicit mon: Monoid[(Long, Y)], hv: HistogramValue[(Long, Y)], hp: HistogramPoint[(A, Y), (Long, Y)], ave: TargetAverage[Y]) extends Histogram[(A, Y), (Long, Y), T](maxBuckets)(mon, hv, hp){
-    def averageTarget(h: HistogramData[(Long, Y)] @@ T, p: Double): Option[Y] = bucketsFor(h, p) map {
+    def averageTarget(h: HistogramData[(A, Y), (Long, Y)] @@ T, p: Double): Option[Y] = bucketsFor(h, p) map {
       case ((x1, y1), (x2, y2)) => ave.average(y1._2, y2._2, 1 - (p - x1) / (x2 - x1))
     }
   }
@@ -247,29 +247,29 @@ trait HistogramModule{
 
   //// Functions
 
-  // def insertN[A, B, T](h: HistogramData[B] @@ T, a: A, n: Int)
-  //                     (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
-  //   hst.insertN(h, a, n)
+  def insertN[A, B, T](h: HistogramData[A,B] @@ T, a: A, n: Int)
+                      (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[A,B] @@ T =
+    hst.insertN(h, a, n)
 
-  // def insert[A, B, T](h: HistogramData[B] @@ T, as: A*)
-  //                    (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
-  //   hst.insert(h, as)
+  def insert[A, B, T](h: HistogramData[A,B] @@ T, as: A*)
+                     (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[A,B] @@ T =
+    hst.insert(h, as)
 
-  // def merge[A, B, T](h1: HistogramData[B] @@ T, h2: HistogramData[B] @@ T)
-  //                   (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[B] @@ T =
-  //   hst.merge(h1, h2)
+  def merge[A, B, T](h1: HistogramData[A,B] @@ T, h2: HistogramData[A,B] @@ T)
+                    (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): HistogramData[A,B] @@ T =
+    hst.merge(h1, h2)
 
-  // def cumsum[A, B, T](h: HistogramData[B] @@ T, p: Double)
-  //                    (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
-  //   hst.cumsum(h, p)
+  def cumsum[A, B, T](h: HistogramData[A,B] @@ T, p: Double)
+                     (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
+    hst.cumsum(h, p)
 
-  // def quantile[A,B,T](h: HistogramData[B] @@ T, q0: Double, tol: Double = 0.001)
-  //                      (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
-  //   hst.quantile(h, q0, tol)
+  def quantile[A,B,T](h: HistogramData[A,B] @@ T, q0: Double, tol: Double = 0.001)
+                       (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
+    hst.quantile(h, q0, tol)
 
-  // def quantiles[A, B, T](h: HistogramData[B] @@ T, qs: Seq[Double], tol: Double = 0.001)
-  //                       (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[Double] =
-  //   hst.quantiles(h, qs, tol)
+  def quantiles[A, B, T](h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001)
+                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[Double] =
+    hst.quantiles(h, qs, tol)
 
 
 
