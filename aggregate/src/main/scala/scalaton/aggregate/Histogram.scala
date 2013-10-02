@@ -206,12 +206,12 @@ trait HistogramModule{
 
           val q = cumsum(h, x) / total
 
-          if(((ub - lb) lt tol) || (math.abs(q - q0) lte tol)){
+          if((((ub - lb) / lb) lt 0.001) || (math.abs(q - q0) lte tol)){
             x
           }else if(q gt q0){
-            loop(lb + (x - lb) / 2, x)
+            loop(lb, x)
           }else{
-            loop(x, x + (ub - x) / 2)
+            loop(x, ub)
           }
         }
 
