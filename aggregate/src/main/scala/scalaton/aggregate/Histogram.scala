@@ -108,6 +108,8 @@ trait HistogramModule{
     /** empty histogram **/
     val empty: HistogramData[A,B] @@ T = Tag(HistogramDataLTE1[A,B](TreeMap[Double,B](), Double.PositiveInfinity, Double.NegativeInfinity))
 
+    def apply(as: A*) = insert(empty, as)
+
     /** gap size for deciding which buckets are closest (to be merged) **/
     def gapSize(x: (Double, Long), y: (Double, Long)): Double //= y._1 - x._1
 
