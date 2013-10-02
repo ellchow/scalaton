@@ -194,60 +194,68 @@ trait HistogramModule{
 
     /** sum of counts from -Inf to p **/
     def cumsum(h: HistogramData[A,B] @@ T, p: Double): Option[Double] = {
+      @annotation.tailrec
+      def loop(bs: List[(Double, Double)], total: Double): Double = bs match {
+        case (x0, y0) :: (x1, y1) :: Nil =>
+          val y = y0 + (y1 - y0) / (x1 - x0) * (p - x0)
+
+          total + (y0 / 2) + ((y0 + y) / 2 * (p - x0) / (x1 - x0))
+        case (b, count) :: x :: rest =>
+          loop(x :: rest, total + count)
+
+        case _ => total
+      }
+
       if(p gte h.max){
         h.size.toDouble.some
       }else if(p lt h.min){
         0.0.some
       }else{
-        @annotation.tailrec
-        def loop(bs: List[(Double, Double)], total: Double): Double = bs match {
-          case (x0, y0) :: (x1, y1) :: Nil =>
-            val y = y0 + (y1 - y0) / (x1 - x0) * (p - x0)
-
-            total + (y0 / 2) + ((y0 + y) / 2 * (p - x0) / (x1 - x0))
-          case (b, count) :: x :: rest =>
-            loop(x :: rest, total + count)
-
-          case _ => total
-        }
         val bucketsUpToP = upTo(h, p).map{ _.map{ case (k, v) => (k, implicitly[HistogramValue[B]].count(v).toDouble) }.toList }
 
         bucketsUpToP map (bs => loop(bs, bs.head._2 / 2))
       }
     }
 
-    // /** find quantile using binary search **/
-    // def quantile(h: HistogramData[A,B] @@ T, q0: Double, tol: Double = 0.001): Double = {
-    //   require((q0 gte 0.0) && (q0 lte 1.0))
+    /** find quantile using binary search **/
+    def quantile(h: HistogramData[A,B] @@ T, q0: Double, tol: Double = 0.001): Option[Double] = {
+      require((q0 gte 0.0) && (q0 lte 1.0))
 
-    //   if(q0 === 1.0){
-    //     h.max
-    //   }else if(q0 === 0.0){
-    //     h.min
-    //   }else{
-    //     val total = h.size
+      (h: HistogramData[A,B]) match {
+        case HistogramDataN(_, _, _) =>
+          if(q0 === 1.0){
+            h.max.some
+          }else if(q0 === 0.0){
+            h.min.some
+          }else{
+            val total = h.size
 
-    //     @annotation.tailrec
-    //     def loop(lb: Double, ub: Double): Double = {
-    //       val x = lb + (ub - lb) / 2
+            @annotation.tailrec
+            def loop(lb: Double, ub: Double): Double = {
+              val x = lb + (ub - lb) / 2
 
-    //       val q = cumsum(h, x) / total
+              val q = cumsum(h, x).get / total
 
-    //       if((((ub - lb) / lb) lt 0.001) || (math.abs(q - q0) lte tol)){
-    //         x
-    //       }else if(q gt q0){
-    //         loop(lb, x)
-    //       }else{
-    //         loop(x, ub)
-    //       }
-    //     }
 
-    //     loop(h.min, h.max)
-    //   }
-    // }
+              if((((ub - lb) / lb) lt 0.001) || (math.abs(q - q0) lte tol)){
+                x
+              }else if(q gt q0){
+                loop(lb, x)
+              }else{
+                loop(x, ub)
+              }
 
-    // def quantiles(h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001): Seq[Double] =
-    //   qs.map(q => quantile(h, q, tol))
+            }
+
+
+            loop(h.min, h.max).some
+          }
+        case HistogramDataLTE1(_, _, _) => none
+      }
+    }
+
+    def quantiles(h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001): Seq[(Double, Option[Double])] =
+      qs.map(q => (q, quantile(h, q, tol)))
 
   }
 
@@ -290,13 +298,13 @@ trait HistogramModule{
                      (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Option[Double] =
     hst.cumsum(h, p)
 
-  // def quantile[A,B,T](h: HistogramDataN[A,B] @@ T, q0: Double, tol: Double = 0.001)
-  //                      (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
-  //   hst.quantile(h, q0, tol)
+  def quantile[A,B,T](h: HistogramData[A,B] @@ T, q0: Double, tol: Double = 0.001)
+                       (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Option[Double] =
+    hst.quantile(h, q0, tol)
 
-  // def quantiles[A, B, T](h: HistogramDataN[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001)
-  //                       (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[Double] =
-  //   hst.quantiles(h, qs, tol)
+  def quantiles[A, B, T](h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001)
+                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[(Double, Option[Double])] =
+    hst.quantiles(h, qs, tol)
 
 
 
