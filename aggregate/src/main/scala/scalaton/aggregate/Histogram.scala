@@ -86,8 +86,6 @@ trait HistogramModule{
   }
 
   /** wrapper class holding actual histogram buckets and values **/
-
-
   sealed abstract class HistogramData[A, B : HistogramValue : Monoid]{
     val buckets: TreeMap[Double, B]
 
@@ -246,9 +244,7 @@ trait HistogramModule{
               }else{
                 loop(x, ub)
               }
-
             }
-
 
             loop(h.min, h.max).some
           }
