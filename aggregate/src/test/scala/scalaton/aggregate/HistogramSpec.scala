@@ -28,7 +28,7 @@ import Scalaz._
 
 class HistogramSpec extends Specification{
   import histogram._
-
+  import org.apache.commons.math3.distribution._
 
   "Histogram object" should {
     "maintain counts for exact bucket center matches" in {
@@ -103,6 +103,34 @@ class HistogramSpec extends Specification{
           xy.max mustEqual itemsXY.max
 
         }
+      }
+
+      "compute approximate quantiles" in {
+        trait Hst
+        implicit val h = simpleHistogram[Double, Hst](100)
+
+        val ds = Vector(new ExponentialDistribution(util.Random.nextDouble * util.Random.nextInt(10) + 1),
+          new NormalDistribution(util.Random.nextInt(100), 1),
+          new UniformRealDistribution(util.Random.nextDouble * util.Random.nextInt(10), util.Random.nextDouble * util.Random.nextInt(100) + 100)
+                      )
+
+        def nextDistribution = ds(util.Random.nextInt(ds.size))
+
+        val err = for(_ <- 1 to 100)
+        yield{
+          val r = nextDistribution
+
+          val xs = (0 to 2000) map (_ => r.sample)
+
+          val y = insert(h.empty, xs : _*)
+
+          val q = util.Random.nextDouble
+
+          math.abs(q - r.cumulativeProbability(quantile(y, q).get))
+        }
+
+        (err.sum / err.size) must beLessThan(0.02)
+
       }
     }
   }

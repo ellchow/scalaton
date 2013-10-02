@@ -305,10 +305,6 @@ trait HistogramModule{
   def quantiles[A, B, T](h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001)
                         (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[(Double, Option[Double])] =
     hst.quantiles(h, qs, tol)
-
-
-
-
 }
 
 object histogram extends HistogramModule
