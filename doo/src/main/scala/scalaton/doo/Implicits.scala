@@ -140,21 +140,27 @@ trait ImplicitConversions{
 
   implicit val momentsWF = mkCaseWireFormat((n: Long, mean: Double, m2: Double, m3: Double, m4: Double) => Moments(n,mean,m2,m3,m4), Moments.unapply _)
 
-  implicit def histogramDataWF[B : WireFormat : HistogramValue : Monoid] = new HistogramDataWireFormat[B]
+  implicit def histogramDataWF[A, B : WireFormat : HistogramValue : Monoid] = new HistogramDataWireFormat[A, B]
 
-  class HistogramDataWireFormat[B : WireFormat : HistogramValue : Monoid] extends WireFormat[HistogramData[B]]{
-    def toWire(x: HistogramData[B], out: DataOutput) = {
+  class HistogramDataWireFormat[A, B : WireFormat : HistogramValue : Monoid] extends WireFormat[HistogramData[A, B]]{
+    def toWire(x: HistogramData[A, B], out: DataOutput) = {
       implicitly[WireFormat[TreeMap[Double, B]]].toWire(x.buckets, out)
       out.writeDouble(x.min)
       out.writeDouble(x.max)
+
+      x match {
+        case HistogramDataLTE1(_, _, _) => out.writeBoolean(true)
+        case HistogramDataN(_, _, _) => out.writeBoolean(false)
+      }
     }
 
-    def fromWire(in: DataInput): HistogramData[B] = {
+    def fromWire(in: DataInput): HistogramData[A, B] = {
       val buckets = implicitly[WireFormat[TreeMap[Double, B]]].fromWire(in)
       val min = in.readDouble()
       val max = in.readDouble()
+      val isLte1 = in.readBoolean()
 
-      HistogramData[B](buckets, min, max)
+      if(isLte1) HistogramDataLTE1(buckets, min, max) else HistogramDataN(buckets, min, max)
     }
   }
 
