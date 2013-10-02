@@ -86,16 +86,27 @@ trait HistogramModule{
   }
 
   /** wrapper class holding actual histogram buckets and values **/
-  case class HistogramData[A, B : HistogramValue : Monoid](val buckets: TreeMap[Double, B], val min: Double, val max: Double){
+
+
+  sealed abstract class HistogramData[A, B : HistogramValue : Monoid]{
+    val buckets: TreeMap[Double, B]
+
+    val min: Double
+
+    val max: Double
+
     lazy val size = buckets.values.map(v => implicitly[HistogramValue[B]].count(v)).sum
   }
+
+  case class HistogramDataLTE1[A, B : HistogramValue : Monoid](val buckets: TreeMap[Double, B], val min: Double, val max: Double) extends HistogramData[A,B]
+  case class HistogramDataN[A, B : HistogramValue : Monoid](val buckets: TreeMap[Double, B], val min: Double, val max: Double) extends HistogramData[A,B]
 
 
   abstract class Histogram[A, B, T](val maxBuckets: Int)(implicit mon: Monoid[B], hv: HistogramValue[B], hp: HistogramPoint[A,B]){
     require(maxBuckets gt 0)
 
     /** empty histogram **/
-    val empty: HistogramData[A,B] @@ T = Tag(HistogramData[A,B](TreeMap[Double,B](), Double.PositiveInfinity, Double.NegativeInfinity))
+    val empty: HistogramData[A,B] @@ T = Tag(HistogramDataLTE1[A,B](TreeMap[Double,B](), Double.PositiveInfinity, Double.NegativeInfinity))
 
     /** gap size for deciding which buckets are closest (to be merged) **/
     def gapSize(x: (Double, Long), y: (Double, Long)): Double //= y._1 - x._1
@@ -103,7 +114,7 @@ trait HistogramModule{
     /** insert a point into the histogram **/
     def insert(h: HistogramData[A,B] @@ T, a: A): HistogramData[A,B] @@ T = {
       val pDouble = hp.point(a)
-      merge(h, Tag(HistogramData[A,B](TreeMap(pDouble -> hp.value(a)), pDouble, pDouble)) )
+      merge(h, Tag(HistogramDataLTE1[A,B](TreeMap(pDouble -> hp.value(a)), pDouble, pDouble)) )
     }
 
     /** insert a point into the histogram n times **/
@@ -146,31 +157,47 @@ trait HistogramModule{
         }
       }
 
-      Tag(HistogramData[A,B](loop(unmergedBuckets), math.min(h1.min, h2.min), math.max(h1.max, h2.max)))
+      val mergedBuckets = loop(unmergedBuckets)
+      val mergedMin = math.min(h1.min, h2.min)
+      val mergedMax = math.max(h1.max, h2.max)
+
+      Tag(if(mergedBuckets.size gte 2) HistogramDataN(mergedBuckets, mergedMin, mergedMax) else HistogramDataLTE1(mergedBuckets, mergedMin, mergedMax))
     }
 
     /** get buckets (in ascending order) from histogram up to buckets that contain counts for the point **/
-    def upTo(h: HistogramData[A,B] @@ T, p: Double): List[(Double, B)] = {
-      require((p gte h.min) && (p lte h.max) && h.buckets.nonEmpty)
+    def upTo(h: HistogramData[A,B] @@ T, p: Double): Option[List[(Double, B)]] = {
+      // require((p gte h.min) && (p lte h.max) && h.buckets.nonEmpty)
 
-      val bs = h.buckets.toList
+      if(p lt h.min){
+        upTo(h, h.min)
+      }else if(p gt h.max){
+        upTo(h, h.max)
+      }else{
+        (h: HistogramData[A,B]) match {
+          case HistogramDataN(bs, mn, mx)=>
+            val bs = h.buckets.toList
 
-      (bs.head :: bs.zip(bs.drop(1)).takeWhile{ _._1._1 lte p }.map(_._2))
+            (bs.head :: bs.zip(bs.drop(1)).takeWhile{ _._1._1 lte p }.map(_._2)).some
 
-
+          case HistogramDataLTE1(bs, mn, mx)=> none
+        }
+      }
     }
 
-    def bucketsFor(h: HistogramData[A,B] @@ T, p: Double): Option[((Double, B), (Double, B))] = upTo(h,p).takeRight(2) match {
-      case (a :: b :: Nil) => (a, b).some
-      case _ => none
-    }
+    def bucketsFor(h: HistogramData[A,B] @@ T, p: Double): Option[((Double, B), (Double, B))] =
+      upTo(h,p) flatMap {
+        _.takeRight(2) match {
+          case (a :: b :: Nil) => (a, b).some
+          case _ => none
+        }
+      }
 
     /** sum of counts from -Inf to p **/
-    def cumsum(h: HistogramData[A,B] @@ T, p: Double): Double = {
+    def cumsum(h: HistogramData[A,B] @@ T, p: Double): Option[Double] = {
       if(p gte h.max){
-        h.size
+        h.size.toDouble.some
       }else if(p lt h.min){
-        0
+        0.0.some
       }else{
         @annotation.tailrec
         def loop(bs: List[(Double, Double)], total: Double): Double = bs match {
@@ -183,44 +210,44 @@ trait HistogramModule{
 
           case _ => total
         }
-        val bucketsUpToP = upTo(h, p).map{ case (k, v) => (k, implicitly[HistogramValue[B]].count(v).toDouble) }.toList
+        val bucketsUpToP = upTo(h, p).map{ _.map{ case (k, v) => (k, implicitly[HistogramValue[B]].count(v).toDouble) }.toList }
 
-        loop(bucketsUpToP, bucketsUpToP.head._2 / 2)
+        bucketsUpToP map (bs => loop(bs, bs.head._2 / 2))
       }
     }
 
-    /** find quantile using binary search **/
-    def quantile(h: HistogramData[A,B] @@ T, q0: Double, tol: Double = 0.001): Double = {
-      require((q0 gte 0.0) && (q0 lte 1.0))
+    // /** find quantile using binary search **/
+    // def quantile(h: HistogramData[A,B] @@ T, q0: Double, tol: Double = 0.001): Double = {
+    //   require((q0 gte 0.0) && (q0 lte 1.0))
 
-      if(q0 === 1.0){
-        h.max
-      }else if(q0 === 0.0){
-        h.min
-      }else{
-        val total = h.size
+    //   if(q0 === 1.0){
+    //     h.max
+    //   }else if(q0 === 0.0){
+    //     h.min
+    //   }else{
+    //     val total = h.size
 
-        @annotation.tailrec
-        def loop(lb: Double, ub: Double): Double = {
-          val x = lb + (ub - lb) / 2
+    //     @annotation.tailrec
+    //     def loop(lb: Double, ub: Double): Double = {
+    //       val x = lb + (ub - lb) / 2
 
-          val q = cumsum(h, x) / total
+    //       val q = cumsum(h, x) / total
 
-          if((((ub - lb) / lb) lt 0.001) || (math.abs(q - q0) lte tol)){
-            x
-          }else if(q gt q0){
-            loop(lb, x)
-          }else{
-            loop(x, ub)
-          }
-        }
+    //       if((((ub - lb) / lb) lt 0.001) || (math.abs(q - q0) lte tol)){
+    //         x
+    //       }else if(q gt q0){
+    //         loop(lb, x)
+    //       }else{
+    //         loop(x, ub)
+    //       }
+    //     }
 
-        loop(h.min, h.max)
-      }
-    }
+    //     loop(h.min, h.max)
+    //   }
+    // }
 
-    def quantiles(h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001): Seq[Double] =
-      qs.map(q => quantile(h, q, tol))
+    // def quantiles(h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001): Seq[Double] =
+    //   qs.map(q => quantile(h, q, tol))
 
   }
 
@@ -260,16 +287,16 @@ trait HistogramModule{
     hst.merge(h1, h2)
 
   def cumsum[A, B, T](h: HistogramData[A,B] @@ T, p: Double)
-                     (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
+                     (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Option[Double] =
     hst.cumsum(h, p)
 
-  def quantile[A,B,T](h: HistogramData[A,B] @@ T, q0: Double, tol: Double = 0.001)
-                       (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
-    hst.quantile(h, q0, tol)
+  // def quantile[A,B,T](h: HistogramDataN[A,B] @@ T, q0: Double, tol: Double = 0.001)
+  //                      (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Double =
+  //   hst.quantile(h, q0, tol)
 
-  def quantiles[A, B, T](h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001)
-                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[Double] =
-    hst.quantiles(h, qs, tol)
+  // def quantiles[A, B, T](h: HistogramDataN[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001)
+  //                       (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[Double] =
+  //   hst.quantiles(h, qs, tol)
 
 
 

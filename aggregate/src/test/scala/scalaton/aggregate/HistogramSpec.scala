@@ -104,7 +104,6 @@ class HistogramSpec extends Specification{
 
         }
       }
-
     }
   }
 }
