@@ -151,7 +151,7 @@ trait HistogramModule{
 
     /** get buckets (in ascending order) from histogram up to buckets that contain counts for the point **/
     def upTo(h: HistogramData[B] @@ T, p: Double): List[(Double, B)] = {
-      require((p gte h.min) && (p lte h.max))
+      require((p gte h.min) && (p lte h.max) && h.buckets.nonEmpty)
 
       val bs = h.buckets.toList
 
@@ -160,10 +160,9 @@ trait HistogramModule{
 
     }
 
-    def bucketsFor(h: HistogramData[B] @@ T, p: Double): ((Double, B), (Double, B)) = {
-      val (a :: b :: Nil) = upTo(h,p).takeRight(2)
-
-      (a, b)
+    def bucketsFor(h: HistogramData[B] @@ T, p: Double): Option[((Double, B), (Double, B))] = upTo(h,p).takeRight(2) match {
+      case (a :: b :: Nil) => (a, b).some
+      case _ => none
     }
 
     /** sum of counts from -Inf to p **/
@@ -230,10 +229,8 @@ trait HistogramModule{
   }
 
   abstract class HistogramWithTarget[A, Y, T](override val maxBuckets: Int)(implicit mon: Monoid[(Long, Y)], hv: HistogramValue[(Long, Y)], hp: HistogramPoint[(A, Y), (Long, Y)], ave: TargetAverage[Y]) extends Histogram[(A, Y), (Long, Y), T](maxBuckets)(mon, hv, hp){
-    def averageTarget(h: HistogramData[(Long, Y)] @@ T, p: Double): Y = {
-      val ((x1, y1), (x2, y2)) = bucketsFor(h, p)
-
-      ave.average(y1._2, y2._2, 1 - (p - x1) / (x2 - x1))
+    def averageTarget(h: HistogramData[(Long, Y)] @@ T, p: Double): Option[Y] = bucketsFor(h, p) map {
+      case ((x1, y1), (x2, y2)) => ave.average(y1._2, y2._2, 1 - (p - x1) / (x2 - x1))
     }
   }
 
