@@ -110,8 +110,8 @@ class HistogramSpec extends Specification{
         implicit val h = simpleHistogram[Double, Hst](100)
 
         val ds = Vector(new ExponentialDistribution(util.Random.nextDouble * util.Random.nextInt(10) + 1),
-          new NormalDistribution(util.Random.nextInt(100), 1),
-          new UniformRealDistribution(util.Random.nextDouble * util.Random.nextInt(10), util.Random.nextDouble * util.Random.nextInt(100) + 100)
+                        new NormalDistribution(util.Random.nextInt(100), 1),
+                        new UniformRealDistribution(util.Random.nextDouble * util.Random.nextInt(10), util.Random.nextDouble * util.Random.nextInt(100) + 100)
                       )
 
         def nextDistribution = ds(util.Random.nextInt(ds.size))
