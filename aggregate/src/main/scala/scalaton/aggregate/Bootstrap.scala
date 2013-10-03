@@ -21,39 +21,33 @@ import Scalaz._
 
 import org.apache.commons.math3.distribution.PoissonDistribution
 
-trait BootstrappingModule{
+abstract class Bootstrapped[A : Monoid, T] extends Monoid[Map[Int, A] @@ T]{
+  val b: Int
+  val poisson: PoissonDistribution
+
+  def tag(m: Map[Int,A]) = Tag[Map[Int,A], T](m)
+
+  val zero = tag(Map[Int,A]())
+
+  def append(xa: Map[Int,A] @@ T, xb: => Map[Int,A] @@ T) =
+    tag((xa: Map[Int, A]) |+| (xb: Map[Int, A]))
+
+}
+
+object bootstrap{
   type Poisson = org.apache.commons.math3.distribution.PoissonDistribution
 
-  abstract class Bootstrapped[A : Monoid, T] extends Monoid[Map[Int, A] @@ T]{
-    val b: Int
-    val poisson: Poisson
-
-    def tag(m: Map[Int,A]) = Tag[Map[Int,A], T](m)
-
-    val zero = tag(Map[Int,A]())
-
-    def append(xa: Map[Int,A] @@ T, xb: => Map[Int,A] @@ T) =
-      tag((xa: Map[Int, A]) |+| (xb: Map[Int, A]))
-
-
-    def single(x: A): Map[Int, A] @@ T = {
-      val xs = for{
-        i <- (0 until b).view
-        _ <- (0 until poisson.sample).view
-      } yield Map(i -> x)
-
-      tag(xs.reduce(_ |+| _))
-    }
-  }
-
-  object bootstrapped{
-    def apply[A : Monoid, T](rounds: Int, poi: Poisson) = new Bootstrapped[A, T]{
+  def bootstrapped[A : Monoid, T](rounds: Int, poi: PoissonDistribution) = new Bootstrapped[A, T]{
       val b = rounds
       val poisson = poi
     }
 
+  def init[A,T](x: A)(implicit mon: Monoid[A], bts: Bootstrapped[A,T]): Map[Int, A] @@ T = {
+    val xs = for{
+      i <- (0 until bts.b).view
+      _ <- (0 until bts.poisson.sample).view
+    } yield Map(i -> x)
 
+    bts.tag(xs.reduce(_ |+| _))
   }
 }
-
-object bootstrap extends BootstrappingModule
