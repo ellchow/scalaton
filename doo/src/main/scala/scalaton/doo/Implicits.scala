@@ -27,7 +27,7 @@ import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
 import scalaton.aggregate.moments._
-import scalaton.aggregate.histogram._
+import scalaton.aggregate._
 
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
