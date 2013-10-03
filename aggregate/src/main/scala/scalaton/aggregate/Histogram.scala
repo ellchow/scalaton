@@ -220,8 +220,8 @@ abstract class Histogram[A, B, T](val maxBuckets: Int)(implicit mon: Monoid[B], 
     }
   }
 
-  def quantiles(h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001): Seq[(Double, Option[Double])] =
-    qs.map(q => (q, quantile(h, q, tol)))
+  def quantiles(h: HistogramData[A,B] @@ T, qs: List[Double], tol: Double = 0.001): Option[List[(Double, Double)]] =
+    qs.map(q => quantile(h, q, tol)).sequence.map(qs zip _)
 
 }
 
@@ -253,8 +253,8 @@ trait HistogramFunctions{
                      (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Option[Double] =
     hst.quantile(h, q0, tol)
 
-  def quantiles[A, B, T](h: HistogramData[A,B] @@ T, qs: Seq[Double], tol: Double = 0.001)
-                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Seq[(Double, Option[Double])] =
+  def quantiles[A, B, T](h: HistogramData[A,B] @@ T, qs: List[Double], tol: Double = 0.001)
+                        (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Option[List[(Double, Double)]] =
     hst.quantiles(h, qs, tol)
 }
 
