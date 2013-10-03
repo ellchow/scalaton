@@ -164,9 +164,6 @@ object sketch {
         protected def estimate(cs: Iterable[Long]): Long = cs.min
       }
   }
-
-
-
 }
 
 

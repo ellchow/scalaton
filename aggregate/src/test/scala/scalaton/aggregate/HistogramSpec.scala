@@ -26,9 +26,11 @@ import spire.math._
 import scalaz._
 import Scalaz._
 
+
 class HistogramSpec extends Specification{
-  import histogram._
+  import hstgm._
   import org.apache.commons.math3.distribution._
+
 
   "Histogram object" should {
     "maintain counts for exact bucket center matches" in {
@@ -107,7 +109,7 @@ class HistogramSpec extends Specification{
 
       "compute approximate quantiles" in {
         trait Hst
-        implicit val h = simpleHistogram[Double, Hst](100)
+        implicit val h = simpleHistogram[Double, Hst](256)
 
         val ds = Vector(new ExponentialDistribution(util.Random.nextDouble * util.Random.nextInt(10) + 1),
                         new NormalDistribution(util.Random.nextInt(100), 1),
@@ -116,7 +118,7 @@ class HistogramSpec extends Specification{
 
         def nextDistribution = ds(util.Random.nextInt(ds.size))
 
-        val err = for(_ <- 1 to 100)
+        val err = for(_ <- 1 to 200)
         yield{
           val r = nextDistribution
 
@@ -131,6 +133,7 @@ class HistogramSpec extends Specification{
 
         (err.sum / err.size) must beLessThan(0.02)
 
+        err.sorted.drop((err.size * 0.85).toInt).head must beLessThan(0.02)
       }
     }
   }
