@@ -19,6 +19,7 @@ package scalaton.doo
 import com.github.nscala_time.time.Imports._
 
 import collection.immutable.TreeMap
+import collection.mutable
 
 import java.io._
 import org.apache.hadoop.conf.{Configuration => HConf}
@@ -38,6 +39,7 @@ import com.typesafe.scalalogging.slf4j._
 
 import scalaz.{DList => _, _}
 import Scalaz._
+import Tree._
 
 trait ImplicitConversions{
 
@@ -135,6 +137,39 @@ trait ImplicitConversions{
     override def toString = "NonEmptyList["+wt+"]"
   }
 
+  implicit def scalazTreeWF[A : WireFormat] = new WireFormat[Tree[A]]{
+    def toWire(t: Tree[A], out: DataOutput) = {
+      // write the root label
+      implicitly[WireFormat[A]].toWire(t.rootLabel, out)
+
+      val sf = t.subForest.toVector
+
+      // write number of children
+      out.writeInt(sf.size)
+
+      // write subtrees
+      sf.foreach( st => toWire(st, out) )
+    }
+
+    def fromWire(in: DataInput): Tree[A] = {
+      // read root label
+      val rootLabel = implicitly[WireFormat[A]].fromWire(in)
+
+      // read number of children
+      val numChildren = in.readInt()
+
+      val buf = mutable.ArrayBuffer[Tree[A]]()
+      val stream = buf.mapResult(_.toStream)
+
+      // read each subtree
+      for(i <- 1 to numChildren){
+        buf += fromWire(in)
+      }
+
+      // instantiate Tree
+      node(rootLabel, stream.result())
+    }
+  }
 
   implicit val compressedBitSetWF = AnythingFmt[CompressedBitSet]
 
