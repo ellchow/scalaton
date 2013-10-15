@@ -92,8 +92,8 @@ trait ImplicitConversions{
     def skewedJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], sampleRate: Double, maxPerReducer: Int)(implicit hashable: Hashable[A,Bits32]) =
       joins.skewedJoin(dl, right, sampleRate, maxPerReducer)
 
-    def groupByKeyThenCombine(implicit semigroupB: Semigroup[B]) =
-      helpers.groupByKeyThenCombine(dl)
+    def groupByKeyThenCombine(doFlush: collection.Map[A,B] => Boolean = _ => false)(implicit semigroupB: Semigroup[B]) =
+      helpers.groupByKeyThenCombine(dl, doFlush)
   }
 
   // Wireformats

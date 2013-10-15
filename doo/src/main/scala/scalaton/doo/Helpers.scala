@@ -17,6 +17,7 @@
 package scalaton.doo
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import com.nicta.scoobi.Scoobi._
 import com.nicta.scoobi.core.Reduction
@@ -49,10 +50,36 @@ trait HelperFunctions {
   def parallelFoldMonoid[A : Manifest : WireFormat, B : Manifest : WireFormat : Monoid](dl: DList[A])(f: (B, A) => B) =
     parallelFold(dl, implicitly[Monoid[B]].zero)(f)
 
-  def groupByKeyThenCombine[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](dl: DList[(A,B)])(implicit semigroupB: Semigroup[B]): DList[(A, B)] = {
-    val partial = parallelFold(dl, Map[A,B]())( (combined, ab) => combined |+| Map(ab) ) mapFlatten ( _ toSeq )
+  def groupByKeyThenCombine[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat]
+  (dl: DList[(A,B)], doFlush: collection.Map[A,B] => Boolean = (_: collection.Map[A,B]) => false)
+  (implicit semigroupB: Semigroup[B]): DList[(A, B)] = {
 
-    partial.groupByKey map { case (a, bs) => (a, bs reduce (_ |+| _)) }
+    def combineFun = new DoFn[(A,B), (A,B)]{
+      private var store: mutable.Map[A,B] = mutable.Map()
+
+      private def flush(emitter: Emitter[(A,B)]): Unit = {
+        store foreach { case (a, b) => emitter.emit((a,b)) }
+
+        store = mutable.Map()
+      }
+
+      def setup() {}
+
+      def process(ab: (A,B), emitter: Emitter[(A,B)]){
+        val a = ab._1
+        val b = store.get(a).some(_ |+| ab._2).none(ab._2)
+        store += a -> b
+
+        if(doFlush(store: collection.Map[A,B]))
+          flush(emitter)
+      }
+
+      def cleanup(emitter: Emitter[(A,B)]) {
+        flush(emitter)
+      }
+    }
+
+    (dl parallelDo combineFun).groupByKey.combine(Reduction((_: B) |+| (_: B)))
   }
 
   def hcount[A : Manifest : WireFormat, L](dl: DList[A], group: String, f: A => L): DList[A] =
