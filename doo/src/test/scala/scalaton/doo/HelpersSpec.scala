@@ -19,7 +19,7 @@ import implicits._
 class HelpersSpec extends HadoopSpecification {
 
   "groupByKeyThenCombine should yield same results as groupByKey.combine" >>  { implicit conf: ScoobiConfiguration =>
-    for(_ <- 1 to 20)
+    for(_ <- 1 to 10)
     yield{
       val n = SRandom.nextInt(10000) + 1
       val m = SRandom.nextInt(1000) + 1
