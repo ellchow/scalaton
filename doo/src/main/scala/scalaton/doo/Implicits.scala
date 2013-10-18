@@ -29,7 +29,6 @@ import scalaton.util.hashing._
 import scalaton.util.hashing32._
 import scalaton.aggregate.moments._
 import scalaton.aggregate._
-import scalaton.aggregate.hashed.mutable.MutableSketchTable
 
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
@@ -173,20 +172,6 @@ trait DooImplicits{
   }
 
   implicit val compressedBitSetWF = AnythingFmt[CompressedBitSet]
-
-  implicit def mutableSketchTableWF[V1 : WireFormat] = new WireFormat[MutableSketchTable[V1]]{
-    def toWire(x: MutableSketchTable[V1], out: DataOutput): Unit = {
-      implicitly[WireFormat[mutable.ArrayBuffer[mutable.ArrayBuffer[V1]]]].toWire(x.table, out)
-      implicitly[WireFormat[Long]].toWire(x.size, out)
-    }
-
-    def fromWire(in: DataInput): MutableSketchTable[V1] = {
-      val t = implicitly[WireFormat[mutable.ArrayBuffer[mutable.ArrayBuffer[V1]]]].fromWire(in)
-      val s = implicitly[WireFormat[Long]].fromWire(in)
-
-      MutableSketchTable(t, s)
-    }
-  }
 
   implicit val momentsWF = mkCaseWireFormat((n: Long, mean: Double, m2: Double, m3: Double, m4: Double) => Moments(n,mean,m2,m3,m4), Moments.unapply _)
 
