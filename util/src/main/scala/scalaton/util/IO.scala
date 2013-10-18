@@ -27,6 +27,8 @@ trait IOModule{
 
     def stdin = inputStream(System.in)
 
+    def resource(path: String) = inputStream(getClass.getClassLoader.getResourceAsStream(path))
+
   }
 
   object writer{
