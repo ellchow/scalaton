@@ -41,9 +41,9 @@ with Sized[A,H1,Bits32,D]{
   }
 
   /** get cells to update **/
-  def itemIJs(a: A)(implicit h: H, hconv: HC): Iterable[(Int,Int)] = {
+  def itemIJs(a: A)(implicit h: H, hconv: HC): Iterable[(Int,Int)] =
     (0 to numHashes).view zip hashItem(a)
-  }
+
 
   /** compute estimate given the values extracted from each cell **/
   protected def estimate(cs: Iterable[Long]): Long
@@ -97,9 +97,8 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
 
   protected def tag(d: (Vector[Vector[V1]], Long)) = Tag[(Vector[Vector[V1]], Long), T](d)
 
-  protected def valueAt(d: (Vector[Vector[V1]], Long) @@ T, i: Int, j: Int): V1 = {
+  protected def valueAt(d: (Vector[Vector[V1]], Long) @@ T, i: Int, j: Int): V1 =
     d._1(i)(j)
-  }
 
   protected def newData(d: (Vector[Vector[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (Vector[Vector[V1]], Long) @@ T = {
     val updatedTable = ijs.foldLeft(d._1)((table, ij) => {
