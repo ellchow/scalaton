@@ -41,7 +41,7 @@ import scalaz.{DList => _, _}
 import Scalaz._
 import Tree._
 
-trait Implicits{
+trait DooImplicits{
 
   // DLists
   implicit class DListOps[A : Manifest : WireFormat](val dl: DList[A]) extends Logging{
@@ -206,4 +206,4 @@ trait Implicits{
 
 }
 
-object implicits extends Implicit
+object implicits extends DooImplicits

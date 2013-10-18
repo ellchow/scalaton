@@ -22,7 +22,7 @@ import scalaton.util.hashing._
 import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.mutable.bloomfilter._
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
-import scalaton.aggregate.hashed.mutable.sketch._
+import scalaton.aggregate.hashed.sketch._
 
 import com.nicta.scoobi.Scoobi._
 import com.nicta.scoobi.core.Reduction
