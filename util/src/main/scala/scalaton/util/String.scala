@@ -30,8 +30,9 @@ trait StringModule{
     rest :+ last.toString
   }
 
-
 }
 
 object str
 extends StringModule
+
+
