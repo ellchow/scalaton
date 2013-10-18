@@ -26,47 +26,52 @@ import scalaton.aggregate.hashed._
 import scalaton.util._
 import scalaton.util.hashing._
 
+
+case class MutableSketchTable[V1](val table: mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], var size: Long)
+
 /** sketch implementation backed with an mutable table **/
 abstract class DenseFrequencySketchMonoidVT[A,H1,V1 : Monoid,T]
-extends FrequencySketchMonoidVT[A,H1,(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,V1]
-with Monoid[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]
-with Equal[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T]{
+extends FrequencySketchMonoidVT[A,H1,MutableSketchTable[V1] @@ T,V1]
+with Monoid[MutableSketchTable[V1] @@ T]
+with Equal[MutableSketchTable[V1] @@ T]{
 
-  def cardinality(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) = d._2
+  def cardinality(d: MutableSketchTable[V1] @@ T) = d.size
 
-  def equal(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,
-            d2: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) =
-    (d1._1 == d2._1) && (d1._2 === d2._2)
+  def equal(d1: MutableSketchTable[V1] @@ T,
+            d2: MutableSketchTable[V1] @@ T) =
+    (d1.table == d2.table) && (d1.size === d2.size)
 
-  def zero = tag((mutable.ArrayBuffer.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
+  def zero = tag(MutableSketchTable(mutable.ArrayBuffer.fill(numHashes, width)(implicitly[Monoid[V1]].zero), 0L))
 
-  def append(d1: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T,
-             d2: => (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T) = {
+  def append(d1: MutableSketchTable[V1] @@ T,
+             d2: => MutableSketchTable[V1] @@ T) = {
     val data = mutable.ArrayBuffer.tabulate(numHashes, width)((i,j) =>
       valueAt(d1,i,j) |+| valueAt(d2,i,j))
 
-    val size = d1._2 + d2._2
+    val size = d1.size + d2.size
 
-    tag((data, size))
+    tag(MutableSketchTable(data, size))
   }
 
-  protected def tag(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long)) = Tag[(mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long), T](d)
+  protected def tag(d: MutableSketchTable[V1]) = Tag[MutableSketchTable[V1], T](d)
 
   protected def dim(d: mutable.ArrayBuffer[mutable.ArrayBuffer[V1]]): (Int, Int) = (d.length, d(0).length)
 
-  protected def valueAt(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, i: Int, j: Int): V1 = {
-    d._1(i)(j)
+  protected def valueAt(d: MutableSketchTable[V1] @@ T, i: Int, j: Int): V1 = {
+    d.table(i)(j)
   }
 
-  protected def newData(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, ijs: Iterable[(Int,Int)], v1: V1): (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T = {
-    ijs foreach { case (i, j) => d._1(i)(j) = updateValueWith(valueAt(d,i,j),v1) }
+  protected def newData(d: MutableSketchTable[V1] @@ T, ijs: Iterable[(Int,Int)], v1: V1): MutableSketchTable[V1] @@ T = {
+    ijs foreach { case (i, j) => d.table(i)(j) = updateValueWith(valueAt(d,i,j),v1) }
 
     d
   }
 
-  protected def newSize(d: (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long) @@ T, v1: V1) =
-    tag(d._1, d._2 + valueToLong(v1))
+  protected def newSize(d: MutableSketchTable[V1] @@ T, v1: V1) = {
+    d.size = d.size + valueToLong(v1)
 
+    d
+  }
 
 }
 
@@ -79,7 +84,7 @@ extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
 
 object sketch {
 
-  type SketchTable[V1] = (mutable.ArrayBuffer[mutable.ArrayBuffer[V1]], Long)
+  type SketchTable[V1] = MutableSketchTable[V1]
 
   def apply[A,H1,T](params: (Int,Int), s: Long = 0L,
                     estimator: (Iterable[Long]) => Long) =
