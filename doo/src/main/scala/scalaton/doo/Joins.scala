@@ -61,7 +61,7 @@ trait JoinFunctions{
     }
 
     trait CMS
-    implicit lazy val cmsinst = countminsketch[A, Bits32, CMS](countminsketch.optimalParameters(0.05, 0.05))
+    implicit lazy val cmsinst = countminsketch[A, Bits32, CMS](countminsketch.optimalParameters(0.05, 0.99))
 
     def reps(x: Long): Int = ((x / maxPerGroup) max 1).toInt min maxReps
 
