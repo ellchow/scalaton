@@ -49,7 +49,7 @@ trait HashModdedCollection[A,H1] extends HashedCollection[A,H1,Bits32]{
 trait DoubleHashModdedCollection[A,H1] extends HashModdedCollection[A,H1]{
 
   private def doubleHashStream(a: Bits32, b: Bits32, i: Int): Stream[Bits32 @@ HashCode] =
-    Stream.cons(HashCode(math.abs(a + i * b + i * i) % width) , doubleHashStream(a, b, i + 1))
+    Stream.cons(HashCode(math.abs((a + i * b + i * i) % width)) , doubleHashStream(a, b, i + 1))
 
   override def hashItem(item: A)(implicit h: Hashable[A, H1],
                                  hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32 @@ HashCode] = {

@@ -19,11 +19,16 @@ package scalaton.util
 import java.io._
 
 trait IOModule{
+
+  def resourceStream(path: String) = getClass().getResourceAsStream("resource.png")
+
   object reader{
 
     def file(path: String) = new BufferedReader(new FileReader(path))
 
     def inputStream(is: InputStream) = new BufferedReader(new InputStreamReader(is))
+
+    def resource(path: String) = inputStream(resourceStream(path))
 
     def stdin = inputStream(System.in)
 
