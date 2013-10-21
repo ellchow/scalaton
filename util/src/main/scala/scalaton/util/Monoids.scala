@@ -16,6 +16,8 @@
 
 package scalaton.util
 
+import scala.collection.immutable.TreeMap
+
 import scalaz._
 import Scalaz._
 
@@ -45,6 +47,10 @@ trait MonoidInstances{
 
     Monoid instance((l, r) => hMonoid.append(l.head, r.head) :: tMonoid.append(l.tail, r.tail), hMonoid.zero :: tMonoid.zero)
   }
+
+  implicit def treeMapMonoid[K : scala.math.Ordering,V: Semigroup]: Monoid[TreeMap[K,V]] =
+    Monoid instance ((l,r) => implicitly[Monoid[Map[K,V]]].append(l: Map[K,V], r: Map[K,V]).asInstanceOf[TreeMap[K,V]],
+                     TreeMap.empty: TreeMap[K,V])
 
 
   /*

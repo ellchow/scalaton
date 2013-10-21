@@ -31,9 +31,6 @@ trait IOModule{
     def resource(path: String) = inputStream(resourceStream(path))
 
     def stdin = inputStream(System.in)
-
-    def resource(path: String) = inputStream(getClass.getClassLoader.getResourceAsStream(path))
-
   }
 
   implicit class RichBufferedReader(r: BufferedReader){
