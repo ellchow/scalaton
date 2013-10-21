@@ -20,7 +20,7 @@ import java.io._
 
 trait IOModule{
 
-  def resourceStream(path: String) = getClass().getResourceAsStream("resource.png")
+  def resourceStream(path: String) = getClass.getClassLoader.getResourceAsStream(path)
 
   object reader{
 
@@ -33,6 +33,31 @@ trait IOModule{
     def stdin = inputStream(System.in)
 
   }
+
+  implicit class RichBufferedReader(r: BufferedReader){
+    def getLines = new Iterable[String]{
+      def iterator = new Iterator[String]{
+        private var ln = r.readLine()
+
+        def hasNext: Boolean = {
+          val res = ln != null
+
+          if(!res)
+            r.close()
+
+          res
+        }
+
+        def next: String = {
+          val emit = ln
+          ln = r.readLine()
+
+          emit
+        }
+      }
+    }
+  }
+
 
   object writer{
 
