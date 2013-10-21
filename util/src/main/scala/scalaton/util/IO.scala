@@ -19,17 +19,47 @@ package scalaton.util
 import java.io._
 
 trait IOModule{
+
+  def resourceStream(path: String) = getClass.getClassLoader.getResourceAsStream(path)
+
   object reader{
 
     def file(path: String) = new BufferedReader(new FileReader(path))
 
     def inputStream(is: InputStream) = new BufferedReader(new InputStreamReader(is))
 
+    def resource(path: String) = inputStream(resourceStream(path))
+
     def stdin = inputStream(System.in)
 
     def resource(path: String) = inputStream(getClass.getClassLoader.getResourceAsStream(path))
 
   }
+
+  implicit class RichBufferedReader(r: BufferedReader){
+    def getLines = new Iterable[String]{
+      def iterator = new Iterator[String]{
+        private var ln = r.readLine()
+
+        def hasNext: Boolean = {
+          val res = ln != null
+
+          if(!res)
+            r.close()
+
+          res
+        }
+
+        def next: String = {
+          val emit = ln
+          ln = r.readLine()
+
+          emit
+        }
+      }
+    }
+  }
+
 
   object writer{
 
