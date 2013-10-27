@@ -25,6 +25,8 @@ import Scalaz._
 import spire.math.Numeric
 import moments._
 
+import scalaton.util.monoids._
+
 /** implementation of online histogram building algorithm as described by http://jmlr.org/papers/volume11/ben-haim10a/ben-haim10a.pdf **/
 
 /** value associated with a bucket in the histogram - must be able to retrieve the number of items **/
@@ -100,7 +102,7 @@ abstract class Histogram[A, B, T](val maxBuckets: Int)(implicit mon: Monoid[B], 
 
   /** merge 2 histograms together **/
   def merge(h1: HistogramData[A,B] @@ T, h2: HistogramData[A,B] @@ T): HistogramData[A,B] @@ T = {
-    val unmergedBuckets = implicitly[Monoid[Map[Double, B]]].append((h1.buckets : Map[Double, B]), (h2.buckets : Map[Double, B])).asInstanceOf[TreeMap[Double, B]]
+    val unmergedBuckets = h1.buckets |+| h2.buckets
 
     @annotation.tailrec
     def loop(bs: TreeMap[Double, B]): TreeMap[Double, B] = {
