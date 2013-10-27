@@ -21,6 +21,7 @@ import Scalaz._
 
 import scalaton.util._
 import scalaton.util.hashing._
+import scalaton.util.hashing32.Bits32
 
 import scala.collection.BitSet
 

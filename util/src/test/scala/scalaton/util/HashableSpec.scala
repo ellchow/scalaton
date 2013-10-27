@@ -20,7 +20,6 @@ import org.specs2.mutable._
 import scalaz._
 import Scalaz._
 
-import scalaton.util.hashing._
 import scalaton.util.hashing128._
 
 class HashableSpec extends Specification {

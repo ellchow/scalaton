@@ -21,6 +21,7 @@ import Scalaz._
 
 import scalaton.util._
 import scalaton.util.hashing._
+import scalaton.util.hashing32.Bits32
 
 /** Collection where keys inserted are hashed **/
 trait HashedCollection[A,H1,H2]{

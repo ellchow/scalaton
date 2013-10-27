@@ -17,7 +17,6 @@
 package scalaton.doo
 
 import scalaton.util._
-import scalaton.util.hashing._
 import scalaton.util.hashing32._
 
 import com.nicta.scoobi.Scoobi._

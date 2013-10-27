@@ -27,7 +27,6 @@ import org.specs2.mutable._
 import scalaz._
 import Scalaz._
 
-import scalaton.util.hashing._
 import scalaton.util.hashing128._
 import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.hyperloglog._

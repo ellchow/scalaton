@@ -20,6 +20,7 @@ import scalaz._
 import Scalaz._
 
 import scalaton.util.hashing._
+import scalaton.util.hashing32.Bits32
 import scalaton.util.monoids._
 
 /** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9

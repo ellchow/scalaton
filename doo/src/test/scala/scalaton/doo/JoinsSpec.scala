@@ -8,7 +8,6 @@ import com.nicta.scoobi.Scoobi._
 import com.nicta.scoobi.core.{Reduction, ScoobiConfiguration}
 import com.nicta.scoobi.testing.mutable._
 
-import scalaton.util.hashing._
 import scalaton.util.hashing32._
 
 import scalaz.{DList => _, _}

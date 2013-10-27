@@ -21,6 +21,7 @@ import Scalaz._
 
 import scalaton.util._
 import scalaton.util.hashing._
+import scalaton.util.hashing32.Bits32
 
 /** sketch data structure to store and lookup values given a key, generally used for keeping track of frequencies **/
 trait FrequencySketchT[A,H1,D,V1]

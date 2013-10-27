@@ -25,11 +25,9 @@ import org.scalacheck._
 import scalaz._
 import Scalaz._
 
-import scalaton.util.hashing._
 import scalaton.util.hashing128._
 import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.sketch._
-// import scalaton.aggregate.hashed.mutable.sketch._
 
 class CountMinSketchSpec extends Specification with ScalaCheck{
 

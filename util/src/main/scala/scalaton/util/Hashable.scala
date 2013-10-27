@@ -233,26 +233,31 @@ trait HashableFunctions extends HashingTags{
 
 }
 
-trait HashingSizes{
-  type Bits128 = (Long, Long)
-  type Bits64 = Long
-  type Bits32 = Int
-}
 
 object hashing
 extends HashableFunctions
 with HashCodeConverterInstances
-with HashingTags
-with HashingSizes
 
 object hashing32
-extends Hashable32Instances
-with HashableTuple32Instances
+extends HashableFunctions
+with HashCodeConverterInstances
+with Hashable32Instances
+with HashableTuple32Instances{
+  type Bits32 = Int
+}
 
 object hashing64
-extends Hashable64Instances
-with HashableTuple64Instances
+extends HashableFunctions
+with HashCodeConverterInstances
+with Hashable64Instances
+with HashableTuple64Instances{
+  type Bits64 = Long
+}
 
 object hashing128
-extends Hashable128Instances
-with HashableTuple128Instances
+extends HashableFunctions
+with HashCodeConverterInstances
+with Hashable128Instances
+with HashableTuple128Instances{
+  type Bits128 = (Long, Long)
+}

@@ -18,6 +18,7 @@ package scalaton.doo
 
 import scalaton.util._
 import scalaton.util.hashing._
+import scalaton.util.hashing32.Bits32
 
 import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.mutable.bloomfilter._
