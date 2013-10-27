@@ -41,7 +41,7 @@ import scalaz.{DList => _, _}
 import Scalaz._
 import Tree._
 
-trait DooImplicits{
+trait DListImplicits{
 
   // DLists
   implicit class DListOps[A : Manifest : WireFormat](val dl: DList[A]) extends Logging{
@@ -96,8 +96,10 @@ trait DooImplicits{
       helpers.groupByKeyThenCombine(dl, doFlush)
   }
 
-  // Wireformats
+}
 
+
+trait WireFormatImplicits{
   implicit val jodaLocalDateWF = AnythingFmt[LocalDate]
 
   implicit def validationFmt[E : WireFormat, A : WireFormat] = new ValidationWireFormat[E, A]
@@ -196,12 +198,11 @@ trait DooImplicits{
       if(isLte1) HistogramDataLTE1(buckets, min, max) else HistogramDataN(buckets, min, max)
     }
   }
-
-
-  // Reductions
-
-  implicit def funToReduction[A](f: (A, A) => A) = Reduction(f)
-
 }
 
-object implicits extends DooImplicits
+trait ReductionImplicits{
+  implicit def funToReduction[A](f: (A, A) => A) = Reduction(f)
+}
+
+object implicits extends DListImplicits with WireFormatImplicits with ReductionImplicits with GroupingImplicits
+

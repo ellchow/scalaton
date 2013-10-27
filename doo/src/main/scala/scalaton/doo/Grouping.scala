@@ -21,14 +21,20 @@ import com.nicta.scoobi.Scoobi._
 import scalaz.{DList => _, _}
 import Scalaz._
 
+trait SecondarySort
+
 trait GroupingFunctions{
-  def secondarySort[K : Grouping : Order, S: Order] = new Grouping[(K, S)] {
-    override def partition(key: (K, S), howManyReducers: Int) =
+  def secondarySorted[K,S](ks: (K,S)): (K,S) @@ SecondarySort = Tag(ks)
+}
+
+trait GroupingImplicits{
+  implicit def secondarySortGrouping[K : Grouping : Order, S: Order] = new Grouping[(K, S) @@ SecondarySort] {
+    override def partition(key: (K, S) @@ SecondarySort, howManyReducers: Int) =
       implicitly[Grouping[K]] partition (key._1, howManyReducers)
 
-    override def sortCompare(a: (K, S), b: (K, S)) = a ?|? b
+    override def sortCompare(a: (K, S) @@ SecondarySort, b: (K, S) @@ SecondarySort) = (a: (K,S)) ?|? (b: (K,S))
 
-    override def groupCompare(a: (K, S), b: (K, S)) = a._1 ?|? b._1
+    override def groupCompare(a: (K, S) @@ SecondarySort, b: (K, S) @@ SecondarySort) = a._1 ?|? b._1
 
   }
 }
