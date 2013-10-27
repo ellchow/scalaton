@@ -22,6 +22,7 @@ import Scalaz._
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32.Bits32
+import hyperloglog._
 
 /** sketch data structure to store and lookup values given a key, generally used for keeping track of frequencies **/
 trait FrequencySketchT[A,H1,D,V1]
@@ -123,6 +124,17 @@ extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
   protected def valueToLong(v1: Long): Long = v1
 }
 
+abstract class DenseFrequencySketchHyLLT[A,H1,T,U](implicit hllinst: SparseHyperLogLogT[A,H1,U])
+extends DenseFrequencySketchMonoidVT[A,H1,SparseHLLRegisters[U],T]{
+  protected def valueToLong(v1: SparseHLLRegisters[U]): Long = hllinst.cardinality(v1)
+}
+
+
+abstract class DenseFrequencySketchLongHyLLRatioT[A,H1,T,U](implicit hllinst: SparseHyperLogLogT[A,H1,U])
+extends DenseFrequencySketchMonoidVT[A,H1,(Long, SparseHLLRegisters[U]),T]{
+  protected def valueToLong(v1: (Long, SparseHLLRegisters[U])): Long = v1._1 / hllinst.cardinality(v1._2)
+}
+
 
 trait CountMinSketchParameterEstimates{
   /** delta is certainty having less than eps **/
@@ -139,6 +151,8 @@ trait CountMinSketchParameterEstimates{
 
   def optimalParameters(eps: Double, delta: Double) = (optimalNumHashes(delta), optimalWidth(eps))
 }
+
+
 
 object sketch {
 
@@ -163,7 +177,25 @@ object sketch {
 
         protected def estimate(cs: Iterable[Long]): Long = cs.min
       }
+
+    def withHyLLRatio[A,H1,T,U](params: (Int,Int), s: Long = 0L)(implicit hllinst: SparseHyperLogLogT[A,H1,U]) =
+      new DenseFrequencySketchLongHyLLRatioT[A,H1,T,U]{
+        val (numHashes, width) = params
+        val seed = s
+
+        protected def estimate(cs: Iterable[Long]): Long = cs.min
+      }
+
+    def withHyLL[A,H1,T,U](params: (Int,Int), s: Long = 0L)(implicit hllinst: SparseHyperLogLogT[A,H1,U]) =
+      new DenseFrequencySketchHyLLT[A,H1,T,U]{
+        val (numHashes, width) = params
+        val seed = s
+
+        protected def estimate(cs: Iterable[Long]): Long = cs.min
+      }
+
   }
+
 }
 
 
