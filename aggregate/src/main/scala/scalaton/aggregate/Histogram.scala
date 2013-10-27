@@ -258,6 +258,11 @@ trait HistogramFunctions{
   def quantiles[A, B, T](h: HistogramData[A,B] @@ T, qs: List[Double], tol: Double = 0.001)
                         (implicit hv: HistogramValue[B], mon: Monoid[B], hp: HistogramPoint[A, B], hst: Histogram[A, B, T]): Option[List[(Double, Double)]] =
     hst.quantiles(h, qs, tol)
+
+
+  def averageTarget[A, Y, T](h: HistogramData[(A, Y), (Long, Y)] @@ T, p: Double)
+                            (implicit hv: HistogramValue[(Long, Y)], mon: Monoid[(Long, Y)], hp: HistogramPoint[(A, Y), (Long, Y)], hst: HistogramWithTarget[A, Y, T]): Option[Y] =
+    hst.averageTarget(h, p)
 }
 
 object hstgm extends HistogramFunctions {
