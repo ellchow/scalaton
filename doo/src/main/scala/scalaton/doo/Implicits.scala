@@ -82,6 +82,17 @@ trait DListImplicits{
 
   }
 
+  implicit class DListProductOps[A <: Product : Manifest : WireFormat](val dl: DList[A]) extends Logging{
+    def toDelimitedTextFileWithHeader(header: Product,
+                                      path: String, sep: String = "\t",
+                                      noneString: String = "",
+                                      encode: String => String = _.replaceAll("\\s+"," "),
+                                      overwrite: Boolean = false,
+                                      headerPath: String = "header",
+                                      dataPath: String ="data") =
+      data.toDelimitedTextFileWithHeader(dl, header, path, sep, noneString, encode, overwrite, headerPath, dataPath)
+  }
+
   implicit class DList2GroupingAOps[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){
     def semiJoin[BR : Manifest : WireFormat](right: DList[(A,BR)]) =
       joins.semiJoin(dl, right)

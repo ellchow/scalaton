@@ -43,7 +43,7 @@ trait JoinFunctions{
     val leftKeys = left.map{ case (k, _) => Set(k) }.reduce(Reduction(_ ++ _))
 
     val rightFiltered = leftKeys.join(right)
-      .mapFlatten{ case (ks, (k, v)) => if(ks contains k) Some((k,v)) else None }
+      .mapFlatten{ case (ks, (k, v)) => (ks contains k) ? (k,v).some | none }
 
     left join rightFiltered
   }
@@ -54,12 +54,12 @@ trait JoinFunctions{
     implicit hashableA: Hashable[A, Bits32]) = {
 
     trait SBF
-    implicit lazy val sbfinst = sbf.sparse[A, Bits32, SBF](sbf.optimalParameters(expectedNumKeys, 0.1))
+    implicit lazy val sbfinst = sbf.sparse[A, Bits32, SBF](sbf.optimalParameters(expectedNumKeys, 0.05))
 
     val leftKeys = left.foldMap(x => singleton(x._1.tag[SBF]))
 
-    val rightFiltered = leftKeys.join(right).mapFlatten{ case (ks, (a, br)) =>
-                                                         contains(ks, a) ? (a, br).some | none[(A,BR)] }
+    val rightFiltered = leftKeys.join(right)
+      .mapFlatten{ case (ks, (a, br)) => contains(ks, a) ? (a, br).some | none[(A,BR)] }
 
     left join rightFiltered
   }
