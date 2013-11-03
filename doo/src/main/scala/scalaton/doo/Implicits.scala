@@ -105,41 +105,39 @@ trait DListImplicits{
 trait WireFormatImplicits{
   implicit val jodaLocalDateWF = AnythingFmt[LocalDate]
 
-  implicit def validationFmt[E : WireFormat, A : WireFormat] = new ValidationWireFormat[E, A]
-  class ValidationWireFormat[E, A](implicit wt1: WireFormat[E], wt2: WireFormat[A]) extends WireFormat[Validation[E, A]] {
+  implicit def validationFmt[E : WireFormat, A : WireFormat] = new WireFormat[Validation[E, A]] {
     def toWire(x: Validation[E, A], out: DataOutput) = x match {
-      case Failure(x) => { out.writeBoolean(true); wt1.toWire(x, out) }
-      case Success(x) => { out.writeBoolean(false); wt2.toWire(x, out) }
+      case Failure(x) => { out.writeBoolean(true); implicitly[WireFormat[E]].toWire(x, out) }
+      case Success(x) => { out.writeBoolean(false); implicitly[WireFormat[A]].toWire(x, out) }
     }
 
     def fromWire(in: DataInput): Validation[E, A] = {
       val isFailure = in.readBoolean()
       if (isFailure) {
-        val x: E = wt1.fromWire(in)
+        val x: E = implicitly[WireFormat[E]].fromWire(in)
         Failure(x)
       } else {
-        val x: A = wt2.fromWire(in)
+        val x: A = implicitly[WireFormat[A]].fromWire(in)
         Success(x)
       }
     }
 
-    override def toString = "Validation["+wt1+","+wt2+"]"
+    override def toString = "Validation["+implicitly[WireFormat[E]]+","+implicitly[WireFormat[A]]+"]"
   }
 
-  implicit def nonEmptyListWF[A : WireFormat] = new NonEmptyListWireFormat[A]
-  class NonEmptyListWireFormat[A](implicit wt: WireFormat[A]) extends WireFormat[NonEmptyList[A]]{
+  implicit def nonEmptyListWF[A : WireFormat] = new WireFormat[NonEmptyList[A]]{
     def toWire(x: NonEmptyList[A], out: DataOutput) = {
-      wt.toWire(x head, out)
+      implicitly[WireFormat[A]].toWire(x head, out)
       implicitly[WireFormat[List[A]]].toWire(x tail, out)
     }
 
     def fromWire(in: DataInput): NonEmptyList[A] = {
-      val h = wt.fromWire(in)
+      val h = implicitly[WireFormat[A]].fromWire(in)
       val t = implicitly[WireFormat[List[A]]].fromWire(in)
       NonEmptyList(h, t : _*)
     }
 
-    override def toString = "NonEmptyList["+wt+"]"
+    override def toString = "NonEmptyList["+implicitly[WireFormat[A]]+"]"
   }
 
   implicit def scalazTreeWF[A : WireFormat] = new WireFormat[Tree[A]]{

@@ -20,7 +20,7 @@ object Dependencies{
   )
 
   val common = Seq(
-    "org.scalaz" % "scalaz-core_2.10" % "7.0.1",
+    "org.scalaz" % "scalaz-core_2.10" % "7.0.4",
     "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full,
 
     "com.github.nscala-time" %% "nscala-time" % "0.2.0",
@@ -44,7 +44,8 @@ object Dependencies{
   )
 
   val doo = common ++ Seq(
-    "com.nicta" %% "scoobi" % "0.8.0-cdh3-SNAPSHOT"
+    "com.nicta" %% "scoobi" % "0.8.0-cdh3-SNAPSHOT",
+    "org.scala-lang" %% "scala-pickling" % "0.8.0-SNAPSHOT"
   )
 
 }
