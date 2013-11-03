@@ -51,9 +51,6 @@ trait DListImplicits{
     def parallelFold[B : Manifest : WireFormat](init: B)(f: (B, A) => B) =
       helpers.parallelFold(dl, init)(f)
 
-    def parallelFoldMonoid[B : Manifest : WireFormat : Monoid](f: (B, A) => B) =
-      helpers.parallelFoldMonoid(dl)(f)
-
     def sample(rate: Double) =
       sampling.sample(dl, rate)
 

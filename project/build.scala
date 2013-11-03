@@ -68,7 +68,8 @@ object ProjectBuild extends Build{
     "-feature",
     "-language:_",
     "-encoding",
-    "utf8"
+    "utf8",
+    "-target:jvm-1.6"
   )
 
   /** Shell Prompt **/
