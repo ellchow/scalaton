@@ -47,9 +47,6 @@ trait HelperFunctions {
     dl parallelDo foldFun
   }
 
-  def parallelFoldMonoid[A : Manifest : WireFormat, B : Manifest : WireFormat : Monoid](dl: DList[A])(f: (B, A) => B) =
-    parallelFold(dl, implicitly[Monoid[B]].zero)(f)
-
   def groupByKeyThenCombine[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat]
   (dl: DList[(A,B)], doFlush: collection.Map[A,B] => Boolean = (_: collection.Map[A,B]) => false)
   (implicit semigroupB: Semigroup[B]): DList[(A, B)] = {
