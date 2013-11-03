@@ -19,6 +19,7 @@ package scalaton.doo
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32.Bits32
+import scalaton.util.tag._
 
 import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.mutable.bloomfilter._
@@ -34,6 +35,20 @@ import Scalaz._
 import implicits._
 
 trait JoinFunctions{
+  def semiJoin[K : WireFormat : Grouping, A : WireFormat, B : WireFormat]
+    (left: DList[(K, A)],
+     right: DList[(K, B)])
+  : DList[(K, (A, B))] = {
+
+    val leftKeys = left.map{ case (k, _) => Set(k) }.reduce(Reduction(_ ++ _))
+
+    val rightFiltered = leftKeys.join(right)
+      .mapFlatten{ case (ks, (k, v)) => if(ks contains k) Some((k,v)) else None }
+
+    left join rightFiltered
+  }
+
+
   def bloomJoin[A : Manifest : WireFormat : Grouping, BL : Manifest : WireFormat, BR : Manifest : WireFormat](
     left: DList[(A,BL)], right: DList[(A,BR)], expectedNumKeys: Int)(
     implicit hashableA: Hashable[A, Bits32]) = {
@@ -41,8 +56,7 @@ trait JoinFunctions{
     trait SBF
     implicit lazy val sbfinst = sbf.sparse[A, Bits32, SBF](sbf.optimalParameters(expectedNumKeys, 0.1))
 
-    val leftKeys = helpers.parallelFoldMonoid[A, CompressedBitSet @@ SBF](left map ( _._1 ))((acc, x) => insert(acc, x))
-      .reduce(Reduction(_ |+| _))
+    val leftKeys = left.foldMap(x => singleton(x._1.tag[SBF]))
 
     val rightFiltered = leftKeys.join(right).mapFlatten{ case (ks, (a, br)) =>
                                                          contains(ks, a) ? (a, br).some | none[(A,BR)] }
@@ -53,6 +67,8 @@ trait JoinFunctions{
   def skewedJoin[A : Manifest : WireFormat : Grouping, BL : Manifest : WireFormat, BR : Manifest : WireFormat](
     left: DList[(A,BL)], right: DList[(A,BR)], sampleRate: Double = 0.01, maxPerGroup: Int = 100000, maxReps: Int = 100)(
     implicit hashableA: Hashable[A, Bits32]) = {
+
+    // right hand side is large and skewed
 
     implicit val aiGrouping = new Grouping[(A, Int)] {
       override def sortCompare(first: (A, Int), second: (A, Int)) =
@@ -89,18 +105,17 @@ trait JoinFunctions{
 
     val rightKeysSample = right.map(_._1) sample sampleRate
 
-    val rightDist = helpers.parallelFoldMonoid[A, SketchTable[Long] @@ CMS](rightKeysSample)((acc, x) => update(acc, x, weight))
-      .reduce(Reduction(_ |+| _))
+    val rightDist = rightKeysSample.foldMap(x => update(cmsinst.zero, x, 1L))
 
     val rightScattered = (rightDist.join(right) parallelDo addRandomIntToKey(0)).map(identity) // fails w/o .map(identity)?
 
     val leftSprayed = rightDist.join(left) mapFlatten { case (dist, (a, bl)) =>
-                                                            val n = reps(lookup(dist, a))
+                                                        val n = reps(lookup(dist, a))
 
                                                         (0 until n) map (i => ((a, i), bl))
                                                       }
 
-    leftSprayed.join(rightScattered) map { case ((a, i), v) => (a, v)}
+    leftSprayed.join(rightScattered) map { case ((a, i), v) => (a, v) }
   }
 
 }

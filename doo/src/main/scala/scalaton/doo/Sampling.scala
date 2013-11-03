@@ -26,23 +26,8 @@ import Scalaz._
 
 trait SamplingFunctions {
 
-  def sample[A : Manifest : WireFormat](dl: DList[A], rate: Double, seed: Int = 0) = {
-    def selectAtRandom(seed: Int) = new DoFn[A,A] {
-      val rand = new util.Random(seed)
-
-      def setup() = Unit
-
-      def process(input: A, emitter: Emitter[A]): Unit = {
-        if(rand.nextDouble lt rate)
-          emitter emit input
-      }
-
-      def cleanup(emitter: Emitter[A]) = Unit
-    }
-
-
-    dl parallelDo selectAtRandom(seed)
-  }
+  def sample[A : Manifest : WireFormat](dl: DList[A], rate: Double) =
+    dl.filter(_ => util.Random.nextDouble lte rate)
 
   def sampleBy[A : Manifest : WireFormat, B : Manifest : WireFormat](dl: DList[(A,B)], rate: Double, seed: Int = 0)(implicit hashable: Hashable[A,Bits32]) = {
     val n = (Int.MaxValue * rate)

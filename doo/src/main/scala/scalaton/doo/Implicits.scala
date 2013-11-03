@@ -54,8 +54,8 @@ trait DListImplicits{
     def parallelFoldMonoid[B : Manifest : WireFormat : Monoid](f: (B, A) => B) =
       helpers.parallelFoldMonoid(dl)(f)
 
-    def sample(rate: Double, seed: Int = 0) =
-      sampling.sample(dl, rate, seed)
+    def sample(rate: Double) =
+      sampling.sample(dl, rate)
 
     def sampleBy[B : Manifest : WireFormat](f: A => B)(rate: Double, seed: Int = 0)(implicit hashable: Hashable[B,Bits32]) =
       sampling.sampleBy(dl.map(a => (f(a), a)), rate, seed)
@@ -86,6 +86,9 @@ trait DListImplicits{
   }
 
   implicit class DList2GroupingAOps[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){
+    def semiJoin[BR : Manifest : WireFormat](right: DList[(A,BR)]) =
+      joins.semiJoin(dl, right)
+
     def bloomJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], expectedNumKeys: Int)(implicit hashable: Hashable[A,Bits32]) =
       joins.bloomJoin(dl, right, expectedNumKeys)
 
