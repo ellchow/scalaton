@@ -16,6 +16,8 @@ limitations under the License.
 
 package scalaton.aggregate
 
+import scalaton.util.tag._
+
 import la4s._
 
 trait SGDModule{
@@ -27,9 +29,9 @@ trait SGDModule{
   type TotalPenalty = Double
   type ActualPenalty = Vec
   type NumExamples = Long
-  type RegularizationParameter = Double
-  type LearningRateFunction = NumExamples => Double
-  type RegularizationFunction = (Weights, Features, TotalPenalty, ActualPenalty) => (Weights, ActualPenalty)
+  type LearnRate = Double
+  type LearnRateFunction = NumExamples => LearnRate
+  type RegularizationFunction = (Weights, NumExamples, LearnRate) => Weights
   type GradientFunction = (Weights, Example) => Gradient
 
   def weights(ws: Seq[Double]) = Vec.dense((1.0 +: ws): _*)
@@ -41,22 +43,19 @@ trait SGDModule{
 
   def example(y: Double, x: Seq[(Int, Double)], size: Int) = (y, weights(x, size))
 
-  def update(gradient: GradientFunction)(learningRate: LearningRateFunction, penalize: RegularizationFunction, c: RegularizationParameter)(w0: Weights, u0: TotalPenalty, q0: ActualPenalty, k0: NumExamples)(ex: Example) = {
+  def update[C](gradient: GradientFunction)(learningRate: LearnRateFunction, penalize: RegularizationFunction)(w0: Weights, k0: NumExamples)(ex: Example) = {
     val eta = learningRate(k0)
     val k1 = k0 + 1
-    val u1 = u0 + c * eta
     val (y, x) = ex
-    val g = gradient(w0, (y, x))
-    val (w1, q1) = penalize(w0 - (g :* eta), x, u1, q0)
 
-    (w1, u1, q1, k1)
+    val g = gradient(w0, ex)
+    val w1 = penalize(w0 - (g :* eta), k1, eta)
+
+    (w1, k1)
   }
 
-  def fit(f: (Weights, TotalPenalty, ActualPenalty, NumExamples) => Example => (Weights, TotalPenalty, ActualPenalty, NumExamples), init: Weights)(examples: Iterable[Example]) = {
-    examples.foldLeft((init, 0.0: TotalPenalty, init.blank, 0L: NumExamples)){
-        case ((w, u, q, k), ex) => f(w, u, q, k)(ex)
-      }
-  }
+  def fit(f: (Weights, NumExamples) => Example => (Weights, NumExamples), init: Weights)(examples: Iterable[Example]) =
+    examples.foldLeft((init, 0L: NumExamples)){ case ((w, k), ex) => f(w, k)(ex) }
 
   object glm{
     val gaussian = update { case (w, (y, x)) =>
@@ -81,41 +80,58 @@ trait SGDModule{
   }
 
   object learnrate{
-    def constant(c: Double): LearningRateFunction = _ => c
+    def constant(c: Double): LearnRateFunction = _ => c
 
-    def exponential(n0: Double, alpha: Double, N: Int): LearningRateFunction =
+    def exponential(n0: Double, alpha: Double, N: Int): LearnRateFunction =
       k => n0 * math.pow(alpha, -k / N)
+
+    def inverse(c: Double): LearnRateFunction = k => c / k
   }
 
   object penalty{
-    val zero: RegularizationFunction = (w, x, u, q) => (w, q)
+    val none: RegularizationFunction = (w, n, eta) => w
 
-    /* cumulative l1 regularization as described in http://aclweb.org/anthology-new/P/P09/P09-1054.pdf */
-    // val cumulative: RegularizationFunction = (w, x, u, q) => {
-      // val w1 = w // copy
-      // val q1 = q // copy
+    def every(interval: Int)(r: RegularizationFunction): RegularizationFunction = {
+      require(interval > 0)
 
-      // val f = new VectorProcedure{
-      //   def apply(i: Int, value: Double){
-      //     val z = w.get(i)
+      (w, k, eta) => {
+        val res = if((k % interval) == (interval - 1)) r(w, k, eta) else w
+        res
+      }
+    }
 
-      //     if(value =/= 0.0){
-      //       if(w1.get(i) gt 0.0)
-      //         w1.set(i, 0.0 max (w1.get(i) - (u + q1.get(i))))
-      //       else
-      //         w1.set(i, 0.0 min (w1.get(i) + (u - q1.get(i))))
+    /** http://dl.acm.org/ft_gateway.cfm?id=1577097&ftid=774577&dwn=1&CFID=258767130&CFTOKEN=34455949 */
+    def truncated(threshold: Double = 5, gravity: Double = 0.1, interval: Int = 10, f: NumExamples => Double = x => math.log(x)): RegularizationFunction = {
+      require(threshold > 0.0)
+      require(gravity > 0.0)
 
-      //       q1.set(i, q1.get(i) + w1.get(i) - z)
-      //     }
-      //   }
-      // }
+      every(interval){ (w, k, eta) =>
+        val alpha = eta * gravity * f(k)
 
-      // x each f
+        val res = w.mapNonzero{ ww =>
+          if(ww > 0.0 && ww < threshold){
+            (ww - alpha) max 0
+          }else if (ww < 0.0 && ww > -threshold){
+            (ww + alpha) min 0
+          }else{
+            ww
+          }
+        }
 
-      // (w1, q1)
-    // }
+        res
+      }
+    }
   }
-
 }
 
 object sgd extends SGDModule
+
+// in R
+// set.seed(0);n <- 10000; x1 <- runif(n); x2 <- runif(n); e <- rnorm(n); y <- 10 * x1 + 5 * x2 + 10*e - 30; write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
+/*
+import scalaton.aggregate._
+val examples = io.Source.fromFile("/Users/ellchow/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
+val z = sgd.fit(sgd.glm.gaussian(sgd.learnrate.constant(0.01), sgd.penalty.truncated()), sgd.weights(Seq(0,0,0)))(examples ++ examples ++ examples ++ examples)
+
+ val z = sgd.fit(sgd.glm.gaussian(sgd.learnrate.constant(0.01), sgd.penalty.none), sgd.weights(Seq(0,0)))(examples ++ examples)
+*/
