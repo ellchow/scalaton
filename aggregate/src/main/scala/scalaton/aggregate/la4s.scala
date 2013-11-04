@@ -73,6 +73,8 @@ trait la4sModule{
   }
 
   case class Vec(private[aggregate] val vector: lav.Vector){
+    def blank = Vec(vector.blank)
+
     def apply(i: Int) = vector.get(i)
 
     def get(i: Int) = if((i > 0) && (i < size)) apply(i).some else none
