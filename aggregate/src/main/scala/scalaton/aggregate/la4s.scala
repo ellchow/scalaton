@@ -126,7 +126,7 @@ trait la4sModule{
           if(i >= n){
             Unit
           }else{
-            if(!nonzero || (value > lav.Vectors.EPS))
+            if(!nonzero || (math.abs(value) > lav.Vectors.EPS))
               f(i, value)
 
             loop(i + 1)
