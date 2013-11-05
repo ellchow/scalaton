@@ -37,7 +37,7 @@ trait SGDModule{
   def weights(ws: Seq[Double]) = Vec.dense((1.0 +: ws): _*)
 
   def weights(ws: Seq[(Int, Double)], size: Int) =
-    Vec.sparse(size + 1, ((0, 0.0) +: ws.view.map{ case (i, v) => (i + 1, v) }): _*)
+    Vec.sparse(size + 1, ((0, 1.0) +: ws.view.map{ case (i, v) => (i + 1, v) }): _*)
 
   def example(y: Double, x: Seq[Double]) = (y, weights(x))
 
