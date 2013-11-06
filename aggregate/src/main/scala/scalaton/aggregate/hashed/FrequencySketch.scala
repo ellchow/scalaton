@@ -25,7 +25,10 @@ import scalaton.util.hashing32.Bits32
 import hyperloglog._
 
 /** sketch data structure to store and lookup values given a key, generally used for keeping track of frequencies **/
-trait FrequencySketchT[A,H1,D,V1]
+
+
+/** sketch requiring cell values to be monoids **/
+abstract class FrequencySketch[A,H1,D,V1 : Monoid]
 extends DoubleHashModdedCollection[A,H1]
 with UpdatesElementValue[A,H1,Bits32,D,V1]
 with LooksUpElementValue[A,H1,Bits32,D,Long]
@@ -46,15 +49,14 @@ with Sized[A,H1,Bits32,D]{
   def itemIJs(a: A)(implicit h: H, hconv: HC): Iterable[(Int,Int)] =
     (0 to numHashes).view zip hashItem(a)
 
+  /** update a cell's value given an input **/
+  def updateValueWith(v: V1, u: V1): V1 = v |+| u
 
   /** compute estimate given the values extracted from each cell **/
   protected def estimate(cs: Iterable[Long]): Long
 
   /** extract long from value stored in cell **/
   protected def valueToLong(v1: V1): Long
-
-  /** update a cell's value given an input **/
-  protected def updateValueWith(v: V1, u: V1): V1
 
   /** retrieve value from cell **/
   protected def valueAt(d: D, i: Int, j: Int): V1
@@ -67,15 +69,9 @@ with Sized[A,H1,Bits32,D]{
 
 }
 
-/** sketch requiring cell values to be monoids **/
-abstract class FrequencySketchMonoidVT[A,H1,D,V1 : Monoid]
-extends FrequencySketchT[A,H1,D,V1]{
-  def updateValueWith(v: V1, u: V1): V1 = v |+| u
-}
-
 /** sketch implementation backed with an immutable table **/
-abstract class DenseFrequencySketchMonoidVT[A,H1,V1 : Monoid,T]
-extends FrequencySketchMonoidVT[A,H1,(Vector[Vector[V1]], Long) @@ T,V1]
+abstract class DenseFrequencySketch[A,H1,V1 : Monoid,T]
+extends FrequencySketch[A,H1,(Vector[Vector[V1]], Long) @@ T,V1]
 with Monoid[(Vector[Vector[V1]], Long) @@ T]
 with Equal[(Vector[Vector[V1]], Long) @@ T]{
 
@@ -120,18 +116,18 @@ with Equal[(Vector[Vector[V1]], Long) @@ T]{
 
 /** standard frequency counting sketch **/
 abstract class DenseFrequencySketchLongT[A,H1,T]
-extends DenseFrequencySketchMonoidVT[A,H1,Long,T]{
+extends DenseFrequencySketch[A,H1,Long,T]{
   protected def valueToLong(v1: Long): Long = v1
 }
 
 abstract class DenseFrequencySketchHyLLT[A,H1,T,U](implicit hllinst: SparseHyperLogLogT[A,H1,U])
-extends DenseFrequencySketchMonoidVT[A,H1,SparseHLLRegisters[U],T]{
+extends DenseFrequencySketch[A,H1,SparseHLLRegisters[U],T]{
   protected def valueToLong(v1: SparseHLLRegisters[U]): Long = hllinst.cardinality(v1)
 }
 
 
 abstract class DenseFrequencySketchLongHyLLRatioT[A,H1,T,U](implicit hllinst: SparseHyperLogLogT[A,H1,U])
-extends DenseFrequencySketchMonoidVT[A,H1,(Long, SparseHLLRegisters[U]),T]{
+extends DenseFrequencySketch[A,H1,(Long, SparseHLLRegisters[U]),T]{
   protected def valueToLong(v1: (Long, SparseHLLRegisters[U])): Long = v1._1 / hllinst.cardinality(v1._2)
 }
 
