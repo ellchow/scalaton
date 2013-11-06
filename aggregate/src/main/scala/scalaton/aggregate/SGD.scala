@@ -84,8 +84,6 @@ trait SGDModule{
 
     def exponential(n0: Double, alpha: Double, N: Int): LearnRateFunction =
       k => n0 * math.pow(alpha, -k / N)
-
-    def inverse(c: Double): LearnRateFunction = k => c / k
   }
 
   object penalty{
@@ -101,12 +99,12 @@ trait SGDModule{
     }
 
     /** http://dl.acm.org/ft_gateway.cfm?id=1577097&ftid=774577&dwn=1&CFID=258767130&CFTOKEN=34455949 */
-    def truncated(threshold: Double = 5, gravity: Double = 0.1, interval: Int = 10, f: NumExamples => Double = x => math.log(x)): RegularizationFunction = {
+    def truncated(threshold: Double = 5, gravity: Double = 0.1, interval: Int = 10): RegularizationFunction = {
       require(threshold > 0.0)
       require(gravity > 0.0)
 
       every(interval){ (w, k, eta) =>
-        val alpha = eta * gravity * f(k)
+        val alpha = eta * gravity * interval
 
         val res = w.mapNonzero{ ww =>
           if(ww > 0.0 && ww < threshold){
@@ -130,7 +128,7 @@ object sgd extends SGDModule
 // set.seed(0);n <- 10000; x1 <- runif(n); x2 <- runif(n); e <- rnorm(n); y <- 10 * x1 + 5 * x2 + 10*e - 30; write.table(cbind(y,x1,x2),row.names=F, col.names=F, file='~/tmp/examples')
 /*
 import scalaton.aggregate._
-val examples = io.Source.fromFile("/Users/ellchow/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
+val examples = io.Source.fromFile("/Users/elliot/tmp/examples").getLines.toSeq.map( _.trim.split(" ").map(_.toDouble).toSeq).map(p => sgd.example(p(0),p.drop(1) :+ util.Random.nextDouble))
 val z = sgd.fit(sgd.glm.gaussian(sgd.learnrate.constant(0.01), sgd.penalty.truncated()), sgd.weights(Seq(0,0,0)))(examples ++ examples ++ examples ++ examples)
 
  val z = sgd.fit(sgd.glm.gaussian(sgd.learnrate.constant(0.01), sgd.penalty.none), sgd.weights(Seq(0,0)))(examples ++ examples)
