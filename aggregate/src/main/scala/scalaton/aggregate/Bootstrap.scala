@@ -34,7 +34,7 @@ abstract class Bootstrapped[A : Monoid, T] extends Monoid[Map[Int, A] @@ T]{
 
 }
 
-object bootstrap{
+object btsp{
   type Poisson = org.apache.commons.math3.distribution.PoissonDistribution
 
   def bootstrapped[A : Monoid, T](rounds: Int, poi: PoissonDistribution) = new Bootstrapped[A, T]{
