@@ -26,7 +26,6 @@ import Scalaz._
 import org.slf4j.LoggerFactory
 
 trait DataFunctions{
-
   def toDelimitedTextFileWithHeader[A <: Product : Manifest](dl: DList[A], header: Product,
                                                              path: String, sep: String = "\t",
                                                              noneString: String = "",

@@ -21,6 +21,7 @@ import Scalaz._
 
 trait SearchModule{
 
+  // search for eelement in sorted list - if it does not exist return the index at which to insert it
   def binarySearch[A : math.Ordering](xs: collection.IndexedSeq[A], a: A): Either[Int,Int] = {
     val ord = implicitly[math.Ordering[A]]
 

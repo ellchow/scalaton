@@ -14,7 +14,7 @@
  limitations under the License.
 */
 
-package scalaton.util.caching
+package scalaton.util.caching.mutable
 
 import collection.JavaConversions._
 
