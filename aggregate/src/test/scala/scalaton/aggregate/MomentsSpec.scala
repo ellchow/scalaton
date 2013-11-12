@@ -16,47 +16,47 @@
 
 package scalaton.aggregate
 
-import org.specs2.mutable._
+import org.scalatest._
+import org.scalatest.matchers._
+import org.scalatest.prop._
 
-import scalaton.aggregate.moments._
+import org.scalacheck._
 
-import scalaz._
-import Scalaz._
-
-class MomentsSpec extends Specification{
+class MomentsSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+  import moments._
 
   def relativeError(x: Double, correct: Double) = math.abs((x - correct) / correct)
 
-  "Moments object" should {
-    "count" in {
-      (Moments.from((1 to 5).map(_ toDouble)).n === 5) must beTrue
+  behavior of "moments"
 
-      (Moments.from((1 to 100).map(_ toDouble)).n === 100) must beTrue
+  it should "count" in {
+    forAll{
+      (xs: List[Double]) => Moments.from(xs).n should be(xs.size)
     }
-
-    "compute mean" in {
-      relativeError(Moments.from((1 to 100).map(_ toDouble)).mean, 50.5) must beLessThan(0.001)
-
-      relativeError(Moments.from(Seq(0.101,-0.172,0.183,0.045,0.408,-1.156,-0.064,0.282,1.145,-1.042,1.595,-0.212,-0.606,-0.464,0.64,-0.957,0.773,0.274,0.631,-0.526)).mean, 0.0439) must beLessThan(0.001)
-    }
-
-    "compute variance" in {
-      relativeError(Moments.from((1 to 100).map(_ toDouble)).variance, 841.667) must beLessThan(0.05)
-
-      relativeError(Moments.from(Seq(0.101,-0.172,0.183,0.045,0.408,-1.156,-0.064,0.282,1.145,-1.042,1.595,-0.212,-0.606,-0.464,0.64,-0.957,0.773,0.274,0.631,-0.526)).variance, 0.5191766) must beLessThan(0.05)
-    }
-
-    "compute skewness" in {
-      relativeError(Moments.from((1 to 100).map(_ toDouble)).skewness + 1, 1) must beLessThan(0.001)
-
-      relativeError(Moments.from(Seq(0.101,-0.172,0.183,0.045,0.408,-1.156,-0.064,0.282,1.145,-1.042,1.595,-0.212,-0.606,-0.464,0.64,-0.957,0.773,0.274,0.631,-0.526)).skewness, 0.189957) must beLessThan(0.001)
-    }
-
-    "compute kurtosis" in {
-      relativeError(Moments.from((1 to 100).map(_ toDouble)).kurtosis, -1.20024) must beLessThan(0.001)
-
-      relativeError(Moments.from(Seq(0.101,-0.172,0.183,0.045,0.408,-1.156,-0.064,0.282,1.145,-1.042,1.595,-0.212,-0.606,-0.464,0.64,-0.957,0.773,0.274,0.631,-0.526)).kurtosis, -0.403229) must beLessThan(0.001)
-    }
-
   }
+
+  it should "compute the mean" in {
+    relativeError(Moments.from((1 to 100).map(_ toDouble)).mean, 50.5) should be < 0.001
+
+    relativeError(Moments.from(Seq(0.101,-0.172,0.183,0.045,0.408,-1.156,-0.064,0.282,1.145,-1.042,1.595,-0.212,-0.606,-0.464,0.64,-0.957,0.773,0.274,0.631,-0.526)).mean, 0.0439) should be < 0.001
+  }
+
+  it should "compute variance" in {
+    relativeError(Moments.from((1 to 100).map(_ toDouble)).variance, 841.667) should be < 0.05
+
+    relativeError(Moments.from(Seq(0.101,-0.172,0.183,0.045,0.408,-1.156,-0.064,0.282,1.145,-1.042,1.595,-0.212,-0.606,-0.464,0.64,-0.957,0.773,0.274,0.631,-0.526)).variance, 0.5191766) should be < 0.05
+  }
+
+  it should "compute skewness" in {
+    relativeError(Moments.from((1 to 100).map(_ toDouble)).skewness + 1, 1) should be < 0.001
+
+    relativeError(Moments.from(Seq(0.101,-0.172,0.183,0.045,0.408,-1.156,-0.064,0.282,1.145,-1.042,1.595,-0.212,-0.606,-0.464,0.64,-0.957,0.773,0.274,0.631,-0.526)).skewness, 0.189957) should be < 0.001
+  }
+
+  it should "compute kurtosis" in {
+    relativeError(Moments.from((1 to 100).map(_ toDouble)).kurtosis, -1.20024) should be < 0.001
+
+    relativeError(Moments.from(Seq(0.101,-0.172,0.183,0.045,0.408,-1.156,-0.064,0.282,1.145,-1.042,1.595,-0.212,-0.606,-0.464,0.64,-0.957,0.773,0.274,0.631,-0.526)).kurtosis, -0.403229) should be < 0.001
+  }
+
 }
