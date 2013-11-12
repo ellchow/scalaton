@@ -16,47 +16,47 @@
 
 package scalaton.aggregate
 
-import org.specs2.mutable._
+import org.scalatest._
+import org.scalatest.matchers._
+import org.scalatest.prop._
+
+import org.scalacheck._
+
 import scalaz._
 import Scalaz._
 
-class TopKSpec extends Specification{
-  "TopKByScore" should {
-    "keep top k items" in {
-      for(_ <- 1 to 100)
-      yield{
-        val k = util.Random.nextInt(20)
+class TopKSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+  behavior of "top k algorithm"
 
+  it should "keep top k items" in {
+    forAll{
+      (xs: Set[Int], k: Int) => whenever(k > 0){
         trait TK
-        implicit val tk = topk[String, Int, TK](k)
+        implicit val tk = topk[Int, Int, TK](k)
 
-        val items = (1 to 100).map(_.toString).zip(util.Random.shuffle(1 to 100))
+        val items = xs.zip(scala.util.Random.shuffle(1 to xs.size))
 
-        topk.fromData(items).toList must_== items.sortBy(_._2).takeRight(k).toList
+        topk.fromData(items).toList should be(items.toSeq.sortBy(_._2).takeRight(k).toList)
       }
     }
+  }
 
-    "should merge and keep top k" in {
-      for(_ <- 1 to 100)
-      yield{
-        val k = util.Random.nextInt(20)
-
+  it should "merge and keep top k" in {
+    forAll{
+      (xs: Set[Int], k: Int, ii: Int) => whenever(xs.nonEmpty && k > 0 && ii > 0){
         trait TK
-        implicit val tk = topk[String, Int, TK](k)
+        implicit val tk = topk[Int, Int, TK](k)
 
-        val items = (1 to 100).map(_.toString).zip(util.Random.shuffle(1 to 100))
-        val n = util.Random.nextInt(items.size)
+        val items = xs.zip(scala.util.Random.shuffle(1 to xs.size))
+        val i = ii % xs.size
 
+        val actual = (topk.fromData(items.take(i)) |+| topk.fromData(items.drop(i))).toList
 
+        val expected = items.toList.sortBy(_._2).takeRight(k).toList
 
-        val x = (topk.fromData(items.take(n)) |+| topk.fromData(items.drop(n))).toList
-        val y = items.sortBy(_._2).takeRight(k).toList
-
-        x must_== y
+        actual should be(expected)
       }
     }
-
-
   }
 
 }
