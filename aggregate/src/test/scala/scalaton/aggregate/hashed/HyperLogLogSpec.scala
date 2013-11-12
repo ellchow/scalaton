@@ -22,43 +22,42 @@ import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 import scala.util.{Random => SRandom}
 
-import org.specs2.mutable._
+import org.scalatest._
+import org.scalatest.matchers._
+import org.scalatest.prop._
 
-import scalaz._
+import org.scalacheck._
+
+import scalaz.{Tag => ZTag, _}
 import Scalaz._
 
 import scalaton.util.hashing128._
 import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.hyperloglog._
 
-class HyperLogLogSpec extends Specification{
-  trait DHYLL
-  trait SHYLL
-
-  def tagDense[A](a: A) = Tag[A, DHYLL](a)
-  def tagSparse[A](a: A) = Tag[A, SHYLL](a)
-
-  "a hyper log log estimator" should {
-
-    def testErrorRate[D](hllinst: HyperLogLogT[String,Bits128,D]) = {
-      implicit val hllinstance = hllinst
+class HyperLogLogSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
 
-      val (err, h) = (1 to 10000).foldLeft((List[Double](), hllinstance.zero))((acc, x) => {
-        val u = insert(acc._2, x toString)
-        val e = cardinality(u)
+  def testErrorRate[D](hllm: HyperLogLogT[String,Bits128,D]) = {
+    implicit val hllMonoid = hllm
 
-        ((math.abs(x - e).toDouble / x) :: acc._1,u)
-      })
 
-      (err.sum / err.size) must beLessThan(hll.error(hllinstance.m))
-    }
+    val (err, h) = (1 to 10000).foldLeft((List[Double](), hllMonoid.zero))((acc, x) => {
+      val u = insert(acc._2, x toString)
+      val e = cardinality(u)
 
-    "track cardinality with reasonable error rate" in {
-      Seq(7,8,9) map ( m => testErrorRate(hll.dense[String,Bits128,DHYLL](m)) )
+      ((math.abs(x - e).toDouble / x) :: acc._1,u)
+    })
 
-      Seq(7,10,16) map ( m => testErrorRate(hll.sparse[String,Bits128,SHYLL](m)) )
-    }
+    (err.sum / err.size) should be < hll.error(hllMonoid.m)
   }
 
+  behavior of "a hyper log log estimator"
+
+  it should "track cardinality with reasonable error rate" in {
+    trait HYLL
+    Seq(7,8,9) map ( m => testErrorRate(hll.dense[String,Bits128,HYLL](m)) )
+    Seq(7,10,16) map ( m => testErrorRate(hll.sparse[String,Bits128,HYLL](m)) )
+  }
 }
+
