@@ -92,7 +92,7 @@ abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,
 trait StandardBloomFilterParameterEstimate{
   /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
   def optimalNumHashes(numItems: Int, width: Int): Int = {
-    require(numItems gt 0, "fpProb must be > 0")
+    require(numItems gt 0, "numItems must be > 0")
     require(width gt 0, "width must be > 0")
     math.ceil(width / numItems * math.log(2)) toInt
   }

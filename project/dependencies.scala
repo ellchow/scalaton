@@ -45,7 +45,8 @@ object Dependencies{
 
   val doo = common ++ Seq(
     "com.nicta" %% "scoobi" % "0.8.0-cdh3-SNAPSHOT",
-    "org.scala-lang" %% "scala-pickling" % "0.8.0-SNAPSHOT"
+    "org.scala-lang" %% "scala-pickling" % "0.8.0-SNAPSHOT",
+    "org.specs2" %% "specs2" % "2.3" % "test"
   )
 
 }

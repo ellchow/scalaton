@@ -22,111 +22,120 @@ import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 import scala.util.{Random => SRandom}
 
-import org.specs2.mutable._
-import org.specs2.ScalaCheck
+import org.scalatest._
+import org.scalatest.matchers._
+import org.scalatest.prop._
+
 import org.scalacheck._
 
 import scalaz._
 import Scalaz._
 
 import scalaton.util._
+import scalaton.util.tag._
 import scalaton.util.hashing128._
 import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.bloomfilter.sbf
 import scalaton.aggregate.hashed.mutable.bloomfilter.{sbf => msbf}
 
-class StandardBloomFilterSpec extends Specification with ScalaCheck{
+class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   trait DSBF
   trait SSBF
 
-  def tagDense[A](a: A) = Tag[A, DSBF](a)
-  def tagSparse[A](a: A) = Tag[A, SSBF](a)
+  behavior of "standard bloom filter"
 
-  "an empty bloom filter" should {
 
+  it should "not contain anything if empty" in {
     implicit val sbfinstance = sbf[String,Bits128,DSBF]((5,625), 0L)
 
-    "not contain anything" ! prop { (a: String) => contains(sbfinstance.zero, a) must beFalse }
-
-    "contain the item after adding it" in {
-      contains(singleton(tagDense("a")), "a") must beTrue
+    forAll{
+      (s: String) => contains(sbfinstance.zero, s) should be(false)
     }
-
-    "not equal to a nonempty bloom filter" ! prop { (a: String) => (insert(sbfinstance.zero, a) === sbfinstance.zero) must beFalse}
   }
 
-  "a nonempty bloom filter" should {
+  it should "contain the item after adding it" in {
+    implicit val sbfinstance = sbf[String,Bits128,DSBF]((5,625), 0L)
 
-    def testTruePositives[D](sbfinst: StandardBloomFilterT[String,Bits128,D]) = {
-      implicit val sbfinstance = sbfinst
-
-      val items = 0 to 10 map { _ => SRandom nextDouble() toString }
-      val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
-
-      items map { i => contains(bf, i) must beTrue }
+    forAll{
+      (s: String) => contains(singleton("a".tag[DSBF]), "a") should be(true)
     }
-
-    def testFPProb[D](sbfinst: StandardBloomFilterT[(String,String),Bits128,D],
-                      numItems: Int, fpProb: Double) = {
-      implicit val sbfinstance = sbfinst
-
-      val fps = (0 until 5000).view map { _ =>
-        val items = (0 until numItems).view map { _ => (SRandom nextDouble() toString,
-                                                        SRandom nextDouble() toString) }
-        val test = (SRandom nextDouble() toString, SRandom nextDouble() toString)
-
-        val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc, x))
-        if(contains(bf, test)) 1.0 else 0.0
-      }
-      val observed = fps.sum / fps.size
-
-      observed must beLessThan(1.5 * fpProb)
-    }
-
-    def testCardinalityEstimate[D](sbfinst: StandardBloomFilterT[String,Bits128,D]) = {
-      implicit val sbfinstance = sbfinst
-      var bf = sbfinstance.zero
-
-      for(i <- 1 to 100) yield {
-        bf = insert(bf, scala.util.Random.nextDouble.toString)
-
-        math.abs(cardinality(bf) - i) must beLessThan(math.max(math.round(1.05 * i), 1).toLong)
-      }
-    }
-
-    "should contain all true positives" in {
-      val params = sbf.optimalParameters(100, 0.05)
-
-      testTruePositives(sbf[String, Bits128, DSBF](params, 0L))
-
-      testTruePositives(msbf.sparse[String, Bits128, SSBF](params, 0L))
-    }
-
-    "should be below false-positive rate with high confidence" in {
-      Seq(0.1, 0.05, 0.01, 0.005) map { fpProb =>
-        val numItems = 20
-        val params = sbf.optimalParameters(numItems, fpProb)
-
-        testFPProb(sbf[(String, String), Bits128, DSBF](params, 0L), numItems, fpProb)
-
-        testFPProb(msbf.sparse[(String, String), Bits128, SSBF](params, 0L), numItems, fpProb)
-      }
-    }
-
-    "should estimate size well for elements less than the intended number of elements" in {
-      testCardinalityEstimate(sbf[String,Bits128,DSBF](sbf.optimalParameters(100,0.05),0))
-
-      testCardinalityEstimate(msbf.sparse[String,Bits128,SSBF](sbf.optimalParameters(100,0.05),0))
-    }
-
-    "should should return cardinality of -1 if all bloom filter is full" in {
-      implicit val sbfinstance = sbf[String,Bits128,DSBF](sbf.optimalParameters(10,0.05),0)
-
-      val bf = tagDense(BitSet((0 until sbfinstance.width) : _*))
-
-      (cardinality(bf) === -1L) must beTrue
-    }
-
   }
 
+  val genParams: Gen[(Int, Int, Long, List[String])] = for{
+    h <- Gen.choose(1,10)
+    w <- Gen.choose(1, 1000)
+    s <- Arbitrary.arbitrary[Long]
+    xs <- Arbitrary.arbitrary[List[String]]
+  } yield (h, w, s, xs)
+
+  it should "contain all true positives" in {
+
+    forAll(genParams){
+      (inp: (Int,Int,Long,List[String])) => whenever(inp._4.size < 1000){
+        val (h, w, s, items) = inp
+
+        def testTruePositives[D](sbfinst: StandardBloomFilterT[String,Bits128,D]) = {
+          implicit val sbfinstance = sbfinst
+          val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
+
+          items.map(i => contains(bf, i)).exists(_ == false) should be(false)
+        }
+
+        testTruePositives(sbf[String, Bits128, DSBF]((h, w), s))
+
+        testTruePositives(msbf.sparse[String, Bits128, SSBF]((h, w), s))
+      }
+    }
+  }
+
+  it should "be below false-positive rate" in {
+    val genSettings = for{
+      fpProb <- Gen.oneOf(0.1, 0.05, 0.01, 0.005)
+      numItems <- Gen.choose(1, 100)
+      s <- Arbitrary.arbitrary[Long]
+    } yield (numItems, fpProb, s)
+
+    forAll(genSettings) {
+      (settings: (Int, Double, Long)) => whenever(settings._1 > 0){
+        val (numItems, fpProb, s) = settings
+        val params = sbf.optimalParameters(100, fpProb)
+
+        def testFPProb[D](sbfinst: StandardBloomFilterT[Int,Bits128,D]) = {
+          implicit val sbfinstance = sbfinst
+
+          val fps = (0 until 100).map{ _ =>
+            val bf = (0 until numItems).foldLeft(sbfinstance.zero)((acc,x) => insert(acc, x))
+
+            if(contains(bf, -1)) 1.0 else 0.0
+          }
+
+          (fps.sum / fps.size) should be < (1.05 * fpProb)
+        }
+
+        testFPProb(sbf[Int, Bits128, DSBF](params, 0L))
+        testFPProb(msbf.sparse[Int, Bits128, SSBF](params, 0L))
+      }
+    }
+  }
+
+  it should "estimate size well for elements less than the intended number of elements" in {
+      forAll{
+        (xs: Set[String]) => whenever(xs.size > 0){
+          val params = sbf.optimalParameters(xs.size * 10, 0.05)
+          implicit val sbfinst = sbf[String,Bits128,DSBF](params, 0)
+
+          val bf = xs.foldLeft(sbfinst.zero)((acc,x) => insert(acc, x))
+
+          (math.abs(cardinality(bf) - xs.size).toDouble / xs.size) should be <= (0.1 max (1.0 / xs.size))
+        }
+      }
+    }
+
+  it should "return cardinality of -1 if all bloom filter is full" in {
+    implicit val sbfinstance = sbf[String,Bits128,DSBF](sbf.optimalParameters(10,0.05),0)
+
+    val bf = BitSet((0 until sbfinstance.width) : _*).tag[DSBF]
+
+    cardinality(bf) should be (-1L)
+  }
 }
