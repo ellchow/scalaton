@@ -16,28 +16,45 @@
 
 package scalaton.util
 
-import org.specs2._
+import org.scalatest._
+import org.scalatest.matchers._
+import org.scalatest.prop._
 
 import org.scalacheck._
 
-class SearchSpec extends Specification with ScalaCheck {
+class SearchSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   import search._
 
-  def is = {
-    "binary search" ^ p^
-    "finds existing items in sorted seq" ! prop { (xs: Set[Int]) => (xs.size > 0) ==> {
-      val x = scala.util.Random.shuffle(xs.toVector).head
-      val sorted = xs.toVector.sorted
+  behavior of "binary search"
 
-      binarySearch(sorted, x) must_== Right(sorted.indexOf(x))
-    }} ^ p^
-    "identifies the indes at which to insert missing items" ! prop { (xs: Set[Int], i: Int) => (i >= 0 && i < xs.size) ==> {
-      val sorted = xs.toVector.sorted
-      val x = sorted(i)
-      val dropped = sorted.take(i) ++ sorted.drop(i + 1)
+  it should "find existing items in sorted seq" in {
+    forAll {
+      (xs: Set[Int]) => whenever(xs.size > 0) {
+        val x = scala.util.Random.shuffle(xs.toVector).head
+        val sorted = xs.toVector.sorted
 
-      binarySearch(dropped, x) must_== Left(i)
-    }}
+        binarySearch(sorted, x) should be(Right(sorted.indexOf(x)))
+      }
+    }
   }
 
+  it should "return 0 for empty seq" in {
+    forAll{
+      (x: Int) => binarySearch(Vector[Int](), x) should be(Left(0))
+    }
+  }
+
+  it should "identify indices at which to insert missing items" in {
+    forAll{
+      (xs: Set[Int]) => whenever(xs.size > 0){
+        val x = scala.util.Random.shuffle(xs.toVector).head
+        val sorted = xs.toVector.sorted
+        val i = sorted.indexOf(x)
+        val dropped = sorted.take(i) ++ sorted.drop(i + 1)
+
+        binarySearch(dropped, x) should be(Left(i))
+      }
+    }
+  }
 }
+
