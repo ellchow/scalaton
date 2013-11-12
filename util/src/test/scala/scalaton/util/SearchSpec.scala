@@ -16,41 +16,28 @@
 
 package scalaton.util
 
-import org.specs2.mutable._
-import scalaz._
-import Scalaz._
+import org.specs2._
 
-class SearchSpec extends Specification {
-  "binary search" should {
-    import search._
+import org.scalacheck._
 
-    "find existing items in sorted indexed seq" in {
-      for(_ <- 0 until 1000) yield {
-        val n = util.Random.nextInt(1000) + 1
+class SearchSpec extends Specification with ScalaCheck {
+  import search._
 
-        val nums = util.Random.shuffle(0 to 1500).take(n)
+  def is = {
+    "binary search" ^ p^
+    "finds existing items in sorted seq" ! prop { (xs: Set[Int]) => (xs.size > 0) ==> {
+      val x = scala.util.Random.shuffle(xs.toVector).head
+      val sorted = xs.toVector.sorted
 
-        val sorted = nums.sorted
+      binarySearch(sorted, x) must_== Right(sorted.indexOf(x))
+    }} ^ p^
+    "identifies the indes at which to insert missing items" ! prop { (xs: Set[Int], i: Int) => (i >= 0 && i < xs.size) ==> {
+      val sorted = xs.toVector.sorted
+      val x = sorted(i)
+      val dropped = sorted.take(i) ++ sorted.drop(i + 1)
 
-        binarySearch(sorted, nums.head) mustEqual Right(sorted.indexOf(nums.head))
-      }
-    }
-
-    "find index at which to insert missing items" in {
-      for(_ <- 0 until 1000) yield {
-        val n = util.Random.nextInt(1000) + 1
-
-        val nums = util.Random.shuffle(0 to 1500).take(n)
-
-        val sorted = nums.sorted
-
-        val i = util.Random.nextInt(sorted.size)
-
-        val dropped = sorted.take(i) ++ sorted.drop(i + 1)
-
-        binarySearch(dropped, sorted(i)) mustEqual Left(i)
-      }
-    }
-
+      binarySearch(dropped, x) must_== Left(i)
+    }}
   }
+
 }
