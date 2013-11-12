@@ -16,43 +16,38 @@
 
 package scalaton.util
 
-import org.specs2.mutable._
+import org.scalatest._
+import org.scalatest.matchers._
+import org.scalatest.prop._
 
-import scalaton.util.hashing128._
+import org.scalacheck._
 
-class HashableSpec extends Specification {
+class HashableSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+  behavior of "Hashable"
 
-  "The string 'hello'" should {
+  import scalaton.util.hashing128._
 
-    "is hashed by MurmurHash3" in {
-      val hc = hash("hello")
-      (hc: Bits128).productArity mustEqual 2
+  it should "hash string 'hello'" in {
+    val hc = hash("hello")
 
-      hc mustEqual (-4758432102323878981L,1262627326183304356L)
+    hc should be((-4758432102323878981L,1262627326183304356L))
+  }
+
+  it should "hash multiple times" in {
+    forAll{
+      (s: Long, nn: Int) => whenever(nn > 0){
+        val n = nn % 1000
+        multiHash("hello", s).take(n).size should be(n)
+      }
     }
+  }
 
-    "have different hash codes given different seeds" in {
-      val n = 100L
-      val seeds: Seq[Long] = 0L until n
-      val hcs = seeds map {i => hash("hello", i)} toSet
-
-      hcs.size mustEqual n
+  it should "hash to mostly distinct values" in {
+    forAll{
+      (ss: Set[String]) => {
+        ss.map(s => hash(s)).size should be >= (0.99 * ss.size).toInt
+      }
     }
-
-    "can be hashed multiple times" in {
-      val n = 100
-      val hcs = multiHash("hello", 0L) take n
-
-      hcs.size mustEqual n
-    }
-
-    "yields mostly distinct values when hashing many times" in {
-      val n = 1000
-      val hcs = multiHash("hello", 0L) take n distinct
-
-      hcs.size must beGreaterThan((0.99 * n) toInt)
-    }
-
   }
 
 }

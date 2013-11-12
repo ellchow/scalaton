@@ -14,115 +14,82 @@
  limitations under the License.
 */
 
-package scalaton.util.caching
+package scalaton.util
 
-import org.specs2.mutable._
-import scalaz._
-import Scalaz._
+import org.scalatest._
+import org.scalatest.matchers._
+import org.scalatest.prop._
 
+import org.scalacheck._
 
-class CacheSpec extends Specification {
+class CacheSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+  import mutable._
 
-  "An LRU cache" should {
-    "hold recently used items" in {
-      val lru = new LruCache[String,Int](100)
+  behavior of "an LRU cache"
 
-      lru update("a", 1)
+  it should "hold recently used items" in {
+    forAll{
+      (xs: List[(String,Int)], n: Int) => whenever(n >= 0){
+        val lru = new LruCache[String,Int](n)
 
-      lru update("b", 100)
+        xs.foreach{ case (x, k) => lru.update(x, k) }
 
-      (lru get "a") mustEqual Some(1)
+        val actual = lru.keySet.map(x => (x, lru(x)))
+        val expected = xs.takeRight(n).foldLeft(Map[String,Int]()){ case (accum, xk) => accum + xk }.toSet
 
-      (lru get "b") mustEqual Some(100)
-
-      lru("a") mustEqual 1
+        actual should be(expected)
+      }
     }
-
-    "evict least recently used items when full" in {
-      val lru = new LruCache[String,Int](3)
-
-      lru update("a", 1)
-
-      lru update("b", 100)
-
-      lru update("c", 4)
-
-      lru update("d", 30)
-
-      (lru get "a") mustEqual None
-
-      (lru get "b") mustEqual Some(100)
-
-      (lru get "c") mustEqual Some(4)
-
-      (lru get "d") mustEqual Some(30)
-
-      lru update("c", 25)
-
-      (lru get "c") mustEqual Some(25)
-    }
-
   }
 
-  "An expiring LRU cache" should {
-    "hold recently used items before expiration" in {
-      val lru = new ExpiringLruCache[String,Int](100, 16, 1000, 1000, 0, 1000, 0.9)
+  behavior of "an expiring LRU cache"
 
-      lru update("a", 1)
+  it should "hold recently used items before expiration" in {
+    val lru = new ExpiringLruCache[String,Int](100, 16, 1000, 1000, 0, 1000, 0.9)
 
-      lru update("b", 2)
+    lru.update("a", 1)
+    lru.update("b", 2)
+    lru.update("c", 3)
 
-      lru update("c", 3)
+    (lru.get("a")) should be(Some(1))
+    (lru.get("b")) should be(Some(2))
+    (lru.get("c")) should be(Some(3))
 
-      (lru get "a") mustEqual Some(1)
+    Thread.sleep(1100)
 
-      (lru get "b") mustEqual Some(2)
+    (lru.get("a")) should be(None)
+    lru.keySet should be(Set("b", "c"))
 
-      (lru get "c") mustEqual Some(3)
+    lru.update("d", 4)
 
-      Thread.sleep(1100)
-
-      (lru get "a") mustEqual None
-
-      lru.keySet mustEqual Set("b", "c")
-
-      lru update("d", 4)
-
-      lru.keySet mustEqual Set("d")
-    }
-
-    "clean up expired items on update" in {
-      val lru = new ExpiringLruCache[String,Int](100, 16, 1000, 1000, 0, 2000, 0.9)
-
-      lru update("a", 1)
-
-      lru update("b", 2)
-
-      lru update("c", 3)
-
-      (lru get "a") mustEqual Some(1)
-
-      (lru get "b") mustEqual Some(2)
-
-      (lru get "c") mustEqual Some(3)
-
-      Thread.sleep(1100)
-
-      (lru get "a") mustEqual None
-
-      lru.keySet mustEqual Set("b", "c")
-
-      lru update("d", 4)
-
-      lru.keySet mustEqual Set("b", "c", "d")
-
-      Thread.sleep(1100)
-
-      lru update("d", 5)
-
-      lru.keySet mustEqual Set("d")
-    }
-
+    lru.keySet should be(Set("d"))
   }
+
+  it should "clean up expired items on update" in {
+    val lru = new ExpiringLruCache[String,Int](100, 16, 1000, 1000, 0, 2000, 0.9)
+
+        lru.update("a", 1)
+        lru.update("b", 2)
+        lru.update("c", 3)
+
+        (lru get "a") should be(Some(1))
+        (lru get "b") should be(Some(2))
+        (lru get "c") should be(Some(3))
+
+        Thread.sleep(1100)
+
+        (lru get "a") should be(None)
+        lru.keySet should be(Set("b", "c"))
+
+        lru.update("d", 4)
+
+        lru.keySet should be(Set("b", "c", "d"))
+
+        Thread.sleep(1100)
+        lru.update("d", 5)
+
+        lru.keySet should be(Set("d"))
+      }
+
 }
 
