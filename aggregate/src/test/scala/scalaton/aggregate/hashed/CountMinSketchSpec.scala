@@ -18,73 +18,83 @@ package scalaton.aggregate.hashed
 
 import scala.util.{Random => SRandom}
 
-import org.specs2.mutable._
-import org.specs2.ScalaCheck
+import org.scalatest._
+import org.scalatest.matchers._
+import org.scalatest.prop._
+
 import org.scalacheck._
 
 import scalaz._
 import Scalaz._
 
+import scalaton.util.tag._
 import scalaton.util.hashing128._
 import scalaton.aggregate.hashed.hcollection._
 import scalaton.aggregate.hashed.sketch._
 
-class CountMinSketchSpec extends Specification with ScalaCheck{
+class CountMinSketchSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  "an empty count min sketch" should {
-
-    trait CMS
-    def tag[A](x: A) = Tag[A, CMS](x)
-    implicit val cmsinstance = countminsketch[String,Bits128,CMS]((5,60),0)
-
-    "return zero for anything" ! prop { (a: String) => lookup(cmsinstance.zero, a) must_== 0L }
-
-    "equal to another empty sketch" in {
-      val cmsz = tag((Vector.fill[Long](5, 60)(0L), 0L))
-
-      (cmsinstance.zero === cmsz) must beTrue
-    }
-
-    "not equal to any nonempty sketch" ! prop { (a: String) => (cmsinstance.zero === singleton(tag(a), 1L)) must beFalse}
-  }
-
-  "a nonempty count min sketch" should {
-    trait CMS
-    def tag[A](x: A) = Tag[A, CMS](x)
+  trait CMS
 
 
-    "should have nonzero estimate for any item that has been updated" ! prop { (as: List[String]) =>
-      implicit val cmsinstance = countminsketch[String,Bits128,CMS]((5,60),0)
+  behavior of "CountMinSketch"
 
-      val cms = (cmsinstance.zero /: as)((running, a) => update(running, a, 1L))
+  it should "return zero for everything when empty" in {
+    forAll{
+      (s: String) => {
+        implicit val cmsMonoid = countminsketch[String,Bits128,CMS]((5,60),0)
 
-      as foreach { a => lookup(cms, a) must beGreaterThan(0L) }
-    }
-
-    "should estimate within error bounds" in {
-      val parameters = for{
-        eps <- Seq(0.05, 0.01, 0.001)
-        delta <- Seq(0.95, 0.999)
-      } yield (eps, delta)
-
-      parameters flatMap { case (eps, delta) =>
-        val params = countminsketch.optimalParameters(eps,delta)
-        implicit val cmsinstance = countminsketch[String, Bits128, CMS](params, 0)
-
-        for(_ <- (0 to 10)) yield {
-          val items = (0 to 5000).view.map( _ => (math.sqrt(SRandom.nextInt(10000)).toInt.toString, (SRandom.nextInt(20) + 1).toLong))
-
-          val trueCounts = items groupBy (_._1) map { case (k, vs) => (k, vs.map(_._2).sum) } toMap
-
-          val cms = (cmsinstance.zero /: items)((running, i) => update(running, i._1, i._2))
-
-          val exceedsMaxError = trueCounts.map{ case (i,c) => (lookup(cms, i) < (1 + eps) * trueCounts.getOrElse(i,0L)) ? 1 | 0 }.sum
-
-          (exceedsMaxError.toDouble / items.size) must beLessThan(delta)
-        }
+        lookup(cmsMonoid.zero, s) should be(0L)
       }
     }
   }
+
+  it should "have nonzero estimate for any item that has been updated" in {
+    forAll{
+      (s: String, n: Long) => whenever(n > 0){
+        implicit val cmsMonoid = countminsketch[String,Bits128,CMS]((5,60),0)
+
+        val x = singleton(s.tag[CMS], n)
+
+        lookup(x, s) should be > 0L
+      }
+    }
+  }
+
+  it should "estimate within error bounds" in {
+    implicit val genSettings: Gen[(Double, Double)] = for{
+      eps <- Gen.oneOf(0.05, 0.01, 0.001)
+      delta <- Gen.oneOf(0.95, 0.999)
+    } yield (eps, delta)
+
+    implicit val arbitrarySettings = Arbitrary(genSettings)
+
+    implicit val genItems: Gen[Seq[(String, Long)]] = for{
+      n <- Gen.choose(1, 10000)
+    } yield {
+      (1 to n).toSeq.map( _ => (math.sqrt(SRandom.nextInt(10000)).toInt.toString,
+                                (SRandom.nextInt(20) + 1).toLong))
+    }
+
+    implicit val arbitraryItems = Arbitrary(genItems)
+
+    forAll{
+      (settings: (Double,Double), items: Seq[(String, Long)]) => {
+        val (eps, delta) = settings
+        val params = countminsketch.optimalParameters(settings._1, settings._2)
+        implicit val cmsMonoid = countminsketch[String, Bits128, CMS](params, 0)
+
+        val trueCounts = items.groupBy(_._1).map{ case (k, vs) => (k, vs.map(_._2).sum) }.toMap
+
+        val cms = (cmsMonoid.zero /: items)((running, i) => update(running, i._1, i._2))
+
+        val exceedsMaxError = trueCounts.map{ case (i,c) => (lookup(cms, i) < (1 + eps) * trueCounts.getOrElse(i,0L)) ? 1 | 0 }.sum
+
+        (exceedsMaxError.toDouble / items.size) should be < delta
+      }
+    }
+  }
+
 
 }
 
