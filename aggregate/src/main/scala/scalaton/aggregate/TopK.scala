@@ -54,4 +54,7 @@ object topk{
 
   def fromData[A, B, T](as: Iterable[(A,B)])(implicit numericB: Numeric[B], topKMonoid: TopKByScore[A, B, T]): Heap[(A,B)] @@ T =
     as.foldLeft(topKMonoid.zero)((b, a) => topKMonoid.insert(b, a))
+
+  def fromData[A, B, T](as: (A,B)*)(implicit numericB: Numeric[B], topKMonoid: TopKByScore[A, B, T]): Heap[(A,B)] @@ T =
+    fromData(as)
 }
