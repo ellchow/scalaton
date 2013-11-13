@@ -30,7 +30,15 @@ abstract class TopKByScore[A, B : Numeric, T] extends Monoid[Heap[(A,B)] @@ T]{
 
   val numericB = implicitly[Numeric[B]]
 
-  implicit val ordering: Order[(A, B)] = Order.orderBy(x => numericB.toDouble(x._2))
+  implicit val ordering: Order[(A, B)] = Order.order{ (x,y) =>
+    if(numericB.lt(x._2, y._2)){
+       Ordering.LT
+    }else if(numericB.gt(x._2, y._2)){
+      Ordering.GT
+    }else{
+      Ordering.EQ
+    }
+  }
 
   val zero: TopKData @@ T = Tag(Heap.fromData(List[(A, B)]()))
 
