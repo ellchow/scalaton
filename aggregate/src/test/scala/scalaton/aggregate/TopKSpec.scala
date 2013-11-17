@@ -32,7 +32,7 @@ class TopKSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     forAll{
       (xs: Set[Int], k: Int) => whenever(k > 0){
         trait TK
-        implicit val tk = topk[Int, Int, TK](k)
+        implicit val tk = topk.create[Int, Int, TK](k)
 
         val items = xs.zip(scala.util.Random.shuffle(1 to xs.size))
 
@@ -45,7 +45,7 @@ class TopKSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     forAll{
       (xs: Set[Int], k: Int, ii: Int) => whenever(xs.nonEmpty && k > 0 && ii > 0){
         trait TK
-        implicit val tk = topk[Int, Int, TK](k)
+        implicit val tk = topk.create[Int, Int, TK](k)
 
         val items = xs.zip(scala.util.Random.shuffle(1 to xs.size))
         val i = ii % xs.size
