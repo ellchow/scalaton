@@ -19,25 +19,24 @@ package scalaton.aggregate
 import scalaz._
 import Scalaz._
 
-import org.apache.commons.math3.distribution.PoissonDistribution
-
-abstract class Bootstrapped[A : Monoid, T] extends Monoid[Map[Int, A] @@ T]{
-  val b: Int
-  val poisson: PoissonDistribution
-
-  def tag(m: Map[Int,A]) = Tag[Map[Int,A], T](m)
-
-  val zero = tag(Map[Int,A]())
-
-  def append(xa: Map[Int,A] @@ T, xb: => Map[Int,A] @@ T) =
-    tag((xa: Map[Int, A]) |+| (xb: Map[Int, A]))
-
-}
-
-object btsp{
+object bootstrapping{
   type Poisson = org.apache.commons.math3.distribution.PoissonDistribution
 
-  def bootstrapped[A : Monoid, T](rounds: Int, poi: PoissonDistribution) = new Bootstrapped[A, T]{
+  abstract class Bootstrapped[A : Monoid, T] extends Monoid[Map[Int, A] @@ T]{
+    val b: Int
+    val poisson: Poisson
+
+    def tag(m: Map[Int,A]) = Tag[Map[Int,A], T](m)
+
+    val zero = tag(Map[Int,A]())
+
+    def append(xa: Map[Int,A] @@ T, xb: => Map[Int,A] @@ T) =
+      tag((xa: Map[Int, A]) |+| (xb: Map[Int, A]))
+
+  }
+
+
+  def bootstrapped[A : Monoid, T](rounds: Int, poi: Poisson) = new Bootstrapped[A, T]{
       val b = rounds
       val poisson = poi
     }

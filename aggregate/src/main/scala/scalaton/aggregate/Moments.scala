@@ -19,7 +19,7 @@ package scalaton.aggregate
 import scalaz._
 import Scalaz._
 
-trait MomentsModule{
+object moments{
 
   // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Higher-order_statistics
   implicit val momentsMonoid: Monoid[Moments] = Monoid instance ( (xa, xb) => {
@@ -76,4 +76,4 @@ trait MomentsModule{
   }
 }
 
-object moments extends MomentsModule
+
