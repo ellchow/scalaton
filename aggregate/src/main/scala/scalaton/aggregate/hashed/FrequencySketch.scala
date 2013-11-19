@@ -125,13 +125,6 @@ extends DenseFrequencySketch[A,H1,SparseHLLRegisters[U],T]{
   protected def valueToLong(v1: SparseHLLRegisters[U]): Long = hllinst.cardinality(v1)
 }
 
-
-abstract class DenseFrequencySketchLongHyLLRatioT[A,H1,T,U](implicit hllinst: SparseHyperLogLogT[A,H1,U])
-extends DenseFrequencySketch[A,H1,(Long, SparseHLLRegisters[U]),T]{
-  protected def valueToLong(v1: (Long, SparseHLLRegisters[U])): Long = v1._1 / hllinst.cardinality(v1._2)
-}
-
-
 trait CountMinSketchParameterEstimates{
   /** delta is certainty having less than eps **/
   def optimalNumHashes(delta: Double) = {
@@ -168,14 +161,6 @@ object sketch {
 
     def apply[A,H1,T](params: (Int,Int), s: Long = 0L) =
       new DenseFrequencySketchLongT[A,H1,T]{
-        val (numHashes, width) = params
-        val seed = s
-
-        protected def estimate(cs: Iterable[Long]): Long = cs.min
-      }
-
-    def withHyLLRatio[A,H1,T,U](params: (Int,Int), s: Long = 0L)(implicit hllinst: SparseHyperLogLogT[A,H1,U]) =
-      new DenseFrequencySketchLongHyLLRatioT[A,H1,T,U]{
         val (numHashes, width) = params
         val seed = s
 
