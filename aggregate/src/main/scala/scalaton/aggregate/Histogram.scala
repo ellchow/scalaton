@@ -470,6 +470,12 @@ trait HistogramModule{
 
     def value(ay: (A, Y)) = (1L, ay._2)
   }
+
+  implicit def histogramSemigroup[A,B](implicit monoidB: Monoid[B], hvB: HistogramValue[B], hpAB: HistogramPoint[A,B]): Semigroup[HistogramData[A,B]] =
+    new Semigroup[HistogramData[A,B]]{
+      def append(h1: HistogramData[A,B], h2: => HistogramData[A,B]) = h1 merge h2
+    }
+
 }
 
 object histogram extends HistogramModule
