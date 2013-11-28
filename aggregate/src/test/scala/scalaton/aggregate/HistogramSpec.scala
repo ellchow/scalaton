@@ -32,34 +32,31 @@ import Scalaz._
 
 
 class HistogramSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
-  import hstgm._
+  import histogram._
   import org.apache.commons.math3.distribution._
 
   behavior of "histogram"
 
   it should "maintain counts for exact bucket center matches" in {
-    trait Hst
-    implicit val h = simpleHistogram[Double, Hst](5)
+    val empty = HistogramData.empty[Double,Long](5)
 
-    h.insert(h.empty, 1.0).buckets should be(TreeMap(1.0 -> 1L))
+    empty.insert(1.0).buckets should be(TreeMap(1.0 -> 1L))
 
-    h.insert(h.insertN(h.empty, 1.0, 2), 2.0).buckets should be(TreeMap(1.0 -> 2L, 2.0 -> 1L))
+    empty.insertN(1.0, 2).insert(2.0).buckets should be(TreeMap(1.0 -> 2L, 2.0 -> 1L))
   }
 
   it should "keep a up to a specified maximum number of buckets" in {
     forAll{
       (b: Int, xs: List[Int]) => whenever(b > 0){
-        trait Hst
-        implicit val h = simpleHistogram[Int, Hst](b)
+        val empty = HistogramData.empty[Double,Long](b)
 
-        xs.foldLeft(h.empty)((accum, x) => h.insert(accum, x)).buckets.size should be <= b
+        xs.foldLeft(empty)((accum, x) => accum.insert(x)).buckets.size should be <= b
       }
     }
   }
 
   it should "choose to merge with the closest bucket" in {
-    trait Hst
-    implicit val h = simpleHistogram[Double, Hst](2)
+    val empty = HistogramData.empty[Double,Long](2)
 
     val a = 0.0
     val an = scala.util.Random.nextInt(10) + 1
@@ -68,7 +65,9 @@ class HistogramSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyC
 
     val c = scala.util.Random.nextDouble
 
-    val x = h.insert(h.insertN(h.insertN(h.empty, a, an), b, bn), c)
+
+
+    val x = empty.insertN(a, an).insertN(b, bn).insert(c)
 
     val ((d, dn), (e, en)) = (c lte 0.5) ? ((a, an), (b, bn)) | ((b, bn), (a, an))
 
@@ -78,13 +77,12 @@ class HistogramSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyC
   it should "maintain min and max bounds" in {
     forAll{
       (b: Int, itemsX: List[Double], itemsY: List[Double]) => whenever(b > 1 && (itemsX.nonEmpty || itemsY.nonEmpty)){
-        trait Hst
-        implicit val h = simpleHistogram[Double, Hst](b)
+        val empty = HistogramData.empty[Double,Long](b)
 
-        val x = h.insert(h.empty, itemsX : _*)
-        val y = h.insert(h.empty, itemsY : _*)
+        val x = empty.insert(itemsX)
+        val y = empty.insert(itemsY)
 
-        val xy = h.merge(x, y)
+        val xy = x merge y
         val itemsXY = itemsX ++ itemsY
 
         (xy.min, xy.max) should be((itemsXY.min,itemsXY.max))
@@ -93,8 +91,7 @@ class HistogramSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyC
   }
 
   it should "compute approximate quantiles" in {
-    trait Hst
-    implicit val h = simpleHistogram[Double, Hst](256)
+    val empty = HistogramData.empty[Double,Long](256)
 
     val ds = Vector(new ExponentialDistribution(scala.util.Random.nextDouble * scala.util.Random.nextInt(10) + 1),
                     new NormalDistribution(scala.util.Random.nextInt(100), 1),
@@ -109,11 +106,11 @@ class HistogramSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyC
 
       val xs = (0 to 2000) map (_ => r.sample)
 
-      val y = insert(h.empty, xs : _*)
+      val y = empty.insert(xs)
 
       val q = scala.util.Random.nextDouble
 
-      math.abs(q - r.cumulativeProbability(quantile(y, q).get))
+      math.abs(q - r.cumulativeProbability(y.quantile(q).get))
     }
 
     (err.sum / err.size) should be < 0.02
