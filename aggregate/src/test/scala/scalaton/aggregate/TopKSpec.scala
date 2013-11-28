@@ -26,17 +26,22 @@ import scalaz._
 import Scalaz._
 
 class TopKSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+  import topk._
+
   behavior of "top k algorithm"
 
   it should "keep top k items" in {
     forAll{
       (xs: Set[Int], k: Int) => whenever(k > 0){
-        trait TK
-        implicit val tk = topk.create[Int, Int, TK](k)
+        val create = TopKData.fromData[(Int,Int)](k) _
 
-        val items = xs.zip(scala.util.Random.shuffle(1 to xs.size))
+        val items = scala.util.Random.shuffle(1 to xs.size).zip(xs)
 
-        topk.fromData(items).toList should be(items.toSeq.sortBy(_._2).takeRight(k).toList)
+        val actual = create(items).heap.toList
+
+        val expected = items.toSeq.sorted.takeRight(k).toList
+
+        actual should be(expected)
       }
     }
   }
@@ -44,15 +49,14 @@ class TopKSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
   it should "merge and keep top k" in {
     forAll{
       (xs: Set[Int], k: Int, ii: Int) => whenever(xs.nonEmpty && k > 0 && ii > 0){
-        trait TK
-        implicit val tk = topk.create[Int, Int, TK](k)
+        val create = TopKData.fromData[(Int,Int)](k) _
 
-        val items = xs.zip(scala.util.Random.shuffle(1 to xs.size))
+        val items = scala.util.Random.shuffle(1 to xs.size).zip(xs)
         val i = ii % xs.size
 
-        val actual = (topk.fromData(items.take(i)) |+| topk.fromData(items.drop(i))).toList
+        val actual = (create(items.take(i)) |+| create(items.drop(i))).heap.toList
 
-        val expected = items.toList.sortBy(_._2).takeRight(k).toList
+        val expected = items.toList.sorted.takeRight(k).toList
 
         actual should be(expected)
       }

@@ -21,49 +21,35 @@ import Scalaz._
 
 import spire.math.Numeric
 
-object topk{
-  abstract class TopK[A, B : Numeric, T] extends Monoid[Heap[(A,B)] @@ T]{
-    type TopKData = Heap[(A,B)]
+trait TopKModule{
+  case class TopKData[A : Order](val k: Int, heap: Heap[A]){
+    def isCompatibleWith(that: TopKData[A]) =
+      this.k === that.k
 
-    val k: Int
+    def insert(a: A): TopKData[A] = {
+      val h = heap.insert(a)
 
-    val numericB = implicitly[Numeric[B]]
-
-    implicit val ordering: Order[(A, B)] = Order.order{ (x,y) =>
-      if(numericB.lt(x._2, y._2)){
-        Ordering.LT
-      }else if(numericB.gt(x._2, y._2)){
-        Ordering.GT
-      }else{
-        Ordering.EQ
-      }
+      TopKData(k, if(h.size gt k) h.drop(1) else h)
     }
 
-    val zero: TopKData @@ T = Tag(Heap.fromData(List[(A, B)]()))
+    def merge(that: TopKData[A]) = {
+      require(isCompatibleWith(that))
 
-    def append(x1: TopKData @@ T, x2: => TopKData @@ T): TopKData @@ T = {
-      val x3 = (x1:TopKData) |+| (x2:TopKData)
+      val h = this.heap |+| that.heap
 
-      Tag(if(x3.size gt k) x3.drop(x3.size - k) else x3)
-    }
-
-    def insert(x: TopKData @@ T, ab: (A, B)): TopKData @@ T = {
-      val x1 = x.insert(ab)
-
-      Tag(if(x1.size gt k) x1.drop(1) else x1)
+      TopKData(k, if(h.size gt k) h.drop(h.size - k) else h)
     }
   }
 
-  def create[A, B: Numeric, T](kk: Int) = new TopK[A,B,T]{
-    val k = kk
+  object TopKData{
+    def fromData[A : Order](k: Int)(as: Iterable[A]): TopKData[A] =
+      as.foldLeft(TopKData(k, Heap.Empty[A]))((t, a) => t.insert(a))
   }
 
-  def fromData[A, B, T](as: Iterable[(A,B)])(implicit numericB: Numeric[B], topKMonoid: TopK[A, B, T]): Heap[(A,B)] @@ T =
-    as.foldLeft(topKMonoid.zero)((b, a) => topKMonoid.insert(b, a))
-
-  def fromData[A, B, T](as: (A,B)*)(implicit numericB: Numeric[B], topKMonoid: TopK[A, B, T]): Heap[(A,B)] @@ T =
-    fromData(as)
-
-
+  implicit def topKSemigroup[A]: Semigroup[TopKData[A]] = new Semigroup[TopKData[A]]{
+    def append(t1: TopKData[A], t2: => TopKData[A]) = t1 merge t2
+  }
 
 }
+
+object topk extends TopKModule
