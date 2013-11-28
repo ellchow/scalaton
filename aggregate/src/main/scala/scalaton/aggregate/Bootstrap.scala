@@ -19,34 +19,37 @@ package scalaton.aggregate
 import scalaz._
 import Scalaz._
 
-object bootstrapping{
+trait BootstrappingModule{
   type Poisson = org.apache.commons.math3.distribution.PoissonDistribution
 
-  abstract class Bootstrapped[A : Monoid, T] extends Monoid[Map[Int, A] @@ T]{
-    val b: Int
-    val poisson: Poisson
+  case class Bootstrapped[A : Monoid](val b: Int, val poisson: Poisson, val m: Map[Int,A]){
+    def isCompatibleWith(that: Bootstrapped[A]): Boolean =
+      (this.b === that.b) && (this.poisson == that.poisson)
 
-    def tag(m: Map[Int,A]) = Tag[Map[Int,A], T](m)
-
-    val zero = tag(Map[Int,A]())
-
-    def append(xa: Map[Int,A] @@ T, xb: => Map[Int,A] @@ T) =
-      tag((xa: Map[Int, A]) |+| (xb: Map[Int, A]))
-
-  }
-
-
-  def bootstrapped[A : Monoid, T](rounds: Int, poi: Poisson) = new Bootstrapped[A, T]{
-      val b = rounds
-      val poisson = poi
-    }
-
-  def init[A,T](x: A)(implicit mon: Monoid[A], bts: Bootstrapped[A,T]): Map[Int, A] @@ T = {
-    val xs = for{
-      i <- (0 until bts.b).view
-      _ <- (0 until bts.poisson.sample).view
+    def insert(x: A) = {
+      val xs = for{
+      i <- (0 until b).view
+      _ <- (0 until poisson.sample).view
     } yield Map(i -> x)
 
-    bts.tag(xs.reduce(_ |+| _))
+      Bootstrapped(b, poisson, xs.foldLeft(m)(_ |+| _))
+    }
+
+    def merge(that: Bootstrapped[A]) = {
+      require(isCompatibleWith(that))
+
+      Bootstrapped(b, poisson, m |+| that.m)
+    }
+  }
+
+  object Bootstrapped{
+    def fromData[A : Monoid](b: Int, poisson: Poisson)(xs: Iterable[A]) =
+      xs.foldLeft(Bootstrapped(b, poisson, Map[Int,A]()))((b, a) => b.insert(a))
+  }
+
+  implicit def bootstrappedSemigroup[A]: Semigroup[Bootstrapped[A]] = new Semigroup[Bootstrapped[A]]{
+    def append(b1: Bootstrapped[A], b2: => Bootstrapped[A]) = b1 merge b2
   }
 }
+
+object  bootstrapping extends BootstrappingModule
