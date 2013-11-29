@@ -24,107 +24,149 @@ import scalaton.util.hashing._
 import scalaton.util.hashing32.Bits32
 
 /** Collection where keys inserted are hashed **/
-trait HashedCollection[A,H1,H2]{
-  /** Number of hashes used in this collection **/
-  val numHashes: Int
+trait HashedCollectionModule{
 
-  /** Seed of hashing function **/
-  val seed: Long
+  trait HashedCollectionOps[A,H1,H2,D]{
+    def numHashes: Int
+    def width: Int
+    def seed: Int
 
-  /** Compute hash of an item **/
-  def hashItem(item: A)(implicit h: Hashable[A, H1],
-                        hconv: HashCodeConverter[H1, H2]): Iterable[H2 @@ HashCode] =
-    hconv.convertSeq(multiHash(item, seed)) take numHashes
+    val data: D
 
-}
-
-trait HashModdedCollection[A,H1] extends HashedCollection[A,H1,Bits32]{
-  val width: Int
-
-  override def hashItem(item: A)(implicit h: Hashable[A, H1],
-                                 hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32 @@ HashCode] =
-    super.hashItem(item) map { _ % width |> HashCode}
-}
-
-/** Uses extended double hashing to improve runtime performance (http://www.eecs.harvard.edu/~michaelm/CS223/lesshash.pdf) **/
-trait DoubleHashModdedCollection[A,H1] extends HashModdedCollection[A,H1]{
-
-  private def doubleHashStream(a: Bits32, b: Bits32, i: Int): Stream[Bits32 @@ HashCode] =
-    Stream.cons(HashCode(math.abs((a + i * b + i * i) % width)) , doubleHashStream(a, b, i + 1))
-
-  override def hashItem(item: A)(implicit h: Hashable[A, H1],
-                                 hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32 @@ HashCode] = {
-    val base = hconv.convertSeq(multiHash(item, seed)) take 2 toSeq
-    val a = base(0)
-    val b = base(1)
-
-    doubleHashStream(a, b, 1) take numHashes
+    /** Compute hash of an item **/
+    def hashItem(item: A)(implicit hashable: Hashable[A, H1], hconverter: HashCodeConverter[H1, H2]): Iterable[H2] =
+      hconverter.convertSeq(multiHash(item, seed)).take(numHashes)
   }
 
+  trait HashModdedCollectionOps[A,H1,D] extends HashedCollectionOps[A,H1,Bits32,D]{
+    override def hashItem(item: A)(implicit hashable: Hashable[A, H1], hconverter: HashCodeConverter[H1, Bits32]): Iterable[Bits32] =
+      super.hashItem(item).map(x => x % width)
+  }
+
+  trait DoubleHashModdedCollectionOps[A,H1,D] extends HashModdedCollectionOps[A,H1,D]{
+
+    private def doubleHashStream(a: Bits32, b: Bits32, i: Int): Stream[Bits32] =
+      Stream.cons(math.abs((a + i * b + i * i) % width) , doubleHashStream(a, b, i + 1))
+
+    override def hashItem(item: A)(implicit h: Hashable[A, H1],
+                                   hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32] = {
+      val base = hconv.convertSeq(multiHash(item, seed)) take 2 toSeq
+      val a = base(0)
+      val b = base(1)
+
+      doubleHashStream(a, b, 1) take numHashes
+    }
+  }
+
+
 }
 
 
-trait HashedCollectionOperations[A,H1]{
-  type H = Hashable[A,H1]
-  type HC = HashCodeConverter[H1,Int]
-}
 
-trait InsertsElement[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
-  def insert(d: D, a: A)(implicit h: H, hconv: HC): D
-}
+// trait HashedCollection[A,H1,H2]{
+//   type H = Hashable[A,H1]
+//   type HC = HashCodeConverter[H1,H2]
 
-trait InsertsElementFunction{
-  def insert[A,H1,H2,D](d: D, a: A)(implicit i: InsertsElement[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D =
-    i.insert(d, a)
-}
+//   /** Number of hashes used in this collection **/
+//   val numHashes: Int
 
-trait ChecksMembership[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
-  def contains(d: D, a: A)(implicit h: H, hconv: HC): Boolean
-}
+//   /** Seed of hashing function **/
+//   val seed: Long
 
-trait ChecksMembershipFunction{
-  def contains[A,H1,H2,D](d: D, a: A)(implicit c: ChecksMembership[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): Boolean =
-    c.contains(d,a)
-}
+//   /** Compute hash of an item **/
+//   def hashItem(item: A)(implicit h: Hashable[A, H1],
+//                         hconv: HashCodeConverter[H1, H2]): Iterable[H2 @@ HashCode] =
+//     hconv.convertSeq(multiHash(item, seed)) take numHashes
 
-trait Sized[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
-  def cardinality(d: D): Long
-}
+// }
 
-trait SizedFunction{
-  def cardinality[A,H1,H2,D](d: D)(implicit s: Sized[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): Long = s.cardinality(d)
-}
+// trait HashModdedCollection[A,H1] extends HashedCollection[A,H1,Bits32]{
+//   val width: Int
 
-trait UpdatesElementValue[A,H1,H2,D,V1] extends HashedCollectionOperations[A,H1]{
-  def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D
-}
+//   override def hashItem(item: A)(implicit h: Hashable[A, H1],
+//                                  hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32 @@ HashCode] =
+//     super.hashItem(item) map { _ % width |> HashCode}
+// }
 
-trait UpdatesElementValueFunction{
-  def update[A,H1,H2,D,V1](d: D, a: A, v1: V1)(implicit u: UpdatesElementValue[A,H1,H2,D,V1], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D =
-    u.update(d,a,v1)
-}
+// /** Uses extended double hashing to improve runtime performance (http://www.eecs.harvard.edu/~michaelm/CS223/lesshash.pdf) **/
+// trait DoubleHashModdedCollection[A,H1] extends HashModdedCollection[A,H1]{
 
-trait LooksUpElementValue[A,H1,H2,D,V2] extends HashedCollectionOperations[A,H1]{
-  def lookup(d: D, a: A)(implicit h: H, hconv: HC): V2
-}
+//   private def doubleHashStream(a: Bits32, b: Bits32, i: Int): Stream[Bits32 @@ HashCode] =
+//     Stream.cons(HashCode(math.abs((a + i * b + i * i) % width)) , doubleHashStream(a, b, i + 1))
 
-trait LooksUpElementValueFunction{
-  def lookup[A,H1,H2,D,V2](d: D, a: A)(implicit l: LooksUpElementValue[A,H1,H2,D,V2], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): V2 =
-    l.lookup(d,a)
-}
+//   override def hashItem(item: A)(implicit h: Hashable[A, H1],
+//                                  hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32 @@ HashCode] = {
+//     val base = hconv.convertSeq(multiHash(item, seed)) take 2 toSeq
+//     val a = base(0)
+//     val b = base(1)
 
-trait MakesSingletonFunction{
-  def singleton[A,H1,H2,D,T](a: A @@ T)(implicit i: InsertsElement[A,H1,H2,D @@ T], m: Monoid[D @@ T], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D @@ T =
-    i.insert(m.zero, a)
+//     doubleHashStream(a, b, 1) take numHashes
+//   }
 
-  def singleton[A,H1,H2,D,T,V1](a: A @@ T, v1: V1)(implicit u: UpdatesElementValue[A,H1,H2,D @@ T,V1], m: Monoid[D @@ T], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D @@ T=
-    u.update(m.zero, a, v1)
-}
+// }
 
-object hcollection
-extends InsertsElementFunction
-with ChecksMembershipFunction
-with SizedFunction
-with MakesSingletonFunction
-with UpdatesElementValueFunction
-with LooksUpElementValueFunction
+
+// trait HashedCollectionOperations[A,H1]{
+//   type H = Hashable[A,H1]
+//   type HC = HashCodeConverter[H1,Int]
+// }
+
+// trait InsertsElement[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
+//   def insert(d: D, a: A)(implicit h: H, hconv: HC): D
+// }
+
+// trait InsertsElementFunction{
+//   def insert[A,H1,H2,D](d: D, a: A)(implicit i: InsertsElement[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D =
+//     i.insert(d, a)
+// }
+
+// trait ChecksMembership[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
+//   def contains(d: D, a: A)(implicit h: H, hconv: HC): Boolean
+// }
+
+// trait ChecksMembershipFunction{
+//   def contains[A,H1,H2,D](d: D, a: A)(implicit c: ChecksMembership[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): Boolean =
+//     c.contains(d,a)
+// }
+
+// trait Sized[A,H1,H2,D] extends HashedCollectionOperations[A,H1]{
+//   def cardinality(d: D): Long
+// }
+
+// trait SizedFunction{
+//   def cardinality[A,H1,H2,D](d: D)(implicit s: Sized[A,H1,H2,D], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): Long = s.cardinality(d)
+// }
+
+// trait UpdatesElementValue[A,H1,H2,D,V1] extends HashedCollectionOperations[A,H1]{
+//   def update(d: D, a: A, v1: V1)(implicit h: H, hconv: HC): D
+// }
+
+// trait UpdatesElementValueFunction{
+//   def update[A,H1,H2,D,V1](d: D, a: A, v1: V1)(implicit u: UpdatesElementValue[A,H1,H2,D,V1], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D =
+//     u.update(d,a,v1)
+// }
+
+// trait LooksUpElementValue[A,H1,H2,D,V2] extends HashedCollectionOperations[A,H1]{
+//   def lookup(d: D, a: A)(implicit h: H, hconv: HC): V2
+// }
+
+// trait LooksUpElementValueFunction{
+//   def lookup[A,H1,H2,D,V2](d: D, a: A)(implicit l: LooksUpElementValue[A,H1,H2,D,V2], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): V2 =
+//     l.lookup(d,a)
+// }
+
+// trait MakesSingletonFunction{
+//   def singleton[A,H1,H2,D,T](a: A @@ T)(implicit i: InsertsElement[A,H1,H2,D @@ T], m: Monoid[D @@ T], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D @@ T =
+//     i.insert(m.zero, a)
+
+//   def singleton[A,H1,H2,D,T,V1](a: A @@ T, v1: V1)(implicit u: UpdatesElementValue[A,H1,H2,D @@ T,V1], m: Monoid[D @@ T], h: Hashable[A,H1], hconv: HashCodeConverter[H1,Int]): D @@ T=
+//     u.update(m.zero, a, v1)
+// }
+
+// object hcollection
+// extends InsertsElementFunction
+// with ChecksMembershipFunction
+// with SizedFunction
+// with MakesSingletonFunction
+// with UpdatesElementValueFunction
+// with LooksUpElementValueFunction

@@ -19,116 +19,104 @@ package scalaton.util
 import scalaz._
 import Scalaz._
 
-
-/**
- * Hashable type class, implicits,  and related things
- */
-
-sealed trait HashCode
-trait HashingTags{
-  def HashCode [A](a: A) = Tag[A,HashCode](a)
-}
-
 /**
  * Hashable type class
  */
-trait Hashable[A,B] extends HashingTags{
-  def digest(a: A, seed: Long): B @@ HashCode
+trait Hashable[A,B]{
+  def digest(a: A, seed: Long): B
 
-  def multiDigest(a: A, seed: Long): Stream[B @@ HashCode] =
+  def multiDigest(a: A, seed: Long): Stream[B] =
     Stream.cons(digest(a, seed),
                 multiDigest(a, seed + 1))
 }
 
 trait Hashable32Instances
-extends HashFuncs
-with HashingTags{
+extends HashFuncs{
 
   implicit def intHashable32 = new Hashable[Int, Int]{
-    def digest(a: Int, seed: Long): Int @@ HashCode =
-      HashCode(MurmurHash32(seed toInt)(a))
+    def digest(a: Int, seed: Long): Int =
+      MurmurHash32(seed toInt)(a)
   }
 
   implicit def charHashable32 = new Hashable[Char, Int]{
-    def digest(a: Char, seed: Long): Int @@ HashCode =
-      HashCode(MurmurHash32(seed toInt)(a))
+    def digest(a: Char, seed: Long): Int =
+      MurmurHash32(seed toInt)(a)
   }
 
   implicit def shortHashable32 = new Hashable[Short, Int]{
-    def digest(a: Short, seed: Long): Int @@ HashCode =
-      HashCode(MurmurHash32(seed toInt)(a))
+    def digest(a: Short, seed: Long): Int =
+      MurmurHash32(seed toInt)(a)
   }
 
   implicit def floatHashable32 = new Hashable[Float, Int]{
-    def digest(a: Float, seed: Long): Int @@ HashCode =
-      HashCode(MurmurHash32(seed toInt)(a))
+    def digest(a: Float, seed: Long): Int =
+      MurmurHash32(seed toInt)(a)
   }
 
   implicit def longHashable32 = new Hashable[Long, Int]{
-    def digest(a: Long, seed: Long): Int @@ HashCode =
-      HashCode(MurmurHash32(seed toInt)(a))
+    def digest(a: Long, seed: Long): Int =
+      MurmurHash32(seed toInt)(a)
   }
 
   implicit def doubleHashable32 = new Hashable[Double, Int]{
-    def digest(a: Double, seed: Long): Int @@ HashCode =
-      HashCode(MurmurHash32(seed toInt)(a))
+    def digest(a: Double, seed: Long): Int =
+      MurmurHash32(seed toInt)(a)
   }
 
   implicit def stringHashable32 = new Hashable[String, Int]{
-    def digest(a: String, seed: Long): Int @@ HashCode =
-      HashCode(MurmurHash32(seed toInt)(a))
+    def digest(a: String, seed: Long): Int =
+      MurmurHash32(seed toInt)(a)
   }
 
   implicit def seqHashable32[A,F[A] <: Seq[A]](implicit h: Hashable[A, Int]) = new Hashable[F[A], Int]{
-    def digest(a: F[A], seed: Long): Int @@ HashCode =
-      HashCode(a.foldLeft(1)((soFar, next) => combine32Hashes(soFar, h.digest(next, seed))))
+    def digest(a: F[A], seed: Long): Int =
+      a.foldLeft(1)((soFar, next) => combine32Hashes(soFar, h.digest(next, seed)))
 
   }
 
 }
 
 trait Hashable64Instances
-extends HashFuncs
-with HashingTags{
+extends HashFuncs{
 
   implicit def intHashable64 = new Hashable[Int, Long]{
-    def digest(a: Int, seed: Long): Long @@ HashCode =
-      HashCode(MurmurHash64(seed toInt)(a))
+    def digest(a: Int, seed: Long): Long =
+      MurmurHash64(seed toInt)(a)
   }
 
   implicit def charHashable64 = new Hashable[Char, Long]{
-    def digest(a: Char, seed: Long): Long @@ HashCode =
-      HashCode(MurmurHash64(seed toInt)(a))
+    def digest(a: Char, seed: Long): Long =
+      MurmurHash64(seed toInt)(a)
   }
 
   implicit def shortHashable64 = new Hashable[Short, Long]{
-    def digest(a: Short, seed: Long): Long @@ HashCode =
-      HashCode(MurmurHash64(seed toInt)(a))
+    def digest(a: Short, seed: Long): Long =
+      MurmurHash64(seed toInt)(a)
   }
 
   implicit def floatHashable64 = new Hashable[Float, Long]{
-    def digest(a: Float, seed: Long): Long @@ HashCode =
-      HashCode(MurmurHash64(seed toInt)(a))
+    def digest(a: Float, seed: Long): Long =
+      MurmurHash64(seed toInt)(a)
   }
 
   implicit def longHashable64 = new Hashable[Long, Long]{
-    def digest(a: Long, seed: Long): Long @@ HashCode =
-      HashCode(MurmurHash64(seed toInt)(a))
+    def digest(a: Long, seed: Long): Long =
+      MurmurHash64(seed toInt)(a)
   }
 
   implicit def doubleHashable64 = new Hashable[Double, Long]{
-    def digest(a: Double, seed: Long): Long @@ HashCode =
-      HashCode(MurmurHash64(seed toInt)(a))
+    def digest(a: Double, seed: Long): Long =
+      MurmurHash64(seed toInt)(a)
   }
 
   implicit def stringHashable64 = new Hashable[String, Long]{
-    def digest(a: String, seed: Long): Long @@ HashCode =
-      HashCode(MurmurHash64(seed toInt)(a))
+    def digest(a: String, seed: Long): Long =
+      MurmurHash64(seed toInt)(a)
   }
 
   implicit def seqHashable64[A,F[A] <: Seq[A]](implicit h: Hashable[A, Long]) = new Hashable[F[A], Long]{
-    def digest(a: F[A], seed: Long): Long @@ HashCode =
-      HashCode(a.foldLeft(1L)((soFar, next) => combine64Hashes(soFar, h.digest(next, seed))))
+    def digest(a: F[A], seed: Long): Long =
+      a.foldLeft(1L)((soFar, next) => combine64Hashes(soFar, h.digest(next, seed)))
 
   }
 
@@ -136,47 +124,46 @@ with HashingTags{
 
 trait Hashable128Instances
 extends HashFuncs
-with HashingTags{
+{
 
   implicit def intHashable128 = new Hashable[Int, (Long, Long)]{
-    def digest(a: Int, seed: Long): (Long, Long) @@ HashCode =
-      HashCode(MurmurHash128(seed)(a))
+    def digest(a: Int, seed: Long): (Long, Long) =
+      MurmurHash128(seed)(a)
   }
 
   implicit def charHashable128 = new Hashable[Char, (Long, Long)]{
-    def digest(a: Char, seed: Long): (Long, Long) @@ HashCode =
-      HashCode(MurmurHash128(seed)(a))
+    def digest(a: Char, seed: Long): (Long, Long) =
+      MurmurHash128(seed)(a)
   }
 
   implicit def shortHashable128 = new Hashable[Short, (Long, Long)]{
-    def digest(a: Short, seed: Long): (Long, Long) @@ HashCode =
-      HashCode(MurmurHash128(seed)(a))
+    def digest(a: Short, seed: Long): (Long, Long) =
+      MurmurHash128(seed)(a)
   }
 
   implicit def floatHashable128 = new Hashable[Float, (Long, Long)]{
-    def digest(a: Float, seed: Long): (Long, Long) @@ HashCode =
-      HashCode(MurmurHash128(seed)(a))
+    def digest(a: Float, seed: Long): (Long, Long) =
+      MurmurHash128(seed)(a)
   }
 
   implicit def longHashable128 = new Hashable[Long, (Long, Long)]{
-    def digest(a: Long, seed: Long): (Long, Long) @@ HashCode =
-      HashCode(MurmurHash128(seed)(a))
+    def digest(a: Long, seed: Long): (Long, Long) =
+      MurmurHash128(seed)(a)
   }
 
   implicit def doubleHashable128 = new Hashable[Double, (Long, Long)]{
-    def digest(a: Double, seed: Long): (Long, Long) @@ HashCode =
-      HashCode(MurmurHash128(seed)(a))
+    def digest(a: Double, seed: Long): (Long, Long) =
+      MurmurHash128(seed)(a)
   }
 
   implicit def stringHashable128 = new Hashable[String, (Long, Long)]{
-    def digest(a: String, seed: Long): (Long, Long) @@ HashCode =
-      HashCode(MurmurHash128(seed)(a))
+    def digest(a: String, seed: Long): (Long, Long) =
+      MurmurHash128(seed)(a)
   }
 
   implicit def seqHashable128[A,F[A] <: Seq[A]](implicit h: Hashable[A, (Long,Long)]) = new Hashable[F[A], (Long,Long)]{
-    def digest(a: F[A], seed: Long): (Long,Long) @@ HashCode =
-      HashCode(a.foldLeft((1L,1L))((soFar, next) => combine128Hashes(soFar, h.digest(next, seed))))
-
+    def digest(a: F[A], seed: Long): (Long,Long) =
+      a.foldLeft((1L,1L))((soFar, next) => combine128Hashes(soFar, h.digest(next, seed)))
   }
 
 }
@@ -185,35 +172,35 @@ with HashingTags{
 /**
  * HashCode Converter type class for converting between types (e.g. Long to Int)
  */
-trait HashCodeConverter[A, B] extends HashingTags{
-  def convert(hc: A @@ HashCode): Seq[B @@ HashCode]
+trait HashCodeConverter[A, B]{
+  def convert(hc: A): Seq[B]
 
-  def convertSeq(hcs: Stream[A @@ HashCode]): Iterable[B @@ HashCode] =
+  def convertSeq(hcs: Stream[A]): Iterable[B] =
     hcs flatMap{ hc => convert(hc) }
 
 }
 
 
 /** Typeclasses for converting hash codes **/
-trait HashCodeConverterInstances extends HashingTags{
+trait HashCodeConverterInstances{
   implicit def hashCodeIdentity[A] = new HashCodeConverter[A, A]{
-    def convert(hc: A @@ HashCode): Seq[A @@ HashCode] = Seq(hc)
+    def convert(hc: A): Seq[A] = Seq(hc)
   }
 
   implicit val hashCodeLongToInt = new HashCodeConverter[Long, Int]{
-    def convert(hc: Long @@ HashCode): Seq[Int @@ HashCode] =
+    def convert(hc: Long): Seq[Int] =
       Tag subst Seq(math.abs(hc >> 32).toInt, math.abs((hc << 32) >> 32).toInt)
 
   }
 
   implicit val hashCodeLongLongToLong = new HashCodeConverter[(Long,Long), Long]{
-    def convert(hc: (Long, Long) @@ HashCode): Seq[Long @@ HashCode] =
+    def convert(hc: (Long, Long)): Seq[Long] =
       Tag subst Seq(hc._1, hc._2)
   }
 
 
   implicit val hashCodeLongLongToInt = new HashCodeConverter[(Long,Long), Int]{
-    def convert(hc: (Long, Long) @@ HashCode): Seq[Int @@ HashCode] =
+    def convert(hc: (Long, Long)): Seq[Int] =
       Tag subst Seq(math.abs(hc._1 >> 32).toInt, math.abs((hc._1 << 32) >> 32).toInt,
                     math.abs(hc._2 >> 32).toInt, math.abs((hc._2 << 32) >> 32).toInt)
 
@@ -221,16 +208,15 @@ trait HashCodeConverterInstances extends HashingTags{
 
 }
 
-trait HashableFunctions extends HashingTags{
+trait HashableFunctions{
 
   def hash[A,B](a: A, seed: Long = 0L)
-               (implicit h: Hashable[A,B]): B @@ HashCode =
+               (implicit h: Hashable[A,B]): B =
     h.digest(a, seed)
 
   def multiHash[A,B](a: A, seed: Long)
-                    (implicit h: Hashable[A,B]): Stream[B @@ HashCode] =
+                    (implicit h: Hashable[A,B]): Stream[B] =
     h.multiDigest(a, seed)
-
 }
 
 

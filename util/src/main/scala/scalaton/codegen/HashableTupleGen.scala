@@ -39,10 +39,10 @@ object HashableTupleGen{
       } mkString "\n      "
 
       f"""  implicit def tuple$sz%dHashable$bits%d[$typeParams](implicit $implicitParams) = new Hashable[Tuple$sz%d[$typeParams],$datatype%s]{
-      def digest(a: Tuple$sz%d[$typeParams], seed: Long): $datatype%s @@ HashCode = {
+      def digest(a: Tuple$sz%d[$typeParams], seed: Long): $datatype%s = {
       var current: $datatype%s = $init%s
       $combineStmts
-      HashCode(current)
+      current
       }\n  }"""
     } mkString "\n"
 
@@ -66,7 +66,7 @@ object HashableTupleGen{
                      gen(64, "Long", "1L"),
                      gen(128, "(Long, Long)", "(1L, 1L)")).mkString("\n")
 
-    FileUtils.writeStringToFile(new File("scalaton-util/src/main/scala/scalaton/util/HashableTuple.scala"),
+    FileUtils.writeStringToFile(new File("util/src/main/scala/scalaton/util/HashableTuple.scala"),
                                 f"""/*
  Copyright 2013 Elliot Chow
 
