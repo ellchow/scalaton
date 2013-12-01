@@ -24,6 +24,7 @@ import scalaton.util.hashing._
 import scalaton.util.hashing32.Bits32
 
 import scala.collection.BitSet
+import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 trait BloomFilterModule extends HashedCollectionModule{
   trait BloomFilter[D]
@@ -90,14 +91,11 @@ trait BloomFilterModule extends HashedCollectionModule{
 
   }
 
-  type DenseStandardBloomFilterData = (BitSet,Int,Int,Long)
+  type DenseStandardBloomFilterData = HashedCollectionData[BitSet]
 
-  trait DenseStandardBloomFilter extends StandardBloomFilter[DenseStandardBloomFilterData]{
+  trait DenseStandardBloomFilter extends StandardBloomFilter[DenseStandardBloomFilterData] with HashedCollectionDataFunctions[BitSet]{
     type D = DenseStandardBloomFilterData
 
-    def numHashes(d: D): Int = d._2
-    def width(d: D): Int = d._3
-    def seed(d: D): Long = d._4
     def empty(h: Int, w: Int, s: Long) = (BitSet.empty, h, w, s)
 
     def sizeOfBitSet(d: D): Int = d._1.size
@@ -113,8 +111,36 @@ trait BloomFilterModule extends HashedCollectionModule{
       d1.copy(_1 = d1._1 ++ d2._1)
     }
   }
-
   implicit object DenseStandardBloomFilter extends DenseStandardBloomFilter
+
+  type SparseStandardBloomFilterData = HashedCollectionData[CompressedBitSet]
+
+  trait SparseStandardBloomFilter extends StandardBloomFilter[SparseStandardBloomFilterData] with HashedCollectionDataFunctions[CompressedBitSet]{
+    type D = SparseStandardBloomFilterData
+
+    def empty(h: Int, w: Int, s: Long) = (new CompressedBitSet, h, w, s)
+
+    def sizeOfBitSet(d: D): Int = d._1.cardinality
+
+    def hasBits(d: D, bits: Iterable[Bits32]): Boolean = {
+      val b = bitSetFromIterable(bits)
+      b.equals(d._1 and b)
+    }
+
+    def setBits(d: D, bits: Iterable[Bits32]): D =
+    d.copy(_1 = d._1 or bitSetFromIterable(bits))
+
+    def merge(d1: D, d2: D): D = {
+      require(isCompatible(d1,d2))
+      d1.copy(_1 = d1._1 or d2._1)
+    }
+
+    protected def bitSetFromIterable(bits: Iterable[Bits32]) =
+      CompressedBitSet.bitmapOf((bits.toSeq : Seq[Int]).sorted : _*)
+
+  }
+  implicit object SparseStandardBloomFilter extends SparseStandardBloomFilter
+
 
   object implicits{
     implicit def bloomFilterSemigroup[D : BloomFilter]: Semigroup[D] = new Semigroup[D]{

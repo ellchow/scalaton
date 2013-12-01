@@ -26,6 +26,8 @@ import scalaton.util.hashing32.Bits32
 /** Collection where keys inserted are hashed **/
 trait HashedCollectionModule{
 
+  type HashedCollectionData[A] = (A, Int, Int, Long)
+
   trait HashedCollection[H2,D]{
 
     def numHashes(d: D): Int
@@ -39,6 +41,12 @@ trait HashedCollectionModule{
     /** Compute hash of an item **/
     def hashItem[A,H1](d: D, item: A)(implicit hashable: Hashable[A, H1], hconverter: HashCodeConverter[H1, H2]): Iterable[H2] =
       hconverter.convertSeq(multiHash(item, seed(d))).take(numHashes(d))
+  }
+
+  trait HashedCollectionDataFunctions[A]{
+    def numHashes(d: HashedCollectionData[A]): Int= d._2
+    def width(d: HashedCollectionData[A]): Int = d._3
+    def seed(d: HashedCollectionData[A]): Long = d._4
   }
 
   trait HashModdedCollection[D] extends HashedCollection[Bits32,D]{

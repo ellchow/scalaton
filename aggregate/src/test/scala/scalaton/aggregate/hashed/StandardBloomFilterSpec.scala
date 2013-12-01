@@ -40,8 +40,6 @@ class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrive
   behavior of "standard bloom filter"
 
   it should "not contain anything if empty" in {
-    import DenseStandardBloomFilter._
-
     forAll{ (s: String) =>
       DenseStandardBloomFilter.empty(5,125,0L).contains(s) should be(false)
     }
@@ -55,13 +53,11 @@ class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrive
   } yield (h, w, s, xs)
 
   it should "contain all true positives" in {
-    import DenseStandardBloomFilter._
-
     forAll(genParams){
       (inp: (Int,Int,Long,List[String])) => whenever(inp._4.size < 1000){
         val (h, w, s, items) = inp
 
-        val x = fromData(h,w,s)(items)
+        val x = DenseStandardBloomFilter.fromData(h,w,s)(items)
 
         items.map(i => x.contains(i)).exists(_ == false) should be(false)
       }
@@ -69,7 +65,7 @@ class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrive
   }
 
   it should "be below false-positive rate" in {
-    import DenseStandardBloomFilter._
+    import SparseStandardBloomFilter._
 
     val genSettings = for{
       fpProb <- Gen.oneOf(0.1, 0.05, 0.01, 0.005)
@@ -89,11 +85,11 @@ class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrive
   }
 
   it should "estimate size well for elements less than the intended number of elements" in {
-    import DenseStandardBloomFilter._
+    import SparseStandardBloomFilter._
     forAll{ (xs: Set[String]) => whenever(xs.size > 0){
         val (h,w) = optimalParameters(xs.size * 10, 0.05)
 
-        (math.abs(fromData(h,w,0L)(xs).size.get - xs.size).toDouble / xs.size) should be <= (0.1 max (1.0 / xs.size))
+        (math.abs(DenseStandardBloomFilter.fromData(h,w,0L)(xs).size.get - xs.size).toDouble / xs.size) should be <= (0.1 max (1.0 / xs.size))
       }
     }
   }
