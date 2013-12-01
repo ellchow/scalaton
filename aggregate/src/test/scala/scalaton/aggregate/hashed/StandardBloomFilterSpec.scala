@@ -31,33 +31,19 @@ import org.scalacheck._
 import scalaz._
 import Scalaz._
 
-import scalaton.util._
-import scalaton.util.tag._
 import scalaton.util.hashing128._
-import scalaton.aggregate.hashed.hcollection._
-import scalaton.aggregate.hashed.bloomfilter.sbf
-import scalaton.aggregate.hashed.mutable.bloomfilter.{sbf => msbf}
+import scalaton.aggregate.hashed.bloomfilter._
+import scalaton.aggregate.hashed.bloomfilter.implicits._
+
 
 class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
-  trait DSBF
-  trait SSBF
-
   behavior of "standard bloom filter"
 
-
   it should "not contain anything if empty" in {
-    implicit val sbfinstance = sbf[String,Bits128,DSBF]((5,625), 0L)
+    import DenseStandardBloomFilter._
 
-    forAll{
-      (s: String) => contains(sbfinstance.zero, s) should be(false)
-    }
-  }
-
-  it should "contain the item after adding it" in {
-    implicit val sbfinstance = sbf[String,Bits128,DSBF]((5,625), 0L)
-
-    forAll{
-      (s: String) => contains(singleton("a".tag[DSBF]), "a") should be(true)
+    forAll{ (s: String) =>
+      DenseStandardBloomFilter.empty(5,125,0L).contains(s) should be(false)
     }
   }
 
@@ -69,73 +55,46 @@ class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrive
   } yield (h, w, s, xs)
 
   it should "contain all true positives" in {
+    import DenseStandardBloomFilter._
 
     forAll(genParams){
       (inp: (Int,Int,Long,List[String])) => whenever(inp._4.size < 1000){
         val (h, w, s, items) = inp
 
-        def testTruePositives[D](sbfinst: StandardBloomFilterT[String,Bits128,D]) = {
-          implicit val sbfinstance = sbfinst
-          val bf = items.foldLeft(sbfinstance.zero)((acc,x) => insert(acc,x))
+        val x = fromData(h,w,s)(items)
 
-          items.map(i => contains(bf, i)).exists(_ == false) should be(false)
-        }
-
-        testTruePositives(sbf[String, Bits128, DSBF]((h, w), s))
-
-        testTruePositives(msbf.sparse[String, Bits128, SSBF]((h, w), s))
+        items.map(i => x.contains(i)).exists(_ == false) should be(false)
       }
     }
   }
 
   it should "be below false-positive rate" in {
+    import DenseStandardBloomFilter._
+
     val genSettings = for{
       fpProb <- Gen.oneOf(0.1, 0.05, 0.01, 0.005)
       numItems <- Gen.choose(1, 100)
       s <- Arbitrary.arbitrary[Long]
     } yield (numItems, fpProb, s)
 
-    forAll(genSettings) {
-      (settings: (Int, Double, Long)) => whenever(settings._1 > 0){
+    forAll(genSettings) { (settings: (Int, Double, Long)) => whenever(settings._1 > 0 && settings._1 < 50){
         val (numItems, fpProb, s) = settings
-        val params = sbf.optimalParameters(100, fpProb)
+        val (h, w) = optimalParameters(100, fpProb)
 
-        def testFPProb[D](sbfinst: StandardBloomFilterT[Int,Bits128,D]) = {
-          implicit val sbfinstance = sbfinst
+        val fps = (0 until 100).map{ _ => fromData(h,w,s)(0 until numItems).contains(-1) ? 1.0 | 0.0 }
 
-          val fps = (0 until 100).map{ _ =>
-            val bf = (0 until numItems).foldLeft(sbfinstance.zero)((acc,x) => insert(acc, x))
-
-            if(contains(bf, -1)) 1.0 else 0.0
-          }
-
-          (fps.sum / fps.size) should be < (1.05 * fpProb)
-        }
-
-        testFPProb(sbf[Int, Bits128, DSBF](params, 0L))
-        testFPProb(msbf.sparse[Int, Bits128, SSBF](params, 0L))
+        (fps.sum / fps.size) should be < (1.05 * fpProb)
       }
     }
   }
 
   it should "estimate size well for elements less than the intended number of elements" in {
-      forAll{
-        (xs: Set[String]) => whenever(xs.size > 0){
-          val params = sbf.optimalParameters(xs.size * 10, 0.05)
-          implicit val sbfinst = sbf[String,Bits128,DSBF](params, 0)
+    import DenseStandardBloomFilter._
+    forAll{ (xs: Set[String]) => whenever(xs.size > 0){
+        val (h,w) = optimalParameters(xs.size * 10, 0.05)
 
-          val bf = xs.foldLeft(sbfinst.zero)((acc,x) => insert(acc, x))
-
-          (math.abs(cardinality(bf) - xs.size).toDouble / xs.size) should be <= (0.1 max (1.0 / xs.size))
-        }
+        (math.abs(fromData(h,w,0L)(xs).size.get - xs.size).toDouble / xs.size) should be <= (0.1 max (1.0 / xs.size))
       }
     }
-
-  it should "return cardinality of -1 if all bloom filter is full" in {
-    implicit val sbfinstance = sbf[String,Bits128,DSBF](sbf.optimalParameters(10,0.05),0)
-
-    val bf = BitSet((0 until sbfinstance.width) : _*).tag[DSBF]
-
-    cardinality(bf) should be (-1L)
   }
 }

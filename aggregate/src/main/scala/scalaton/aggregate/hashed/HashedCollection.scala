@@ -26,38 +26,46 @@ import scalaton.util.hashing32.Bits32
 /** Collection where keys inserted are hashed **/
 trait HashedCollectionModule{
 
-  trait HashedCollectionOps[A,H1,H2,D]{
-    def numHashes: Int
-    def width: Int
-    def seed: Int
+  trait HashedCollection[H2,D]{
 
-    val data: D
+    def numHashes(d: D): Int
+    def width(d: D): Int
+    def seed(d: D): Long
+    def empty(h: Int, w: Int, s: Long): D
+
+    def isCompatible(d1: D, d2: D) =
+      (numHashes(d1) === numHashes(d2)) && (width(d1) === width(d2)) && (seed(d1) === seed(d2))
 
     /** Compute hash of an item **/
-    def hashItem(item: A)(implicit hashable: Hashable[A, H1], hconverter: HashCodeConverter[H1, H2]): Iterable[H2] =
-      hconverter.convertSeq(multiHash(item, seed)).take(numHashes)
+    def hashItem[A,H1](d: D, item: A)(implicit hashable: Hashable[A, H1], hconverter: HashCodeConverter[H1, H2]): Iterable[H2] =
+      hconverter.convertSeq(multiHash(item, seed(d))).take(numHashes(d))
   }
 
-  trait HashModdedCollectionOps[A,H1,D] extends HashedCollectionOps[A,H1,Bits32,D]{
-    override def hashItem(item: A)(implicit hashable: Hashable[A, H1], hconverter: HashCodeConverter[H1, Bits32]): Iterable[Bits32] =
-      super.hashItem(item).map(x => x % width)
+  trait HashModdedCollection[D] extends HashedCollection[Bits32,D]{
+    override def hashItem[A,H1](d: D, item: A)(implicit hashable: Hashable[A, H1], hconverter: HashCodeConverter[H1, Bits32]): Iterable[Bits32] =
+      super.hashItem(d, item).map(x => x % width(d))
   }
 
-  trait DoubleHashModdedCollectionOps[A,H1,D] extends HashModdedCollectionOps[A,H1,D]{
+  trait DoubleHashModdedCollection[D] extends HashModdedCollection[D]{
 
-    private def doubleHashStream(a: Bits32, b: Bits32, i: Int): Stream[Bits32] =
-      Stream.cons(math.abs((a + i * b + i * i) % width) , doubleHashStream(a, b, i + 1))
+    private def doubleHashStream(a: Bits32, b: Bits32, i: Int, w: Int): Stream[Bits32] =
+      Stream.cons(math.abs((a + i * b + i * i) % w) , doubleHashStream(a, b, i + 1, w))
 
-    override def hashItem(item: A)(implicit h: Hashable[A, H1],
-                                   hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32] = {
-      val base = hconv.convertSeq(multiHash(item, seed)) take 2 toSeq
+    override def hashItem[A,H1](d: D, item: A)(implicit h: Hashable[A, H1],
+                                               hconv: HashCodeConverter[H1, Bits32]): Iterable[Bits32] = {
+      val base = hconv.convertSeq(multiHash(item, seed(d))) take 2 toSeq
       val a = base(0)
       val b = base(1)
 
-      doubleHashStream(a, b, 1) take numHashes
+      doubleHashStream(a, b, 1, width(d)) take numHashes(d)
     }
   }
 
+  implicit class HashedCollectionOps[H2,D](val d: D)(implicit hc: HashedCollection[H2,D]){
+    def numHashes: Int = hc.numHashes(d)
+    def width: Int = hc.width(d)
+    def seed: Long = hc.seed(d)
+  }
 
 }
 

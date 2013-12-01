@@ -25,195 +25,115 @@ import scalaton.util.hashing32.Bits32
 
 import scala.collection.BitSet
 
-trait BloomFilterModule{
+trait BloomFilterModule extends HashedCollectionModule{
+  trait BloomFilter[D]
+  extends DoubleHashModdedCollection[D]{
 
-  // trait BloomFilterOps[A,H1,D]
-  // extends DoubleHashModdedCollection[A,H1]{
-  //   val data: D
+    def insert[A,H1](d: D, a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D
 
-  //   def insert(a: A)(implicit h: H, hconv: HC): D
+    def contains[A,H1](d: D, a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): Boolean
 
-  //   def contains(a: A)(implicit h: H, hconv: HC): Boolean
+    def merge(d1: D, d2: D): D
 
-  //   def size: Option[Long]
+    def size(d: D): Option[Long]
 
-  //   protected def sizeOfBitSet: Int
+    def sizeOfBitSet(d: D): Int
 
-  //   protected def hasBits(bits: Iterable[Bits32 @@ HashCode]): Boolean
+    def hasBits(d: D, bits: Iterable[Bits32]): Boolean
 
-  //   protected def setBits(ibits: Iterable[Bits32 @@ HashCode]): D
-  // }
+    def setBits(d: D, bits: Iterable[Bits32]): D
 
+    def insert[A,H1](d: D, as: Iterable[A])(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D = as.foldLeft(d)((dd, a) => insert(dd, a))
 
+    def fromData[A,H1](h: Int, w: Int, s: Long)(as: Iterable[A])(implicit ha: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]) = insert(empty(h,w,s), as)
+  }
 
-  // trait StandardBloomFilter[A,H1] extends BloomFilter[A,H1]{
-  //   val bitSet: D
+  trait StandardBloomFilter[D] extends BloomFilter[D]{
 
-  //   def insert(a: A)(implicit h: H, hconv: HC): StandardBloomFilter[A,H1] =
-  //     copy(setBits(bitSet, hashItem(a)))
+    def insert[A,H1](d: D, a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D =
+      setBits(d, hashItem(d,a))
 
-  //   def contains(a: A)(implicit h: H, hconv: HC): Boolean =
-  //     hasBits(bitSet, hashItem(a))
+    def contains[A,H1](d: D, a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): Boolean =
+      hasBits(d, hashItem(d,a))
 
-  //   /**
-  //    * MLE of number of elements inserted given t bits turned on.
-  //    * NOTE: If bloom filter is full, -1 returned.
-  //    * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
-  //    **/
-  //   def size: Option[Long] = {
-  //     val t = sizeOfBitSet(bitSet)
-  //     if(t >= width)
-  //       none[Long]
-  //     else{
-  //       val (m,k) = (width.toDouble, numHashes.toDouble)
-  //       math.round(math.log(1 - t.toDouble / m) / (k * math.log(1 - 1 / m))).toLong.some
-  //     }
-  //   }
+    /**
+     * MLE of number of elements inserted given t bits turned on.
+     * NOTE: If bloom filter is full, return None
+     * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
+     **/
+    def size(d: D): Option[Long] = {
+      val t = sizeOfBitSet(d)
+      if(t >= width(d))
+        none[Long]
+      else{
+        val (m,k) = (width(d).toDouble, numHashes(d).toDouble)
+        math.round(math.log(1 - t.toDouble / m) / (k * math.log(1 - 1 / m))).toLong.some
+      }
+    }
 
-  //   protected def copy(d: D): StandardBloomFilter[A,H1]
-  // }
+    def optimalNumHashes(numItems: Int, width: Int): Int = {
+      require(numItems gt 0, "numItems must be > 0")
+      require(width gt 0, "width must be > 0")
+      math.ceil(width / numItems * math.log(2)) toInt
+    }
+    /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
+    def optimalWidth(numItems: Int, fpProb: Double): Int = {
+      require((fpProb gte 0.0) && (fpProb lte 1.0), "fpProb must be between 0 and 1")
+      math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)) toInt
+    }
+    def optimalParameters(numItems: Int, fpProb: Double) = {
+      val width = optimalWidth(numItems, fpProb)
+      val numHashes = optimalNumHashes(numItems, width)
 
+      (numHashes, width)
+    }
 
-  // trait BloomFilter[A,H1]
-  // extends DoubleHashModdedCollection[A,H1]{
-  //   type D
+  }
 
-  //   def insert(a: A)(implicit h: H, hconv: HC): BloomFilter[A,H1]
+  type DenseStandardBloomFilterData = (BitSet,Int,Int,Long)
 
-  //   def contains(a: A)(implicit h: H, hconv: HC): Boolean
+  trait DenseStandardBloomFilter extends StandardBloomFilter[DenseStandardBloomFilterData]{
+    type D = DenseStandardBloomFilterData
 
-  //   def size: Option[Long]
+    def numHashes(d: D): Int = d._2
+    def width(d: D): Int = d._3
+    def seed(d: D): Long = d._4
+    def empty(h: Int, w: Int, s: Long) = (BitSet.empty, h, w, s)
 
-  //   protected def sizeOfBitSet(d: D): Int
+    def sizeOfBitSet(d: D): Int = d._1.size
 
-  //   protected def hasBits(d: D, bits: Iterable[Bits32 @@ HashCode]): Boolean
+    def hasBits(d: D, bits: Iterable[Bits32]): Boolean =
+      !bits.exists( b => !d._1.contains(b) )
 
-  //   protected def setBits(d: D, bits: Iterable[Bits32 @@ HashCode]): D
+    def setBits(d: D, bits: Iterable[Bits32]): D =
+      d.copy(_1 = d._1 ++ bits)
 
-  //   protected def copy(d: D): BloomFilter[A,H1]
-  // }
+    def merge(d1: D, d2: D): D = {
+      require(isCompatible(d1,d2))
+      d1.copy(_1 = d1._1 ++ d2._1)
+    }
+  }
 
-  // trait StandardBloomFilter[A,H1] extends BloomFilter[A,H1]{
-  //   val bitSet: D
+  implicit object DenseStandardBloomFilter extends DenseStandardBloomFilter
 
-  //   def insert(a: A)(implicit h: H, hconv: HC): StandardBloomFilter[A,H1] =
-  //     copy(setBits(bitSet, hashItem(a)))
+  object implicits{
+    implicit def bloomFilterSemigroup[D : BloomFilter]: Semigroup[D] = new Semigroup[D]{
+      def append(d1: D, d2: => D) = implicitly[BloomFilter[D]].merge(d1,d2)
+    }
 
-  //   def contains(a: A)(implicit h: H, hconv: HC): Boolean =
-  //     hasBits(bitSet, hashItem(a))
+    implicit class BloomFilterOps[D](val d: D)(implicit bf: BloomFilter[D]){
+      def insert[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]) = bf.insert(d,a)
 
-  //   /**
-  //    * MLE of number of elements inserted given t bits turned on.
-  //    * NOTE: If bloom filter is full, -1 returned.
-  //    * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
-  //    **/
-  //   def size: Option[Long] = {
-  //     val t = sizeOfBitSet(bitSet)
-  //     if(t >= width)
-  //       none[Long]
-  //     else{
-  //       val (m,k) = (width.toDouble, numHashes.toDouble)
-  //       math.round(math.log(1 - t.toDouble / m) / (k * math.log(1 - 1 / m))).toLong.some
-  //     }
-  //   }
+      def contains[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): Boolean = bf.contains(d,a)
 
-  //   protected def copy(d: D): StandardBloomFilter[A,H1]
-  // }
+      def merge(d2: D): D = bf.merge(d, d2)
 
+      def size: Option[Long] = bf.size(d)
+    }
+
+  }
 }
 
+object bloomfilter extends BloomFilterModule
 
 
-// /** Bloom filter data structure that allows for checking membership **/
-// trait BloomFilterT[A,H1,D]
-// extends DoubleHashModdedCollection[A,H1]
-// with InsertsElement[A,H1,Bits32,D]
-// with ChecksMembership[A,H1,Bits32,D]
-// with Sized[A,H1,Bits32,D]
-
-// /** standard bloom filter backed by bitset **/
-// trait StandardBloomFilterT[A,H1,D] extends BloomFilterT[A,H1,D] with Monoid[D] with Equal[D]{
-//   def insert(d: D, a: A)(implicit h: H, hconv: HC): D =
-//     addToBitSet(d, hashItem(a))
-
-//   def contains(d: D, a: A)(implicit h: H, hconv: HC): Boolean =
-//     hasAllBits(d, hashItem(a))
-
-//   /**
-//    * MLE of number of elements inserted given t bits turned on.
-//    * NOTE: If bloom filter is full, -1 returned.
-//    * http://www.softnet.tuc.gr/~papapetrou/publications/Bloomfilters-DAPD.pdf
-//    **/
-//   def cardinality(d: D): Long = {
-//     val t = sizeOfBitSet(d)
-//     if(t >= width)
-//       -1L
-//     else{
-//       val (m,k) = (width.toDouble, numHashes.toDouble)
-//       math.round(math.log(1 - t.toDouble / m) / (k * math.log(1 - 1 / m))).toLong
-//     }
-//   }
-
-//   /** get number of bits set to 1 **/
-//   protected def sizeOfBitSet(d: D): Int
-
-//   /** check if given bits are contained in the bit set **/
-//   protected def hasAllBits(d: D, bits: Iterable[Int @@ HashCode]): Boolean
-
-//   /** set bits to 1 in the bit set **/
-//   protected def addToBitSet(d: D, bits: Iterable[Int @@ HashCode]): D
-
-// }
-
-// /** standard bloom filter backed by immutable bitset **/
-// abstract class DenseStandardBloomFilterT[A,H1,T] extends StandardBloomFilterT[A,H1,BitSet @@ T]{
-
-//   def equal(d1: BitSet @@ T, d2: BitSet @@ T ): Boolean =
-//     d1 == d2
-
-//   val zero: BitSet @@ T = tag(BitSet.empty)
-
-//   def append(d1: BitSet @@ T, d2: => BitSet @@ T ) =
-//     tag(d1 ++ d2)
-
-//   protected def tag(b: BitSet) = Tag[BitSet,T](b)
-
-//   protected def hasAllBits(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): Boolean =
-//     !(bits exists ( b => !d.contains(b) ))
-
-//   protected def addToBitSet(d: BitSet @@ T, bits: Iterable[Int @@ HashCode]): BitSet  @@ T =
-//     tag(d ++ bits)
-
-//   protected def sizeOfBitSet(d: BitSet @@ T): Int = d size
-// }
-
-// trait StandardBloomFilterParameterEstimate{
-//   /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
-//   def optimalNumHashes(numItems: Int, width: Int): Int = {
-//     require(numItems gt 0, "numItems must be > 0")
-//     require(width gt 0, "width must be > 0")
-//     math.ceil(width / numItems * math.log(2)) toInt
-//   }
-//   /** http://en.wikipedia.org/wiki/Bloom_filter#Probability_of_false_positives **/
-//   def optimalWidth(numItems: Int, fpProb: Double): Int = {
-//     require((fpProb gte 0.0) && (fpProb lte 1.0), "fpProb must be between 0 and 1")
-//     math.ceil(-1 * numItems * math.log(fpProb) / math.log(2) / math.log(2)) toInt
-//   }
-//   def optimalParameters(numItems: Int, fpProb: Double) = {
-//     val width = optimalWidth(numItems, fpProb)
-//     val numHashes = optimalNumHashes(numItems, width)
-
-//     (numHashes, width)
-//   }
-// }
-
-// object bloomfilter{
-//   object sbf
-//   extends StandardBloomFilterParameterEstimate {
-//     def apply[A,H1,T](params: (Int,Int), s: Long = 0L) =
-//       new DenseStandardBloomFilterT[A,H1,T]{
-//         val (numHashes, width) = params
-//         val seed = s
-//       }
-//   }
-// }
