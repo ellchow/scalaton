@@ -181,7 +181,7 @@ trait HistogramModule{
       }else{
         val bucketsUpToP = upTo(p).map{ _.map{ case (k, v) => (k, hvB.count(v).toDouble) }.toList }
 
-        bucketsUpToP map (bs => loop(bs, bs.head._2 / 2))
+        bucketsUpToP map (bs => loop(bs, bs.head._2 / 2).min(this.size.toDouble).max(0.0))
       }
     }
 
