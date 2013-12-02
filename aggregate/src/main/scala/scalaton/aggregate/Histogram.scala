@@ -57,7 +57,7 @@ trait HistogramModule{
     def value(a: A): B
   }
 
-  trait GapSizeFn{
+  sealed trait GapSizeFn{
     def apply(x: (Double, Long), y: (Double, Long)): Double
   }
 

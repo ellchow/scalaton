@@ -27,8 +27,9 @@ import org.apache.hadoop.conf.{Configuration => HConf}
 import scalaton.util._
 import scalaton.util.hashing._
 import scalaton.util.hashing32._
-import scalaton.aggregate.moments._
 import scalaton.aggregate._
+import scalaton.aggregate.moments._
+import scalaton.aggregate.histogram._
 
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
@@ -94,14 +95,14 @@ trait DListImplicits{
   }
 
   implicit class DList2GroupingAOps[A : Manifest : WireFormat : Grouping, B : Manifest : WireFormat](val dl: DList[(A,B)]){
-    def semiJoin[BR : Manifest : WireFormat](right: DList[(A,BR)]) =
-      joins.semiJoin(dl, right)
+    // def semiJoin[BR : Manifest : WireFormat](right: DList[(A,BR)]) =
+    //   joins.semiJoin(dl, right)
 
-    def bloomJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], expectedNumKeys: Int)(implicit hashable: Hashable[A,Bits32]) =
-      joins.bloomJoin(dl, right, expectedNumKeys)
+    // def bloomJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], expectedNumKeys: Int)(implicit hashable: Hashable[A,Bits32]) =
+    //   joins.bloomJoin(dl, right, expectedNumKeys)
 
-    def skewedJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], sampleRate: Double, maxPerReducer: Int)(implicit hashable: Hashable[A,Bits32]) =
-      joins.skewedJoin(dl, right, sampleRate, maxPerReducer)
+    // def skewedJoin[BR : Manifest : WireFormat](right: DList[(A,BR)], sampleRate: Double, maxPerReducer: Int)(implicit hashable: Hashable[A,Bits32]) =
+    //   joins.skewedJoin(dl, right, sampleRate, maxPerReducer)
 
     def groupByKeyThenCombine(doFlush: collection.Map[A,B] => Boolean = _ => false)(implicit semigroupB: Semigroup[B]) =
       helpers.groupByKeyThenCombine(dl, doFlush)
@@ -186,27 +187,25 @@ trait WireFormatImplicits{
 
   implicit val momentsWF = mkCaseWireFormat((n: Long, mean: Double, m2: Double, m3: Double, m4: Double) => Moments(n,mean,m2,m3,m4), Moments.unapply _)
 
-  implicit def histogramDataWF[A, B : WireFormat : HistogramValue : Monoid] = new WireFormat[HistogramData[A, B]]{
-    def toWire(x: HistogramData[A, B], out: DataOutput): Unit = {
-      implicitly[WireFormat[TreeMap[Double, B]]].toWire(x.buckets, out)
-      out.writeDouble(x.min)
-      out.writeDouble(x.max)
-
+  implicit val gapSizeFnWF = new WireFormat[GapSizeFn]{
+    def toWire(x: GapSizeFn, out: DataOutput): Unit = {
       x match {
-        case HistogramDataLTE1(_, _, _) => out.writeBoolean(true)
-        case HistogramDataN(_, _, _) => out.writeBoolean(false)
+        case SimpleDistance => out.writeInt(1)
+        case CountWeightedDistance => out.writeInt(2)
       }
     }
 
-    def fromWire(in: DataInput): HistogramData[A, B] = {
-      val buckets = implicitly[WireFormat[TreeMap[Double, B]]].fromWire(in)
-      val min = in.readDouble()
-      val max = in.readDouble()
-      val isLte1 = in.readBoolean()
-
-      if(isLte1) HistogramDataLTE1(buckets, min, max) else HistogramDataN(buckets, min, max)
+    def fromWire(in: DataInput): GapSizeFn = {
+      in.readInt() match {
+        case 1 => SimpleDistance
+        case 2 => CountWeightedDistance
+      }
     }
   }
+
+  implicit def histogramDataWF[A,B](implicit wfa: WireFormat[A], wfb: WireFormat[B], monoidB: Monoid[B], hvB: HistogramValue[B], hpAB: HistogramPoint[A,B]) = mkCaseWireFormat((buckets: TreeMap[Double, B], min: Double, max: Double, n: Int, gapSize: GapSizeFn) => HistogramData(buckets, min, max, n, gapSize),
+                                                  HistogramData.unapply[A,B] _)
+
 }
 
 trait ReductionImplicits{
