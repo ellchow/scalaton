@@ -7,7 +7,7 @@ import AssemblyKeys._
 object ProjectBuild extends Build{
   /** Settings **/
   val Organization = "com.github.ellchow"
-  val Version      = "0.1-SNAPSHOT"
+  val Version      = "0.1.1-SNAPSHOT"
   val ScalaVersion = "2.10.2"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
