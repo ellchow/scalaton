@@ -1,179 +1,175 @@
-// /*
-//  Copyright 2013 Elliot Chow
+/*
+ Copyright 2013 Elliot Chow
 
-//  Licensed under the Apache License, Version 2.0 (the "License")
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License")
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-//  http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
-// */
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
 
-// package scalaton.aggregate.hashed
+package scalaton.aggregate.hashed
 
-// import scalaz._
-// import Scalaz._
+import scalaz._
+import Scalaz._
 
-// import scalaton.util.hashing._
-// import scalaton.util.hashing32.Bits32
-// import scalaton.util.monoids._
+import scalaton.util._
+import scalaton.util.hashing._
+import scalaton.util.hashing32.Bits32
+import scalaton.util.monoids._
 
 // /** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9
 //   * NOTE: hashing32 does not work well! use hashing64 or hashing128
 //   **/
-// trait HyperLogLogT[A,H1,D]
-// extends HashedCollection[A,H1,Bits32]
-// with InsertsElement[A,H1,Bits32,D]
-// with Sized[A,H1,Bits32,D]
-// with Equal[D]
-// with Monoid[D]{
-//   val numHashes: Int = 1
 
-//   /** b = log2(m) **/
-//   val b: Int
+trait HyperLogLogModule extends HashedCollectionModule{
+  trait HyperLogLog[D] extends HashedCollection[Bits32,D]{
+    def insert[A,H1](d: D, a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D = {
+      val hashedValue = hashItem(d, a).head
 
-//   /** number of registers **/
-//   lazy val m: Int = 1 << (b - 1)
+      val j = readAddress(d, hashedValue)
 
-//   def insert(d: D, a: A)(implicit h: H, hconv: HC): D = {
-//     val hashedValue = hashItem(a).head
+      val r = numLeadingZeros(d, hashedValue)
 
-//     val j = readAddress(hashedValue)
+      (registerValue(d, j) lt r) ? updateRegister(d, j, r) | d
+    }
 
-//     val r = numLeadingZeros(hashedValue)
+    def size(d: D): Long = {
+      val rsum = registerSum(d)
 
-//     (registerValue(d, j) lt r) ? updateRegister(d, j, r) | d
-//   }
+      val estimate = alphamm(d) / rsum
 
-//   def cardinality(d: D): Long = {
-//     val rsum = registerSum(d)
+      val correctedEstimate = if(estimate lte (5.0 / 2.0 * m(d))){ // small range correction
+        val v = numZeroRegisters(d)
 
-//     val estimate = alphamm / rsum
+        (v =/= 0) ? (m(d) * (math.log(m(d)) - math.log(v))) | estimate
+      }else if(estimate gt pow2to32){ // large range correction
+        negPow2to32 * math.log(1 - estimate / pow2to32)
+       }else{
+         estimate
+      }
 
-//     val correctedEstimate = if(estimate lte (5.0 / 2.0 * m)){ // small range correction
-//       val v = numZeroRegisters(d)
+      math.round(correctedEstimate)
+    }
 
-//       (v =/= 0) ? (m * (math.log(m) - math.log(v))) | estimate
-//     }else if(estimate gt pow2to32) // large range correction
-//       negPow2to32 * math.log(1 - estimate / pow2to32)
-//     else
-//       estimate
+    def merge(d1: D, d2: => D): D = {
+      require(isCompatible(d1, d2))
 
-//     math.round(correctedEstimate)
-//   }
+      (0 until m(d1)).foldLeft(d1){ (dd, j) =>
+        val r = registerValue(d1, j).max((registerValue(d2, j)))
 
-//   /** multiplicative constant alpha * m^2 used for computing estimate **/
-//   protected lazy val alphamm: Double = b match {
-//     case 4 => 0.673
-//     case 5 => 0.697
-//     case 6 => 0.709
-//     case _ => (0.7213 / (1 + 1.079 / m)) * m * m
-//   }
+        updateRegister(dd, j, r.toByte)
+      }
+    }
 
-//   /** number of leading zeros, after skipping the b bits used for addressing **/
-//   protected def numLeadingZeros(hashedValue: Bits32): Byte =
-//     (Integer.numberOfLeadingZeros((hashedValue << b) | (1 << (b - 1)) + 1) + 1) toByte
+    def empty(b: Int, s: Long): D
 
-//   /** read the 1st b bits to determing the register address **/
-//   protected def readAddress(hashedValue: Bits32): Int =
-//     hashedValue >> (Integer.SIZE - b)
+    def fromData[A,H1](b: Int, s: Long)(as: Iterable[A])(implicit ha: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]) =
+      as.foldLeft(empty(b, s))((dd, a) => insert(dd, a))
 
-//   protected val pow2to32 = math.pow(2,32)
+    /** b = log2(m) **/
+    def b(d: D): Int
 
-//   protected val negPow2to32 = -4294967296.0
+    /** number of registers **/
+    def m(d: D): Int = 1 << (b(d) - 1)
 
-//   /** sum of 2^(-registerValue_j) for all j in 1...m **/
-//   protected def registerSum(d: D): Double
+    def numHashes(d: D): Int = 1
 
-//   /** number of registers with value 0 **/
-//   protected def numZeroRegisters(d: D): Int
+    /** multiplicative constant alpha * m^2 used for computing estimate **/
+    protected def alphamm(d: D): Double = b(d) match {
+      case 4 => 0.673
+      case 5 => 0.697
+      case 6 => 0.709
+      case _ => (0.7213 / (1 + 1.079 / m(d))) * m(d) * m(d)
+    }
 
-//   /** retrieve register value **/
-//   protected def registerValue(d: D, j: Int): Int
+    /** number of leading zeros, after skipping the b bits used for addressing **/
+    protected def numLeadingZeros(d: D, hashedValue: Bits32): Byte =
+    (Integer.numberOfLeadingZeros((hashedValue << b(d)) | (1 << (b(d) - 1)) + 1) + 1).toByte
 
-//   /** update register value **/
-//   protected def updateRegister(d: D, j: Int, n: Byte): D
+    /** read the 1st b bits to determing the register address **/
+    protected def readAddress(d: D, hashedValue: Bits32): Int =
+      hashedValue >> (Integer.SIZE - b(d))
 
-// }
+    protected val pow2to32 = math.pow(2,32)
 
-// trait DenseHyperLogLogT[A,H1,T]
-// extends HyperLogLogT[A,H1,Vector[Byte] @@ T]{
+    protected val negPow2to32 = -4294967296.0
 
-//   def tag(d: Vector[Byte]) = Tag[Vector[Byte], T](d)
+    /** sum of 2^(-registerValue_j) for all j in 1...m **/
+    protected def registerSum(d: D): Double
 
-//   def equal(d1: Vector[Byte] @@ T, d2: Vector[Byte] @@ T) =
-//     d1 == d2
+    /** number of registers with value 0 **/
+    protected def numZeroRegisters(d: D): Int
 
-//   lazy val zero = tag(Vector.fill[Byte](m)(0))
+    /** retrieve register value **/
+    protected def registerValue(d: D, j: Int): Int
 
-//   def append (d1: Vector[Byte] @@ T, d2: => Vector[Byte] @@ T): Vector[Byte] @@ T =
-//     tag(d1.zip(d2) map { case (r1, r2) => r1 max r2 })
+    /** update register value **/
+    protected def updateRegister(d: D, j: Int, n: Byte): D
+  }
 
-//   protected def registerSum(d: Vector[Byte] @@ T) =
-//     d map ( count => math.pow(2, -count)) sum
+  type DenseHyperLogLogData = (Vector[Byte], Int, Long)
+  trait DenseHyperLogLog extends HyperLogLog[DenseHyperLogLogData]{
+    def seed(d: DenseHyperLogLogData) = d._3
 
-//   protected def numZeroRegisters(d: Vector[Byte] @@ T) =
-//     d.foldLeft(0)((acc, x) => (x === 0) ? (acc + 1) | acc)
+    def b(d: DenseHyperLogLogData) = d._2
 
-//   protected def registerValue(d: Vector[Byte] @@ T, j: Int) = d(j)
+    def empty(b: Int, s: Long) = (Vector.fill[Byte](1 << (b - 1))(0), b, s)
 
-//   protected def updateRegister(d: Vector[Byte] @@ T, j: Int, n: Byte) = tag(d.updated(j, n))
+    protected def registerSum(d: DenseHyperLogLogData) =
+      d._1.map(count => math.pow(2, -count)).sum
 
-// }
+    protected def numZeroRegisters(d: DenseHyperLogLogData) =
+      d._1.foldLeft(0)((acc, x) => (x === 0) ? (acc + 1) | acc)
 
-// trait SparseHyperLogLogT[A,H1,T]
-// extends HyperLogLogT[A,H1,Map[Int,Byte @@ Tags.Max] @@ T]{
+    protected def registerValue(d: DenseHyperLogLogData, j: Int) = d._1(j)
 
-//   def tag(d: Map[Int,Byte @@ Tags.Max]) = Tag[Map[Int,Byte @@ Tags.Max], T](d)
+    protected def updateRegister(d: DenseHyperLogLogData, j: Int, n: Byte) = d.copy(_1 = d._1.updated(j, n))
+  }
+  implicit object DenseHyperLogLog extends DenseHyperLogLog
 
-//   def equal(d1: Map[Int,Byte @@ Tags.Max] @@ T, d2: Map[Int,Byte @@ Tags.Max] @@ T) =
-//     d1 == d2
+  type SparseHyperLogLogData = (Map[Int, Byte @@ Tags.Max], Int, Long)
+  trait SparseHyperLogLog extends HyperLogLog[SparseHyperLogLogData]{
+    def seed(d: SparseHyperLogLogData) = d._3
 
-//   lazy val zero = tag(Map.empty)
+    def b(d: SparseHyperLogLogData) = d._2
 
-//   def append (d1: Map[Int,Byte @@ Tags.Max] @@ T, d2: => Map[Int,Byte @@ Tags.Max] @@ T): Map[Int,Byte @@ Tags.Max] @@ T =
-//     tag((d1: Map[Int,Byte @@ Tags.Max]) |+| (d2: Map[Int,Byte @@ Tags.Max]))
+    def empty(b: Int, s: Long) = (Map[Int, Byte @@ Tags.Max](), b, s)
 
-//   protected def registerSum(d: Map[Int,Byte @@ Tags.Max] @@ T) = {
-//     val nonZeroCountSum = d.map{ case (j, count) => math.pow(2, -count) } sum
+    protected def registerSum(d: SparseHyperLogLogData) = {
+      val nonZeroCountSum = d._1.map{ case (j, count) => math.pow(2, -count) }.sum
 
-//     numZeroRegisters(d) + nonZeroCountSum
-//   }
+      numZeroRegisters(d) + nonZeroCountSum
+    }
 
-//   protected def numZeroRegisters(d: Map[Int,Byte @@ Tags.Max] @@ T) =
-//     m - d.size
+    protected def numZeroRegisters(d: SparseHyperLogLogData) =
+      m(d) - d._1.size
 
-//   protected def registerValue(d: Map[Int,Byte @@ Tags.Max] @@ T, j: Int) = d.get(j) | Tags.Max(0)
+    protected def registerValue(d: SparseHyperLogLogData, j: Int) = d._1.get(j) | Tags.Max(0)
 
-//   protected def updateRegister(d: Map[Int,Byte @@ Tags.Max] @@ T, j: Int, n: Byte) = tag(d.updated(j, Tags.Max(n)))
-// }
+    protected def updateRegister(d: SparseHyperLogLogData, j: Int, n: Byte) = d.copy(_1 = d._1.updated(j, Tags.Max(n)))
+  }
+  implicit object SparseHyperLogLog extends SparseHyperLogLog
 
-// trait HyperLogLogParameterEstimate{
-//   def error(m: Int) = 1.04 / math.sqrt(m)
-// }
+  object implicits{
+    implicit def hyperLogLogSemigroup[D : HyperLogLog] = new Semigroup[D]{
+      def append(d1: D, d2: => D) = implicitly[HyperLogLog[D]].merge(d1, d2)
+    }
 
-// object hyperloglog{
-//   type SparseHLLRegisters[T] = Map[Int,Byte @@ Tags.Max] @@ T
+    implicit class HyperLogLogOps[D](val d: D)(implicit hll: HyperLogLog[D]){
+      def insert[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D = hll.insert(d, a)
 
-//   type DenseHLLRegisters[T] = Vector[Int] @@ T
+      def size: Long = hll.size(d)
+    }
 
-//   object hll
-//   extends HyperLogLogParameterEstimate{
-//     def dense[A,H1,T](addressSize: Int, s: Long = 0L) = new DenseHyperLogLogT[A,H1,T]{
-//       val seed = s
+  }
+}
 
-//       val b = addressSize
-//     }
+object hyperloglog extends HyperLogLogModule
 
-//     def sparse[A,H1,T](addressSize: Int, s: Long = 0L) = new SparseHyperLogLogT[A,H1,T]{
-//       val seed = s
-
-//       val b = addressSize
-//     }
-//   }
-// }

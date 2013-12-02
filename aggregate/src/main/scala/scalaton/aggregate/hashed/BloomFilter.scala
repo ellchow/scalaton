@@ -42,6 +42,8 @@ trait BloomFilterModule extends HashedCollectionModule{
 
     def setBits(d: D, bits: Iterable[Bits32]): D
 
+    def empty(h: Int, w: Int, s: Long): D
+
     def insert[A,H1](d: D, as: Iterable[A])(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D = as.foldLeft(d)((dd, a) => insert(dd, a))
 
     def fromData[A,H1](h: Int, w: Int, s: Long)(as: Iterable[A])(implicit ha: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]) = insert(empty(h,w,s), as)
@@ -89,9 +91,9 @@ trait BloomFilterModule extends HashedCollectionModule{
 
   }
 
-  type DenseStandardBloomFilterData = HashedCollectionData[BitSet]
+  type DenseStandardBloomFilterData = HashModdedCollectionData[BitSet]
 
-  trait DenseStandardBloomFilter extends StandardBloomFilter[DenseStandardBloomFilterData] with HashedCollectionDataFunctions[BitSet]{
+  trait DenseStandardBloomFilter extends StandardBloomFilter[DenseStandardBloomFilterData] with HashModdedCollectionDataFunctions[BitSet]{
     type D = DenseStandardBloomFilterData
 
     def empty(h: Int, w: Int, s: Long) = (BitSet.empty, h, w, s)
@@ -111,9 +113,9 @@ trait BloomFilterModule extends HashedCollectionModule{
   }
   implicit object DenseStandardBloomFilter extends DenseStandardBloomFilter
 
-  type SparseStandardBloomFilterData = HashedCollectionData[CompressedBitSet]
+  type SparseStandardBloomFilterData = HashModdedCollectionData[CompressedBitSet]
 
-  trait SparseStandardBloomFilter extends StandardBloomFilter[SparseStandardBloomFilterData] with HashedCollectionDataFunctions[CompressedBitSet]{
+  trait SparseStandardBloomFilter extends StandardBloomFilter[SparseStandardBloomFilterData] with HashModdedCollectionDataFunctions[CompressedBitSet]{
     type D = SparseStandardBloomFilterData
 
     def empty(h: Int, w: Int, s: Long) = (new CompressedBitSet, h, w, s)

@@ -61,6 +61,8 @@ trait SketchModule extends HashedCollectionModule{
       d4
     }
 
+    def empty(h: Int, w: Int, s: Long): F[V]
+
     def estimate(vs: Iterable[V]): W
 
     def getCells[K,H1](d: F[V], k: K)(implicit h: Hashable[K,H1], hconv: HashCodeConverter[H1,Bits32]): Iterable[(Int, Int)] = (0 to numHashes(d)).view.zip(hashItem(d,k))
@@ -81,7 +83,7 @@ trait SketchModule extends HashedCollectionModule{
 
 
   type VectorBackedTable[A] = (Vector[Vector[A]], Long)
-  type HCVectorBackedTable[A] = HashedCollectionData[VectorBackedTable[A]]
+  type HCVectorBackedTable[A] = HashModdedCollectionData[VectorBackedTable[A]]
 
   implicit def denseSketchTable[V : Monoid] = new SketchTable[HCVectorBackedTable, V]{
     def size(d: HCVectorBackedTable[V]) = d._2
@@ -98,7 +100,7 @@ trait SketchModule extends HashedCollectionModule{
 
   }
 
-  abstract class HCVectorBackedTableSketch[V : Monoid, W] extends Sketch[HCVectorBackedTable, V, W] with HashedCollectionDataFunctions[VectorBackedTable[V]]{
+  abstract class HCVectorBackedTableSketch[V : Monoid, W] extends Sketch[HCVectorBackedTable, V, W] with HashModdedCollectionDataFunctions[VectorBackedTable[V]]{
     def empty(h: Int, w: Int, s: Long) = ((Vector.fill(h, w)(implicitly[Monoid[V]].zero), 0L), h, w, s)
   }
 
