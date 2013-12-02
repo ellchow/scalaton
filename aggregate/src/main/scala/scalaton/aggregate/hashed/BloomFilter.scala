@@ -27,9 +27,7 @@ import scala.collection.BitSet
 import com.googlecode.javaewah.{EWAHCompressedBitmap => CompressedBitSet}
 
 trait BloomFilterModule extends HashedCollectionModule{
-  trait BloomFilter[D]
-  extends DoubleHashModdedCollection[D]{
-
+  trait BloomFilter[D] extends DoubleHashModdedCollection[D]{
     def insert[A,H1](d: D, a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D
 
     def contains[A,H1](d: D, a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): Boolean
