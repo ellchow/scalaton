@@ -228,6 +228,9 @@ trait HistogramModule{
   object HistogramData{
     def empty[A,B](n: Int, gapSize: GapSizeFn = SimpleDistance)(implicit monoidB: Monoid[B], hvB: HistogramValue[B], hpAB: HistogramPoint[A,B]) =
       HistogramData[A,B](TreeMap.empty, Double.PositiveInfinity, Double.NegativeInfinity, n, gapSize)
+
+    def fromData[A,B](n: Int, gapSize: GapSizeFn = SimpleDistance)(as: Iterable[A])(implicit monoidB: Monoid[B], hvB: HistogramValue[B], hpAB: HistogramPoint[A,B]) =
+      empty[A,B](n, gapSize).insert(as)
   }
 
   implicit class HistogramWithTargetOps[A,Y](val h: HistogramData[(A,Y),(Long,Y)])
