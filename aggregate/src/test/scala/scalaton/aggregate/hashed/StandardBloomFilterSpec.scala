@@ -33,8 +33,6 @@ import Scalaz._
 
 import scalaton.util.hashing128._
 import scalaton.aggregate.hashed.bloomfilter._
-import scalaton.aggregate.hashed.bloomfilter.implicits._
-
 
 class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   behavior of "standard bloom filter"

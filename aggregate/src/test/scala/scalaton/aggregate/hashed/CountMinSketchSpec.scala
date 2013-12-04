@@ -29,7 +29,6 @@ import Scalaz._
 
 import scalaton.util.hashing32._
 import scalaton.aggregate.hashed.sketch._
-import scalaton.aggregate.hashed.sketch.implicits._
 
 class CountMinSketchSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   behavior of "CountMinSketch"

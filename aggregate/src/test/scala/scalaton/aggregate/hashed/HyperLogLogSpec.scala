@@ -33,7 +33,6 @@ import Scalaz._
 
 import scalaton.util.hashing128._
 import scalaton.aggregate.hashed.hyperloglog._
-import scalaton.aggregate.hashed.hyperloglog.implicits._
 
 class HyperLogLogSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 

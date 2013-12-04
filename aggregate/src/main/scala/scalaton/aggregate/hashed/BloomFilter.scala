@@ -141,21 +141,18 @@ trait BloomFilterModule extends HashedCollectionModule{
   }
   implicit object SparseStandardBloomFilter extends SparseStandardBloomFilter
 
+  implicit def bloomFilterSemigroup[D : BloomFilter]: Semigroup[D] = new Semigroup[D]{
+    def append(d1: D, d2: => D) = implicitly[BloomFilter[D]].merge(d1,d2)
+  }
 
-  object implicits{
-    implicit def bloomFilterSemigroup[D : BloomFilter]: Semigroup[D] = new Semigroup[D]{
-      def append(d1: D, d2: => D) = implicitly[BloomFilter[D]].merge(d1,d2)
-    }
+  implicit class BloomFilterOps[D](val d: D)(implicit bf: BloomFilter[D]){
+    def insert[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]) = bf.insert(d,a)
 
-    implicit class BloomFilterOps[D](val d: D)(implicit bf: BloomFilter[D]){
-      def insert[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]) = bf.insert(d,a)
+    def contains[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): Boolean = bf.contains(d,a)
 
-      def contains[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): Boolean = bf.contains(d,a)
+    def merge(d2: D): D = bf.merge(d, d2)
 
-      def merge(d2: D): D = bf.merge(d, d2)
-
-      def size: Option[Long] = bf.size(d)
-    }
+    def size: Option[Long] = bf.size(d)
 
   }
 }

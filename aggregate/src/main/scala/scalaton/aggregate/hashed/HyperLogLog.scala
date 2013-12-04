@@ -24,9 +24,9 @@ import scalaton.util.hashing._
 import scalaton.util.hashing32.Bits32
 import scalaton.util.monoids._
 
-// /** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9
-//   * NOTE: hashing32 does not work well! use hashing64 or hashing128
-//   **/
+/** Hyper log log implementation using 32 bit hash (http://algo.inria.fr/flajolet/Publications/FlFuGaMe07.pdf).  Good for cardinalities from 0 to 10^9
+  * NOTE: hashing32 does not work well! use hashing64 or hashing128
+  **/
 
 trait HyperLogLogModule extends HashedCollectionModule{
   trait HyperLogLog[D] extends HashedCollection[Bits32,D]{
@@ -157,17 +157,14 @@ trait HyperLogLogModule extends HashedCollectionModule{
   }
   implicit object SparseHyperLogLog extends SparseHyperLogLog
 
-  object implicits{
-    implicit def hyperLogLogSemigroup[D : HyperLogLog] = new Semigroup[D]{
-      def append(d1: D, d2: => D) = implicitly[HyperLogLog[D]].merge(d1, d2)
-    }
+  implicit def hyperLogLogSemigroup[D : HyperLogLog] = new Semigroup[D]{
+    def append(d1: D, d2: => D) = implicitly[HyperLogLog[D]].merge(d1, d2)
+  }
 
-    implicit class HyperLogLogOps[D](val d: D)(implicit hll: HyperLogLog[D]){
-      def insert[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D = hll.insert(d, a)
+  implicit class HyperLogLogOps[D](val d: D)(implicit hll: HyperLogLog[D]){
+    def insert[A,H1](a: A)(implicit h: Hashable[A,H1], hconv: HashCodeConverter[H1,Bits32]): D = hll.insert(d, a)
 
-      def size: Long = hll.size(d)
-    }
-
+    def size: Long = hll.size(d)
   }
 }
 
