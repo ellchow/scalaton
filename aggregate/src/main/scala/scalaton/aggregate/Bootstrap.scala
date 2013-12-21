@@ -52,4 +52,4 @@ trait BootstrappingModule{
   }
 }
 
-object  bootstrapping extends BootstrappingModule
+object bootstrapping extends BootstrappingModule

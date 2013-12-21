@@ -153,7 +153,6 @@ trait BloomFilterModule extends HashedCollectionModule{
     def merge(d2: D): D = bf.merge(d, d2)
 
     def size: Option[Long] = bf.size(d)
-
   }
 }
 

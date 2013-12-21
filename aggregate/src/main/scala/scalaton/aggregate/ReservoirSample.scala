@@ -21,25 +21,29 @@ import collection.mutable
 import scalaz._
 import Scalaz._
 
-trait ReservoirSampleModule{
+trait ReservoirSampleModule {
 
-  def reservoirSample[A](n: Int, seed: Int = 0): Iterable[A] => Vector[A] = (xs: Iterable[A]) => {
-    val buf = new mutable.ArrayBuffer[A](n)
-    val reservoir = buf.mapResult(_.toVector)
-    val rand = new util.Random(seed)
+  case class Reservoir[A] private[aggregate] (val size: Int, val samples: Vector[A], inserted: Int) {
+    require(size gt 0)
 
-
-    for((x, i) <- xs.zipWithIndex){
-      if(i < n){
-        buf += x
-      }else if(rand.nextInt(i) lt n){
-        buf(rand.nextInt(n)) = x
-      }
+    def insert(a: A) = {
+      if (inserted < size)
+        this.copy(samples = samples :+ a,
+          inserted = inserted + 1)
+      else if (scala.util.Random.nextInt(inserted) < size)
+        this.copy(samples = samples.updated(scala.util.Random.nextInt(size), a),
+          inserted = inserted + 1)
+      else
+        this.copy(inserted = inserted + 1)
     }
 
-    reservoir.result()
   }
 
+  object Reservoir{
+    def empty[A](size: Int) = Reservoir[A](size, Vector.empty, 0)
+
+    def fromData[A](size: Int, as: Iterable[A]) = as.foldLeft(empty[A](size))((r, a) => r.insert(a))
+  }
 }
 
 
