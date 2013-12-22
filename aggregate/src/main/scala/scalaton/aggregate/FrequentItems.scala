@@ -124,22 +124,3 @@ trait StreamSummaryModule {
 }
 
 object freqitems extends StreamSummaryModule
-
-/*
-import scalaton.aggregate.freqitems._
-def time(f: =>Unit) = { val t = System.currentTimeMillis; f; println((System.currentTimeMillis - t) / 1000.0 + " seconds")}
-
-val as = (0 to 10000000).view.map(_ => org.apache.commons.math3.distribution.ZipfDistribution(5e8.toInt, 1.5))
-
-time({
-val x = StreamSummary.fromData(100, as)
-x.top(20).foreach(println)
-println(x.size)
- })
-
-time({
-val truth = as.groupBy(identity).map{ case (k, vs) => (k, vs.size) }.toSeq.sortBy(-_._2)
-truth.take(20).foreach(println)
- })
-
-*/
