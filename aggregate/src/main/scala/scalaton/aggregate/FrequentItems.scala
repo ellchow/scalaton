@@ -47,7 +47,12 @@ trait StreamSummaryModule {
     private var _min: DLL[Option[StreamSummaryEntry[A]]]
   ) {
 
-    def top(k: Int) = sentinel.toStream.flatten.take(k)
+    def get(key: A) = for {
+      dll <- lookup.get(key)
+      entry <- dll.elem
+    } yield entry
+
+    def top(k: Int) = elements.take(k)
 
     def elements = sentinel.toStream.flatten
 
@@ -75,7 +80,9 @@ trait StreamSummaryModule {
           val entry = StreamSummaryEntry(key, currentMin.count + count, currentMin.count)
           val dll = DLL(Option(entry))
           lookup += key -> dll
+          lookup -= currentMin.key
           connect(_min.prev, dll)
+          _min = dll
           percolateLeft(dll)
           fixMin()
         }
@@ -122,12 +129,10 @@ object freqitems extends StreamSummaryModule
 import scalaton.aggregate.freqitems._
 def time(f: =>Unit) = { val t = System.currentTimeMillis; f; println((System.currentTimeMillis - t) / 1000.0 + " seconds")}
 
-val as = Seq(1,1,1,2,1,2,3,4,1,4,4,4,4)
-
-val as = (0 to 10000000).view.map(_ => 2 + math.sqrt(util.Random.nextInt(1000000)).toInt + (if(util.Random.nextBoolean) 1 else -1))
+val as = (0 to 10000000).view.map(_ => org.apache.commons.math3.distribution.ZipfDistribution(5e8.toInt, 1.5))
 
 time({
-val x = StreamSummary.fromData(1000, as)
+val x = StreamSummary.fromData(100, as)
 x.top(20).foreach(println)
 println(x.size)
  })
