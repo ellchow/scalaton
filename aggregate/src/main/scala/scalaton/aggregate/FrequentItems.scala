@@ -21,8 +21,8 @@ import scala.collection.immutable.TreeMap
 import scalaton.util.monoids._
 
 /* heavy hitters algo described in https://www.cs.ucsb.edu/research/tech_reports/reports/2005-23.pdf using less space-efficient data structure */
-trait SpaceSavingModule {
-  case class SpaceSaving[A](val size: Int, val buckets: TreeMap[Long, Set[A]], val lookup: Map[A, (Long, Long)]) {
+trait FrequentItemsModule {
+  case class FrequentItems[A](val size: Int, val buckets: TreeMap[Long, Set[A]], val lookup: Map[A, (Long, Long)]) {
     def get(a: A) = lookup.get(a)
 
     def countOf(a: A): Option[Long] = get(a).map(_._1)
@@ -62,20 +62,26 @@ trait SpaceSavingModule {
     def top(k: Int) = buckets.takeRight(k).toList.reverse.flatMap(_._2).map{ a => (a, lookup(a)) }
   }
 
-  object SpaceSaving{
-    def empty[A](size: Int) = SpaceSaving[A](size, TreeMap.empty, Map.empty)
+  object FrequentItems{
+    def empty[A](size: Int) = FrequentItems[A](size, TreeMap.empty, Map.empty)
 
     def fromData[A](size: Int, as: Iterable[A]) = as.foldLeft(empty[A](size))((ss, a) => ss.increment(a))
   }
 }
-object spacesaving extends SpaceSavingModule
+object spacesaving extends FrequentItemsModule
 
 /*
 import scalaton.aggregate.spacesaving._
-val as = (0 to 1000000).map(_ => 1 + math.sqrt(util.Random.nextInt(1000000)).toInt + (if(util.Random.nextBoolean) 1 else -1))
-val truth = as.groupBy(identity).map{ case (k, vs) => (k, vs.size) }.toSeq.sortBy(-_._2)
-val x = SpaceSaving.fromData(1000, as)
+def time(f: =>Unit) = { val t = System.currentTimeMillis; f; println((System.currentTimeMillis - t) / 1000.0 + " seconds")}
 
+val as = (0 to 10000000).view.map(_ => 1 + math.sqrt(util.Random.nextInt(1000000)).toInt + (if(util.Random.nextBoolean) 1 else -1))
+time({
+val truth = as.groupBy(identity).map{ case (k, vs) => (k, vs.size) }.toSeq.sortBy(-_._2)
 truth.take(20).foreach(println)
+ })
+time({
+val x = FrequentItems.fromData(1000, as)
 x.top(20).foreach(println)
+ })
+
 */
