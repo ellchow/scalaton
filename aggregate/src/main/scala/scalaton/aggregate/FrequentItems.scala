@@ -20,68 +20,118 @@ import scala.collection.immutable.TreeMap
 
 import scalaton.util.monoids._
 
-/* heavy hitters algo described in https://www.cs.ucsb.edu/research/tech_reports/reports/2005-23.pdf using less space-efficient data structure */
-trait FrequentItemsModule {
-  case class FrequentItems[A](val size: Int, val buckets: TreeMap[Long, Set[A]], val lookup: Map[A, (Long, Long)]) {
-    def get(a: A) = lookup.get(a)
+/* heavy hitters algo described in https://www.cs.ucsb.edu/research/tech_reports/reports/2005-23.pdf using a slightly modified data structure */
+trait StreamSummaryModule {
+  import scala.collection.mutable
+  import scala.collection.mutable.{ DoubleLinkedList => DLL }
 
-    def countOf(a: A): Option[Long] = get(a).map(_._1)
+  private def connect[A](xs: DLL[A], ys: DLL[A]) = {
+    if (xs.isEmpty) {
+      xs.elem = ys.elem
+      xs.next = ys.next
+      ys.prev = xs
+    } else {
+      xs.next = ys
+      ys.prev = xs
+    }
+    xs
+  }
 
-    def errorOf(a: A): Option[Long] = get(a).map(_._2)
+  case class StreamSummaryEntry[A](val key: A, private[aggregate] var _count: Long, private[aggregate] var _error: Long) {
+    def count = _count
 
-    def increment(a: A, w: Long = 1L) = {
-      require(w > 0)
-      if(lookup.contains(a)){
-        val count = countOf(a).get
+    def error = _error
+  }
 
-        val b = buckets.get(count).map(_ - a).getOrElse(Set.empty)
-        val updatedBuckets = (if(b.isEmpty) buckets - count else buckets.updated(count, b))
-          .updated(count + 1, buckets.get(count + 1).getOrElse(Set.empty) + a)
+  case class StreamSummary[A] private[aggregate] (
+    val capacity: Int,
+    private val lookup: mutable.Map[A,DLL[Option[StreamSummaryEntry[A]]]],
+    private val sentinel: DLL[Option[StreamSummaryEntry[A]]],
+    private var _min: DLL[Option[StreamSummaryEntry[A]]]
+  ) {
 
-        val updatedLookup = lookup.updated(a, lookup(a).copy(_1 = count + 1))
+    def top(k: Int) = sentinel.toStream.flatten.take(k)
 
-        this.copy(size, updatedBuckets, updatedLookup)
-      }else{
-        if(lookup.size < size){
-          val updatedBuckets = buckets.updated(w, buckets.get(w).getOrElse(Set.empty) + a)
-
-          val updatedLookup = lookup.updated(a, (w, 0L))
-
-          this.copy(size, updatedBuckets, updatedLookup)
-        }else{
-          val (minCount, minAs) = buckets.head
-
-          val updatedBuckets = buckets.drop(1) + ((minCount + 1) -> Set(a))
-          val updatedLookup = (lookup -- minAs) + (a -> (minCount + w, minCount))
-
-          this.copy(size, updatedBuckets, updatedLookup)
+    def insert(key: A, count: Long = 1L): StreamSummary[A] = {
+      require(count > 0)
+      if (lookup.contains(key)) {
+        val dll = lookup(key)
+        val entry = dll.elem.get
+        entry._count += count
+        percolateLeft(dll)
+        fixMin()
+      } else {
+        if (lookup.size < capacity) {
+          val entry = StreamSummaryEntry(key, count, 0)
+          val dll = DLL(Option(entry))
+          connect(_min, dll)
+          _min = dll
+          lookup += key -> dll
+          percolateLeft(dll)
+          fixMin()
+        } else {
+          val currentMin = _min.elem.get
+          val entry = StreamSummaryEntry(key, currentMin.count + count, currentMin.count)
+          val dll = DLL(Option(entry))
+          lookup += key -> dll
+          connect(_min.prev, dll)
+          percolateLeft(dll)
+          fixMin()
         }
+      }
+
+      this
+    }
+
+    private def percolateLeft(dll: DLL[Option[StreamSummaryEntry[A]]]): Unit = {
+      val prev = dll.prev
+      val next = dll.next
+
+      if (prev.elem.nonEmpty && (prev.elem.get.count < dll.elem.get.count)) {
+        val prev2 = prev.prev
+
+        connect(prev2, dll)
+        connect(prev, next)
+        connect(dll, prev)
+
+        percolateLeft(dll)
       }
     }
 
-    def top(k: Int) = buckets.takeRight(k).toList.reverse.flatMap(_._2).map{ a => (a, lookup(a)) }
+    private def fixMin(): Unit = if(_min.next.nonEmpty){
+      _min = _min.next
+      fixMin()
+    }
+
   }
 
-  object FrequentItems{
-    def empty[A](size: Int) = FrequentItems[A](size, TreeMap.empty, Map.empty)
+  object StreamSummary{
+    def empty[A](capacity: Int) = {
+      val init = DLL[Option[StreamSummaryEntry[A]]](None)
+      StreamSummary[A](capacity, mutable.Map.empty, init, init)
+    }
 
-    def fromData[A](size: Int, as: Iterable[A]) = as.foldLeft(empty[A](size))((ss, a) => ss.increment(a))
+    def fromData[A](capacity: Int, as: Iterable[A]) = as.foldLeft(empty[A](capacity))((ss, a) => ss.insert(a))
   }
+
 }
-object spacesaving extends FrequentItemsModule
 
 /*
-import scalaton.aggregate.spacesaving._
+import scalaton.aggregate.freqitems._
 def time(f: =>Unit) = { val t = System.currentTimeMillis; f; println((System.currentTimeMillis - t) / 1000.0 + " seconds")}
 
+val as = Seq(1,1,1,2,1,2,3,4,1,4,4,4,4)
+
 val as = (0 to 10000000).view.map(_ => 1 + math.sqrt(util.Random.nextInt(1000000)).toInt + (if(util.Random.nextBoolean) 1 else -1))
+
+time({
+val x = StreamSummary.fromData(1000, as)
+x.top(20).foreach(println)
+ })
+
 time({
 val truth = as.groupBy(identity).map{ case (k, vs) => (k, vs.size) }.toSeq.sortBy(-_._2)
 truth.take(20).foreach(println)
- })
-time({
-val x = FrequentItems.fromData(1000, as)
-x.top(20).foreach(println)
  })
 
 */
