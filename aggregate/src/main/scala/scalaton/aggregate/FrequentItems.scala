@@ -52,6 +52,10 @@ trait StreamSummaryModule {
 
     def top(k: Int) = sentinel.toStream.flatten.take(k)
 
+    def elements = sentinel.toStream.flatten
+
+    def size = elements.map(_.count).sum
+
     def insert(key: A, count: Long = 1L): StreamSummary[A] = {
       require(count > 0)
       if (lookup.contains(key)) {
@@ -113,8 +117,9 @@ trait StreamSummaryModule {
 
     def fromData[A](capacity: Int, as: Iterable[A]) = as.foldLeft(empty[A](capacity))((ss, a) => ss.insert(a))
   }
-
 }
+
+object freqitems extends StreamSummaryModule
 
 /*
 import scalaton.aggregate.freqitems._
