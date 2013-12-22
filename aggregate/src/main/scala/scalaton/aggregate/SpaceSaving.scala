@@ -22,15 +22,12 @@ import scalaton.util.monoids._
 
 /* heavy hitters algo described in https://www.cs.ucsb.edu/research/tech_reports/reports/2005-23.pdf using less space-efficient data structure */
 trait SpaceSavingModule {
-  case class SpaceSavingEntry[A] private[aggregate] (val value: A, val count: Long, val error: Long)
-
-
-  case class SpaceSaving[A](val size: Int, val buckets: TreeMap[Long, Set[A]], val lookup: Map[A, SpaceSavingEntry[A]]) {
+  case class SpaceSaving[A](val size: Int, val buckets: TreeMap[Long, Set[A]], val lookup: Map[A, (Long, Long)]) {
     def get(a: A) = lookup.get(a)
 
-    def countOf(a: A): Option[Long] = get(a).map(_.count)
+    def countOf(a: A): Option[Long] = get(a).map(_._1)
 
-    def errorOf(a: A): Option[Long] = get(a).map(_.error)
+    def errorOf(a: A): Option[Long] = get(a).map(_._2)
 
     def increment(a: A, w: Long = 1L) = {
       require(w > 0)
@@ -41,29 +38,28 @@ trait SpaceSavingModule {
         val updatedBuckets = (if(b.isEmpty) buckets - count else buckets.updated(count, b))
           .updated(count + 1, buckets.get(count + 1).getOrElse(Set.empty) + a)
 
-        val updatedLookup = lookup.updated(a, lookup(a).copy(count = count + 1))
+        val updatedLookup = lookup.updated(a, lookup(a).copy(_1 = count + 1))
 
         this.copy(size, updatedBuckets, updatedLookup)
       }else{
         if(lookup.size < size){
           val updatedBuckets = buckets.updated(w, buckets.get(w).getOrElse(Set.empty) + a)
 
-          val updatedLookup = lookup.updated(a, SpaceSavingEntry(a, w, 0))
+          val updatedLookup = lookup.updated(a, (w, 0L))
 
           this.copy(size, updatedBuckets, updatedLookup)
         }else{
           val (minCount, minAs) = buckets.head
 
           val updatedBuckets = buckets.drop(1) + ((minCount + 1) -> Set(a))
-          val updatedLookup = (lookup -- minAs) + (a -> SpaceSavingEntry(a, minCount + w, minCount))
+          val updatedLookup = (lookup -- minAs) + (a -> (minCount + w, minCount))
 
           this.copy(size, updatedBuckets, updatedLookup)
         }
       }
     }
 
-    def top(k: Int) = buckets.takeRight(k).toList.reverse.flatMap(_._2).map{ a => lookup(a) }
-
+    def top(k: Int) = buckets.takeRight(k).toList.reverse.flatMap(_._2).map{ a => (a, lookup(a)) }
   }
 
   object SpaceSaving{
@@ -72,8 +68,6 @@ trait SpaceSavingModule {
     def fromData[A](size: Int, as: Iterable[A]) = as.foldLeft(empty[A](size))((ss, a) => ss.increment(a))
   }
 }
-
-
 object spacesaving extends SpaceSavingModule
 
 /*
