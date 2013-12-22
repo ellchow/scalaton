@@ -16,14 +16,11 @@ limitations under the License.
 
 package scalaton.aggregate
 
-import scala.collection.immutable.TreeMap
-
-import scalaton.util.monoids._
+import scala.collection.mutable
+import scala.collection.mutable.{ DoubleLinkedList => DLL }
 
 /* heavy hitters algo described in https://www.cs.ucsb.edu/research/tech_reports/reports/2005-23.pdf using a slightly modified data structure */
 trait StreamSummaryModule {
-  import scala.collection.mutable
-  import scala.collection.mutable.{ DoubleLinkedList => DLL }
 
   private def connect[A](xs: DLL[A], ys: DLL[A]) = {
     if (xs.isEmpty) {
@@ -127,11 +124,12 @@ def time(f: =>Unit) = { val t = System.currentTimeMillis; f; println((System.cur
 
 val as = Seq(1,1,1,2,1,2,3,4,1,4,4,4,4)
 
-val as = (0 to 10000000).view.map(_ => 1 + math.sqrt(util.Random.nextInt(1000000)).toInt + (if(util.Random.nextBoolean) 1 else -1))
+val as = (0 to 10000000).view.map(_ => 2 + math.sqrt(util.Random.nextInt(1000000)).toInt + (if(util.Random.nextBoolean) 1 else -1))
 
 time({
 val x = StreamSummary.fromData(1000, as)
 x.top(20).foreach(println)
+println(x.size)
  })
 
 time({
