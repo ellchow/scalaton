@@ -19,8 +19,8 @@ package scalaton.util
 import scalaz._
 import Scalaz._
 
-trait Tagging{
+trait TaggingModule {
  implicit class Tagger[A](a: A){ def tag[T]: A @@ T = Tag(a) }
 }
 
-object tag extends Tagging
+object tag extends TaggingModule
