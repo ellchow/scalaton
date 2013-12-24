@@ -1,7 +1,22 @@
+/*
+ Copyright 2013 Elliot Chow
+
+ Licensed under the Apache License, Version 2.0 (the "License")
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+
 package scalaton.util.parsing
 
 import scala.util.parsing.combinator._
-import scalaz._, Scalaz._
 
 trait CsvParser extends RegexParsers {
   override val skipWhitespace = false
@@ -30,16 +45,19 @@ trait CsvParser extends RegexParsers {
 
   def header = row
 
-  def rows: Parser[List[List[String]]] = repsep(row, rowDelimiter)
+  def rows(hdr: List[String]): Parser[List[Map[String,String]]] = {
+    val expectedSize = hdr.size
 
-  def fromString: Parser[List[ValidationNel[String,Map[String,String]]]] = for{
-    hdr <- header <~ rowDelimiter
-    size = hdr.size
-    rs <- rows
-  } yield rs.zipWithIndex.map{ case (r, i) =>
-      if(r.size != size) s"invalid number of fields at line $i (got ${r.size}, expected $size)".failureNel
-      else (hdr zip r toMap).successNel
+    repsep(row flatMap { r =>
+      if(r.size != expectedSize) failure(s"invalid number of fields (got ${r.size}, expected $expectedSize)")
+      else success(hdr zip r toMap)
+    },
+      rowDelimiter)
   }
+  def fromString: Parser[List[Map[String,String]]] = for {
+    hdr <- header <~ rowDelimiter
+    rs <- rows(hdr)
+  } yield rs
 
   def parse(s: String) = parseAll(fromString, s)
 }
@@ -47,7 +65,7 @@ trait CsvParser extends RegexParsers {
 trait RequiredFields { this: CsvParser =>
   val required: Set[String]
 
-  override def header = row.flatMap{ xs =>
+  override def header = row flatMap { xs =>
     if((required -- xs).isEmpty) success(xs)
     else failure(s"missing fields: ${(required -- xs).mkString(",")}")
   }
