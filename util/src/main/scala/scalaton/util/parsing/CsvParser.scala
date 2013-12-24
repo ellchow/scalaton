@@ -49,7 +49,7 @@ trait CsvParser extends RegexParsers {
     val expectedSize = hdr.size
 
     repsep(row flatMap { r =>
-      if(r.size != expectedSize) failure(s"invalid number of fields (got ${r.size}, expected $expectedSize)")
+      if(r.size != expectedSize) failure(s"invalid number of fields $r (got ${r.size}, expected $expectedSize)")
       else success(hdr zip r toMap)
     },
       rowDelimiter)
