@@ -40,3 +40,12 @@ trait CsvParser extends RegexParsers {
 
   def parse(s: String) = parseAll(fromString, s)
 }
+
+trait RequiredFields { this: CsvParser =>
+  val required: Set[String]
+
+  override def header = row.flatMap{ xs =>
+    if((required -- xs).isEmpty) success(xs)
+    else failure(s"missing fields: ${(required -- xs).mkString(",")}")
+  }
+}
