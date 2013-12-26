@@ -32,22 +32,13 @@ object Dependencies{
   )
 
   val util = common ++ Seq(
-    "org.apache.commons" % "commons-io" % "1.3.2",
-    "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.3.2"
+    "org.apache.commons" % "commons-io" % "1.3.2"
   )
 
   val aggregate = common ++ Seq(
     "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6",
     "org.apache.commons" % "commons-math3" % "3.2",
-    "org.la4j" % "la4j" % "0.4.5",
     "org.spire-math" %% "spire" % "0.6.0"
   )
 
-  val doo = common ++ Seq(
-    "com.nicta" %% "scoobi" % "0.8.0-cdh3-SNAPSHOT",
-    "org.scala-lang" %% "scala-pickling" % "0.8.0-SNAPSHOT",
-    "org.specs2" %% "specs2" % "2.3" % "test"
-  )
-
 }
-

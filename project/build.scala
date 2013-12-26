@@ -7,7 +7,7 @@ import AssemblyKeys._
 object ProjectBuild extends Build{
   /** Settings **/
   val Organization = "com.github.ellchow"
-  val Version      = "0.1.1-SNAPSHOT"
+  val Version      = "0.1.2-SNAPSHOT"
   val ScalaVersion = "2.10.2"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
@@ -116,15 +116,6 @@ object ProjectBuild extends Build{
     )
   ) dependsOn(utilProject)
 
-  lazy val dooProject = Project (
-    "scalaton-doo",
-    file ("doo"),
-    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
-      libraryDependencies ++= Dependencies.doo,
-      scalacOptions := compilerOptions
-    )
-  ) dependsOn(utilProject, aggregateProject)
-
   lazy val root = Project(
     "scalaton",
     file("."),
@@ -132,13 +123,7 @@ object ProjectBuild extends Build{
       scalacOptions := compilerOptions,
       publishArtifact := false
     )
-  ) aggregate(utilProject, aggregateProject, dooProject)
+  ) aggregate(utilProject, aggregateProject)
 
 
 }
-
-
-
-
-
-
