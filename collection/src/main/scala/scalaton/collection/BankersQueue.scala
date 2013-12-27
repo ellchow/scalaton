@@ -23,6 +23,7 @@ import scala.collection.mutable
 
 class BankersQueue[+A] private (private val f: Stream[A], private val fn: Int, private val r: Stream[A], private val rn: Int)
     extends LinearSeq[A] with GenericTraversableTemplate[A, BankersQueue] with LinearSeqLike[A, BankersQueue[A]] {
+
   override val companion = BankersQueue
 
   def length = fn + rn
@@ -37,26 +38,28 @@ class BankersQueue[+A] private (private val f: Stream[A], private val fn: Int, p
     }
   }
 
-  def enqueue[B >: A](elem: B) = rebalance(new BankersQueue(f, fn, elem #:: r, rn + 1))
+  def enqueue[B >: A](elem: B) = rebalance(new BankersQueue(f, fn, elem #:: (r: Stream[B]), rn + 1))
 
   def dequeue: (A, BankersQueue[A]) = f match {
-    case fh #:: ft => (fh, rebalance(new BankersQueue(ft, fn - 1, r, rn)))
+    case fh #:: ft =>
+      (fh, rebalance(new BankersQueue(ft, fn - 1, r, rn)))
     case _ => throw new NoSuchElementException("dequeue on empty queue")
   }
 
   override def iterator = (f ++ r.reverse).iterator
 
-  private def rebalance(q) = if(fn < rn) {
-    val m = rn - fn
-    new BankersQueue(f.)
-  } else {
-    this
-  }
+  private def rebalance[B](bq: BankersQueue[B]) =
+    if(bq.fn < bq.rn) {
+      val m = rn - fn
+      new BankersQueue(bq.f ++ bq.r.reverse, bq.fn + bq.rn, Stream.empty, 0)
+    } else {
+      bq
+    }
 
 }
 
-
 object BankersQueue extends SeqFactory[BankersQueue] {
+
   implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, BankersQueue[A]] = new GenericCanBuildFrom[A]
 
   def newBuilder[A]: mutable.Builder[A, BankersQueue[A]] =
@@ -65,4 +68,5 @@ object BankersQueue extends SeqFactory[BankersQueue] {
   override def empty[A] = new BankersQueue[A](Stream.empty, 0, Stream.empty, 0)
 
   override def apply[A](xs: A*) = new BankersQueue(xs.reverse.toStream, 0, Stream.empty, 0)
+
 }
