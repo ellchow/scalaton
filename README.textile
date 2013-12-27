@@ -7,9 +7,8 @@ hosted on sonatype
 <pre>
 
 libraryDependencies ++= Seq(
-  "com.github.ellchow" %% "scalaton-util" % "0.1-SNAPSHOT",
-  "com.github.ellchow" %% "scalaton-aggregate" % "0.1-SNAPSHOT",
-  "com.github.ellchow" %% "scalaton-doo" % "0.1-SNAPSHOT"
+  "com.github.ellchow" %% "scalaton-util" % "0.1.2-SNAPSHOT",
+  "com.github.ellchow" %% "scalaton-aggregate" % "0.1.2-SNAPSHOT"
 )
 
 </pre>
@@ -22,6 +21,3 @@ h2. aggregate
 
 aggregation/approximate/streaming algorithms
 
-h2. doo
-
-helpers on top of scoobi (hadoop dsl)
