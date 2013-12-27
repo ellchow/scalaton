@@ -35,8 +35,7 @@ object Dependencies{
     "org.apache.commons" % "commons-io" % "1.3.2"
   )
 
-  val fpstruct = common ++ Seq()
-
+  val collection = common ++ Seq()
 
   val aggregate = common ++ Seq(
     "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6",

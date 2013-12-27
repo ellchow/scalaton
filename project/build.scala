@@ -107,11 +107,11 @@ object ProjectBuild extends Build{
     )
   )
 
-  lazy val fpstructProject = Project (
-    "scalaton-fpstruct",
-    file ("fpstruct"),
+  lazy val collectionProject = Project (
+    "scalaton-collection",
+    file ("collection"),
     settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
-      libraryDependencies ++= Dependencies.fpstruct,
+      libraryDependencies ++= Dependencies.collection,
       scalacOptions := compilerOptions
     )
   )
@@ -132,7 +132,7 @@ object ProjectBuild extends Build{
       scalacOptions := compilerOptions,
       publishArtifact := false
     )
-  ) aggregate(utilProject, aggregateProject, fpstructProject)
+  ) aggregate(utilProject, aggregateProject, collectionProject)
 
 
 }
