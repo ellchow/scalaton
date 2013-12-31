@@ -61,6 +61,14 @@ class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A,
     case a :: as => suffixes.get(a).map(_.withPrefix(as)).getOrElse(empty)
   }
 
+  def removePrefix(prefix: List[A]): Trie[A,B] = prefix match {
+    case Nil => empty
+
+    case a :: as if suffixes.contains(a) => new Trie(value, suffixes.updated(a, suffixes(a).removePrefix(as)))
+
+    case _ => this
+  }
+
 }
 
 object Trie {
