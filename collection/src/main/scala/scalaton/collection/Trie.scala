@@ -17,6 +17,8 @@
 package scalaton.collection.immutable
 
 import scala.collection._
+import scala.collection.generic._
+import scala.collection.mutable
 
 class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A, Trie[A,B]]) extends Map[List[A], B] with MapLike[List[A], B, Trie[A,B]] {
 
@@ -51,6 +53,7 @@ class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A,
   def iterator = ((for {
     (prefix, t) <- suffixes
     (suffix, value) <- t
+    _ = println((suffix, value))
   } yield (prefix :: suffix, value)) ++ value.map(v => Map(Nil -> v)).getOrElse(Map.empty)).iterator
 
   def withPrefix(prefix: List[A]): Trie[A,B] = prefix match {
@@ -61,6 +64,21 @@ class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A,
 }
 
 object Trie {
+  def empty[A,B] = new Trie(None, Map.empty[A,Trie[A,B]])
+
+  def apply[A,B](kvs: (List[A], B)*): Trie[A,B] =
+    kvs.foldLeft(empty[A,B])((t, kv) => t + kv)
+
+  def newBuilder[A,B]: mutable.Builder[(List[A], B), Trie[A,B]] =
+    new mutable.MapBuilder[List[A], B, Trie[A,B]](empty[A,B])
+
+  implicit def canBuildFrom[A,B]
+      : CanBuildFrom[Trie[_,_], (List[A], B), Trie[A,B]] =
+    new CanBuildFrom[Trie[_,_], (List[A], B), Trie[A,B]] {
+      def apply(from: Trie[_,_]) = newBuilder[A,B]
+      def apply() = newBuilder[A,B]
+    }
+
   def fromList[A,B](as: List[A], v: B): Trie[A,B] = as match {
     case Nil => new Trie(Some(v), Map.empty)
     case a :: rest => new Trie(None, Map(a -> fromList(rest, v)))
