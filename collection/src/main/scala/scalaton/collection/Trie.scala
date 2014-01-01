@@ -50,11 +50,14 @@ class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A,
     case _ => None
   }
 
-  def iterator = ((for {
-    (prefix, t) <- suffixes
-    (suffix, value) <- t
-    _ = (suffix, value) // FIXME: removing this leads to stack overflow??
-  } yield (prefix :: suffix, value)) ++ value.map(v => Map(Nil -> v)).getOrElse(Map.empty)).iterator
+  def iterator = {
+    val rest = for {
+      (prefix, t) <- suffixes
+      (suffix, v) <- t.toSeq
+    } yield (prefix :: suffix, v)
+
+    value.map(v => Nil -> v).iterator ++ rest.iterator
+  }
 
   def withPrefix(prefix: List[A]): Trie[A,B] = prefix match {
     case Nil => this
