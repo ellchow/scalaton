@@ -63,19 +63,16 @@ class TrieSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
               m = m + (k -> v)
               t = t + (k -> v)
 
-              // if(m.toSet == t.toSet) 0 else 1
-              0
-
+              if(m.toSet == t.toSet) 0 else 1
             case Remove(k) =>
               m = m - k
               t = t - k
 
-              // if(m.toSet == t.toSet) 0 else 1
-              0
+              if(m.toSet == t.toSet) 0 else 1
           }
         }
 
-        (actual.sum + (if (m == t) 0 else 1)) should be(0)
+        actual.sum should be(0)
       }
     }
   }
