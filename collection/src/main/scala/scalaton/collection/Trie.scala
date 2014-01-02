@@ -35,7 +35,7 @@ class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A,
   }
 
   def -(key: List[A]) = key match {
-    case Nil => this
+    case Nil => new Trie(None, suffixes)
 
     case prefix :: rest =>
       if(suffixes.contains(prefix))
@@ -53,7 +53,8 @@ class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A,
   def iterator = {
     val rest = for {
       (prefix, t) <- suffixes
-      (suffix, v) <- t.toSeq
+      (suffix, v) <- t
+      _ = (suffix, v)
     } yield (prefix :: suffix, v)
 
     value.map(v => Nil -> v).iterator ++ rest.iterator
