@@ -36,6 +36,15 @@ sealed abstract class Heap[A] extends Iterable[A] with GenericOrderedTraversable
 
   def merge(that: Heap[A]): Heap[A]
 
+  def sorted: Seq[A] = sortedStream
+
+  private[immutable] def sortedStream: Stream[A] = this match {
+    case HeapEmpty() => Stream.empty
+    case t: HeapNode[A] =>
+      val (next, rest) = this.removeMin
+      next #:: rest.sortedStream
+  }
+
 }
 
 case class HeapNode[A](val min: A, override val size: Int, children: Vector[Heap[A]])(implicit protected[this] val ord: Ordering[A]) extends Heap[A] {
@@ -86,9 +95,15 @@ case class HeapEmpty[A](implicit ord: Ordering[A]) extends Heap[A] {
 
 object Heap extends GenericOrderedCompanion[Heap] {
 
-  override def apply[A : Ordering](xs: A*) = xs.foldLeft(empty[A])((h, x) => h + x)
-
   override def empty[A : Ordering]: Heap[A] = HeapEmpty[A]()
+
+  override def apply[A : Ordering](xs: A*) = apply(xs)
+
+  def apply[A : Ordering](xs: Iterable[A]) = fromIterable(xs)
+
+  def fromIterable[A : Ordering](xs: Iterable[A]) = xs.foldLeft(empty[A])((h, x) => h + x)
+
+  def heapsort[A : Ordering](xs: Iterable[A]) = fromIterable(xs: Iterable[A]).sorted
 
   def newBuilder[A : Ordering]: mutable.Builder[A, Heap[A]] =
     new mutable.ListBuffer[A] mapResult { xs => Heap(xs: _*) }
@@ -99,19 +114,5 @@ object Heap extends GenericOrderedCompanion[Heap] {
       def apply(from: Heap[_]) = newBuilder[A]
       def apply() = newBuilder[A]
     }
-
-  def heapsort[A : Ordering](xs: Iterable[A]) = {
-    var h = xs.foldLeft(empty[A])((hh, x) => hh + x)
-    var sorted = Vector.empty[A]
-    while (h.nonEmpty) {
-      val (next, hh) = h.removeMin
-
-      sorted = sorted :+ next
-      h = hh
-    }
-
-    sorted
-  }
-
 
 }
