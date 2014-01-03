@@ -47,7 +47,7 @@ case class HeapNode[A](val min: A, override val size: Int, children: Vector[Heap
     val h = if (size == 1) {
       HeapEmpty()
     } else {
-      val paired = children.grouped(2).map{ hs => if(hs.size == 2) hs(0).merge(hs(1)) else hs(0) }.toSeq
+      val paired = children.grouped(2).map{ hs => if (hs.size == 2) hs(0).merge(hs(1)) else hs(0) }.toSeq
       paired.reverse.foldLeft(HeapEmpty[A](): Heap[A]){ case (h, hh) => h.merge(hh)  }
     }
 
@@ -57,7 +57,7 @@ case class HeapNode[A](val min: A, override val size: Int, children: Vector[Heap
   def merge(that: Heap[A]): Heap[A] = that match {
     case HeapEmpty() => this
 
-    case that: HeapNode[A] => if(ord.lt(this.min,that.min)) this.linkToLeft(that) else that.linkToLeft(this)
+    case that: HeapNode[A] => if (ord.lt(this.min,that.min)) this.linkToLeft(that) else that.linkToLeft(this)
   }
 
   override def isEmpty = false
@@ -99,5 +99,19 @@ object Heap extends GenericOrderedCompanion[Heap] {
       def apply(from: Heap[_]) = newBuilder[A]
       def apply() = newBuilder[A]
     }
+
+  def heapsort[A : Ordering](xs: Iterable[A]) = {
+    var h = xs.foldLeft(empty[A])((hh, x) => hh + x)
+    var sorted = Vector.empty[A]
+    while (h.nonEmpty) {
+      val (next, hh) = h.removeMin
+
+      sorted = sorted :+ next
+      h = hh
+    }
+
+    sorted
+  }
+
 
 }
