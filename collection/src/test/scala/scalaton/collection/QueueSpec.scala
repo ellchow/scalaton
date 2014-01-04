@@ -20,22 +20,22 @@ import org.scalacheck._
 import org.scalatest._
 import org.scalatest.matchers._
 import org.scalatest.prop._
-import scala.collection.immutable.Queue
+import scala.collection.immutable.{ Queue => ScalaQueue }
 import scala.util.{ Try, Success, Failure }
 
-class BankersQueueSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+class QueueSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   behavior of "banker's queue"
 
   sealed trait QueueOp[+A]
   case class Enqueue[+A](elem: A) extends QueueOp[A]
   case object Dequeue extends QueueOp[Nothing]
 
-  def exec[A](q: BankersQueue[A], op: QueueOp[A]) = op match {
+  def exec[A](q: Queue[A], op: QueueOp[A]) = op match {
     case Enqueue(elem) => ((), q.enqueue(elem))
     case Dequeue => q.dequeue
   }
 
-  def exec[A](q: Queue[A], op: QueueOp[A]) = op match {
+  def exec[A](q: ScalaQueue[A], op: QueueOp[A]) = op match {
     case Enqueue(elem) => ((), q.enqueue(elem))
     case Dequeue => q.dequeue
   }
@@ -50,8 +50,8 @@ class BankersQueueSpec extends FlatSpec with Matchers with GeneratorDrivenProper
 
     forAll {
       (queueOps: List[QueueOp[Int]]) => {
-        var bq: (Any, BankersQueue[Int]) = ((), BankersQueue.empty)
-        var qq: (Any, Queue[Int]) = ((), Queue.empty)
+        var bq: (Any, Queue[Int]) = ((), Queue.empty)
+        var qq: (Any, ScalaQueue[Int]) = ((), ScalaQueue.empty)
 
         val actual = queueOps.map{ op =>
           val tryb = Try(exec(bq._2, op))

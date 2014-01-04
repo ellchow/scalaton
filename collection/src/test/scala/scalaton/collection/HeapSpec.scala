@@ -20,7 +20,6 @@ import org.scalacheck._
 import org.scalatest._
 import org.scalatest.matchers._
 import org.scalatest.prop._
-import scala.collection.immutable.Queue
 import scala.util.{ Try, Success, Failure }
 
 class HeapSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {

@@ -21,10 +21,12 @@ import scala.collection.immutable._
 import scala.collection.LinearSeqLike
 import scala.collection.mutable
 
-class BankersQueue[+A] private (private val f: Stream[A], private val fn: Int, private val r: Stream[A], private val rn: Int)
-    extends LinearSeq[A] with GenericTraversableTemplate[A, BankersQueue] with LinearSeqLike[A, BankersQueue[A]] {
 
-  override val companion = BankersQueue
+/* Banker's Queue implementation */
+class Queue[+A] private (private val f: Stream[A], private val fn: Int, private val r: Stream[A], private val rn: Int)
+    extends LinearSeq[A] with GenericTraversableTemplate[A, Queue] with LinearSeqLike[A, Queue[A]] {
+
+  override val companion = Queue
 
   def length = fn + rn
 
@@ -38,35 +40,35 @@ class BankersQueue[+A] private (private val f: Stream[A], private val fn: Int, p
     }
   }
 
-  def enqueue[B >: A](elem: B) = rebalance(new BankersQueue(f, fn, elem #:: (r: Stream[B]), rn + 1))
+  def enqueue[B >: A](elem: B) = rebalance(new Queue(f, fn, elem #:: (r: Stream[B]), rn + 1))
 
-  def dequeue: (A, BankersQueue[A]) = f match {
+  def dequeue: (A, Queue[A]) = f match {
     case fh #:: ft =>
-      (fh, rebalance(new BankersQueue(ft, fn - 1, r, rn)))
+      (fh, rebalance(new Queue(ft, fn - 1, r, rn)))
     case _ => throw new NoSuchElementException("dequeue on empty queue")
   }
 
   override def iterator = (f ++ r.reverse).iterator
 
-  private def rebalance[B](bq: BankersQueue[B]) =
+  private def rebalance[B](bq: Queue[B]) =
     if(bq.fn < bq.rn) {
       val m = rn - fn
-      new BankersQueue(bq.f ++ bq.r.reverse, bq.fn + bq.rn, Stream.empty, 0)
+      new Queue(bq.f ++ bq.r.reverse, bq.fn + bq.rn, Stream.empty, 0)
     } else {
       bq
     }
 
 }
 
-object BankersQueue extends SeqFactory[BankersQueue] {
+object Queue extends SeqFactory[Queue] {
 
-  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, BankersQueue[A]] = new GenericCanBuildFrom[A]
+  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, Queue[A]] = new GenericCanBuildFrom[A]
 
-  def newBuilder[A]: mutable.Builder[A, BankersQueue[A]] =
-    new mutable.ListBuffer[A] mapResult { x => new BankersQueue(x.reverse.toStream, 0, Stream.empty, 0) }
+  def newBuilder[A]: mutable.Builder[A, Queue[A]] =
+    new mutable.ListBuffer[A] mapResult { x => new Queue(x.reverse.toStream, 0, Stream.empty, 0) }
 
-  override def empty[A] = new BankersQueue[A](Stream.empty, 0, Stream.empty, 0)
+  override def empty[A] = new Queue[A](Stream.empty, 0, Stream.empty, 0)
 
-  override def apply[A](xs: A*) = new BankersQueue(xs.reverse.toStream, 0, Stream.empty, 0)
+  override def apply[A](xs: A*) = new Queue(xs.reverse.toStream, 0, Stream.empty, 0)
 
 }
