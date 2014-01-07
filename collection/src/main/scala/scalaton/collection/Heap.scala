@@ -97,9 +97,7 @@ object Heap extends GenericOrderedCompanion[Heap] {
 
   override def empty[A : Ordering]: Heap[A] = HeapEmpty[A]()
 
-  override def apply[A : Ordering](xs: A*) = apply(xs)
-
-  def apply[A : Ordering](xs: Iterable[A]) = fromIterable(xs)
+  override def apply[A : Ordering](xs: A*) = fromIterable(xs)
 
   def fromIterable[A : Ordering](xs: Iterable[A]) = xs.foldLeft(empty[A])((h, x) => h + x)
 
