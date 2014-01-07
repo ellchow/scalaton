@@ -28,12 +28,16 @@ sealed abstract class Heap[A] extends Iterable[A] with GenericOrderedTraversable
 
   override def newBuilder: mutable.Builder[A, Heap[A]] = Heap.newBuilder[A]
 
+  /* insert element into heap (O(1)) */
   def +(elem: A): Heap[A]
 
+  /* read the min value (O(1)) */
   def min: A
 
+  /* read the min value and return the heap after removing the min (O(log n)) */
   def removeMin: (A, Heap[A])
 
+  /* merge 2 heaps together (O(1)) */
   def merge(that: Heap[A]): Heap[A]
 
   def sorted: Seq[A] = sortedStream
