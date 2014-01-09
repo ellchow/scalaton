@@ -16,18 +16,20 @@ limitations under the License.
 
 package scalaton.aggregate
 
-import scalaz._
+import scalaton.collection.immutable.Heap
+
+import scalaz.{ Heap => _, Ordering => _, _ }
 import Scalaz._
 
 import spire.math.Numeric
 
 trait TopKModule{
-  case class TopKData[A : Order](val k: Int, heap: Heap[A]){
+  case class TopKData[A : Ordering](val k: Int, heap: Heap[A]){
     def isCompatibleWith(that: TopKData[A]) =
       this.k === that.k
 
     def insert(a: A): TopKData[A] = {
-      val h = heap.insert(a)
+      val h = heap + a
 
       TopKData(k, if(h.size gt k) h.drop(1) else h)
     }
@@ -35,15 +37,15 @@ trait TopKModule{
     def merge(that: TopKData[A]) = {
       require(isCompatibleWith(that))
 
-      val h = this.heap |+| that.heap
+      val h = this.heap merge that.heap
 
       TopKData(k, if(h.size gt k) h.drop(h.size - k) else h)
     }
   }
 
   object TopKData{
-    def fromData[A : Order](k: Int)(as: Iterable[A]): TopKData[A] =
-      as.foldLeft(TopKData(k, Heap.Empty[A]))((t, a) => t.insert(a))
+    def fromData[A : Ordering](k: Int)(as: Iterable[A]): TopKData[A] =
+      as.foldLeft(TopKData(k, Heap.empty[A]))((t, a) => t.insert(a))
   }
 
   implicit def topKSemigroup[A]: Semigroup[TopKData[A]] = new Semigroup[TopKData[A]]{

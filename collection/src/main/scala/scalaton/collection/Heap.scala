@@ -40,6 +40,8 @@ sealed abstract class Heap[A] extends Iterable[A] with GenericOrderedTraversable
   /* merge 2 heaps together (O(1)) */
   def merge(that: Heap[A]): Heap[A]
 
+  override def iterator = sortedStream.iterator
+
   def sorted: Seq[A] = sortedStream
 
   private[immutable] def sortedStream: Stream[A] = this match {
@@ -77,8 +79,6 @@ case class HeapNode[A](val min: A, override val size: Int, children: Vector[Heap
 
   private[immutable] def linkToLeft(that: Heap[A]) = this.copy(size = this.size + that.size, children = that +: this.children)
 
-  def iterator = children.foldLeft(Iterator(min))((i, h) => i ++ h.iterator)
-
 }
 
 case class HeapEmpty[A](implicit ord: Ordering[A]) extends Heap[A] {
@@ -90,7 +90,7 @@ case class HeapEmpty[A](implicit ord: Ordering[A]) extends Heap[A] {
 
   def merge(that: Heap[A]): Heap[A] = that
 
-  def iterator = Iterator.empty
+  override def iterator = Iterator.empty
 
   override def isEmpty = true
 

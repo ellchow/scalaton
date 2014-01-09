@@ -123,7 +123,7 @@ object ProjectBuild extends Build{
       libraryDependencies ++= Dependencies.aggregate,
       scalacOptions := compilerOptions
     )
-  ) dependsOn(utilProject)
+  ) dependsOn(utilProject, collectionProject)
 
   lazy val root = Project(
     "scalaton",
