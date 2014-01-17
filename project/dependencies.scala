@@ -18,9 +18,7 @@ object Dependencies{
 
   val common = Seq(
     "org.scalaz" % "scalaz-core_2.10" % "7.0.4",
-    "org.scalaz" % "scalaz-effect_2.10" % "7.0.4",
 
-    "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full,
 
     "com.github.nscala-time" %% "nscala-time" % "0.2.0",
 
@@ -32,7 +30,9 @@ object Dependencies{
   )
 
   val util = common ++ Seq(
-    "org.apache.commons" % "commons-io" % "1.3.2"
+    "org.scalaz" % "scalaz-effect_2.10" % "7.0.4",
+    "org.apache.commons" % "commons-io" % "1.3.2",
+    "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full
   )
 
   val collection = common ++ Seq()
