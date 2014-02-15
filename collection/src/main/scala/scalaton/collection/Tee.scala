@@ -53,6 +53,6 @@ object Tee {
 
   }
 
-  implicit def toTeeId[A](iter: Iterator[A]) = new Tee[A,A](iter.flatMap{ a => Seq(Right(a), Left(a)) })
+  implicit def toTeeId[A](iter: Iterator[A]) = new Tee[A,A](iter.flatMap(a => Seq(Right(a), Left(a))))
 
 }
