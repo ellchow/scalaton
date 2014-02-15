@@ -72,4 +72,8 @@ object ExternalSort extends Logging {
 
     merge(is)
   }
+
+  def sort[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: File = mkTempDir()): Iterator[A] =
+    sortBy(xs, groupSize, tmp)(identity)
+
 }
