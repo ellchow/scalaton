@@ -18,4 +18,7 @@ package object util {
     else
       throw new Exception(s"failed to create temp dir in $base after $attempts attempts")
   }
+
+  def mkTemp(base: String = System.getProperty("java.io.tmpdir"), attempts: Int = 1000) =
+    new java.io.File(mkTempDir(base, attempts), "file")
 }
