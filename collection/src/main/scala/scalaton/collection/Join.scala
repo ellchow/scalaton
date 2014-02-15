@@ -123,7 +123,7 @@ object Join {
       for {
         (k, (as, bs)) <- left.coGroup(right)
         oa <- if (as.nonEmpty) as.map(a => Some(a)) else Seq(None)
-        ob <-if (bs.nonEmpty) bs.map(b => Some(b)) else Seq(None)
+        ob <- if (bs.nonEmpty) bs.map(b => Some(b)) else Seq(None)
       } yield (k, (oa, ob))
 
     def rightOuterJoin[B](right: Iterator[(K, B)]): Iterator[(K,(Option[A],B))] =
