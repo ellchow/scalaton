@@ -1,0 +1,64 @@
+package scalaton.collection
+
+import java.io._
+import argonaut._, Argonaut._
+import com.typesafe.scalalogging.slf4j._
+import scalaton.util._
+import scala.collection.mutable.PriorityQueue
+
+object ExternalSort extends Logging {
+
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: File = mkTempDir())(key: A => K): Iterator[A] = {
+    val chunks = xs.grouped(groupSize)
+
+    val sortedChunks = chunks.zipWithIndex.map{ case (chunk, i) =>
+      val s = chunk.sortBy(key)
+
+      (s, i)
+    }
+
+    val handles = sortedChunks.map { case (chunk, i) =>
+      val out = new File(tmp, i.toString)
+      val w = new BufferedWriter(new FileWriter(out))
+
+      try {
+        chunk.foreach{ x => w.write(x.asJson.toString); w.newLine }
+      } finally {
+        w.close()
+      }
+
+      out
+    }.toVector
+
+    def merge(iters: Vector[Iterator[A]]) = {
+      implicit def kbOrdering[B] = new Ordering[(K,B)] {
+        def compare(x: (K,B), y: (K,B)) = implicitly[Ordering[K]].reverse.compare(x._1, y._1)
+      }
+
+      def pop(iter: Iterator[A]) = if (iter.hasNext) Some((iter.next, iter)) else None
+
+      new Iterator[A] {
+        private val q = PriorityQueue.empty[(K, (A, Iterator[A]))]
+
+        iters.foreach(i => pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) })
+
+        def hasNext = q.nonEmpty
+
+        def next = {
+          val (_, (a, i)) = q.dequeue()
+          pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) }
+          a
+        }
+      }
+    }
+
+    val is = handles.map{ f =>
+      val inp = scala.io.Source.fromInputStream(new FileInputStream(f))
+      inp.getLines.map{ ln =>
+        ln.decodeEither[A].fold(s => throw new Exception(s"failed to deserialize ($s)"), identity)
+      }
+    }
+
+    merge(is)
+  }
+}
