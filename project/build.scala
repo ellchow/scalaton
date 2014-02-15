@@ -114,7 +114,7 @@ object ProjectBuild extends Build{
       libraryDependencies ++= Dependencies.collection,
       scalacOptions := compilerOptions
     )
-  )
+  ) dependsOn(utilProject)
 
   lazy val aggregateProject = Project (
     "scalaton-aggregate",

@@ -11,14 +11,15 @@ object Dependencies{
 
     "conjars" at "http://conjars.org/repo",
 
+    "scalaz bintray releases" at "http://dl.bintray.com/scalaz/releases",
+
     "spray io" at "http://repo.spray.io/",
 
     "cloudera" at "https://repository.cloudera.com/content/repositories/releases/"
   )
 
   val common = Seq(
-    "org.scalaz" % "scalaz-core_2.10" % "7.0.4",
-
+    "org.scalaz" % "scalaz-core_2.10" % "7.0.5",
 
     "com.github.nscala-time" %% "nscala-time" % "0.2.0",
 
@@ -30,12 +31,15 @@ object Dependencies{
   )
 
   val util = common ++ Seq(
-    "org.scalaz" % "scalaz-effect_2.10" % "7.0.4",
+    "org.scalaz" % "scalaz-effect_2.10" % "7.0.5",
     "org.apache.commons" % "commons-io" % "1.3.2",
+    "io.argonaut" %% "argonaut" % "6.0.2",
     "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full
   )
 
-  val collection = common ++ Seq()
+  val collection = common ++ Seq(
+    "io.argonaut" %% "argonaut" % "6.0.2"
+  )
 
   val aggregate = common ++ Seq(
     "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6",
