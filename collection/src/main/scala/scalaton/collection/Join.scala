@@ -21,14 +21,18 @@ import scala.language.implicitConversions
 
 object Join {
   implicit class MapIteratorJoin[K : Ordering, A](left: Map[K, Seq[A]]) {
+    protected def elementsFor(k: K) =
+      left.get(k).getOrElse(Seq.empty)
+
     def innerJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,B))] = for {
       (k, b) <- right
-      a <- left.get(k).getOrElse(Seq.empty)
+      a <- elementsFor(k)
     } yield (k, (a, b))
   }
 
-  implicit class MapSingleIteratorJoin[K : Ordering, A](left1: Map[K, A]) {
-    private val left = left1.map{ case (k, v) => (k, Seq(v)) }
+  implicit class MapSingleIteratorJoin[K : Ordering, A](left: Map[K, A]) {
+    protected def elementsFor(k: K) =
+      left.get(k).toSeq
 
     def innerJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,B))] =
       left.innerJoin(right)
