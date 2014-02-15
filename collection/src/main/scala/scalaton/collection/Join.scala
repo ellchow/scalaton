@@ -94,7 +94,7 @@ object Join {
                   nextBs = readConsecutiveKeys(bufferedRight)
                   nxt
 
-                case _ => throw new Exception(s"${ord.toString}.compare is not returning valid values")
+                case _ => throw new Exception(s"${ord.getClass.getName}.compare is not returning valid values")
               }
 
             case (Some(ka), None) =>
