@@ -124,5 +124,13 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     }
   }
 
+  behavior of "ordered join"
+
+  it should "fail if collections are not sorted" in {
+    intercept[IllegalArgumentException] { Seq((1,1),(3,3),(2,2)).coGroup(Seq((1,1),(3,3),(5,5))).toList }
+    intercept[IllegalArgumentException] { Seq((1,1),(3,3),(5,5)).coGroup(Seq((1,1),(3,3),(2,2))).toList }
+  }
+
+
 
 }
