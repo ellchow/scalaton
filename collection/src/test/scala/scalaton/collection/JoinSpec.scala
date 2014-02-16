@@ -79,6 +79,14 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
 
   }
 
+  it should "return elements with keys in both collections" in {
+    val joined1 = Seq(1 -> 2, 2 -> 2, 2 -> 3, 3 -> 4).innerJoin(Seq(1 -> 5, 2 -> 6, 2 -> 7, 4 -> 8)).toList.sorted
+    joined1 should be(List((1, (2,5)), (2,(2,6)), (2,(2,7)), (2,(3,6)), (2,(3,7))))
+
+    val joined2 = Map(1 -> 2, 2 -> 2, 3 -> 3).innerJoin(Seq(1 -> 4, 2 -> 5, 2 -> 6, 4 -> 7)).toList.sorted
+    joined2 should be(List((1, (2,4)), (2,(2,5)), (2,(2,6))))
+  }
+
   it should "for hash-join, return all and only pairs of elements whose key is in both collections" in {
     forAll {
       (xs: Map[Int,String], ys: List[(Int, String)]) => {
@@ -101,7 +109,12 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
 
   behavior of "full outer join"
 
-  it should "return all pairs of elements with keys in both collections as (Some, Some) and elements with keys in only collection as (Some, None) or (None, Some)" in {
+  it should "return all pairs with keys in both collections or elements with keys in one collection" in {
+    val joined1 = Seq(1 -> 2, 2 -> 2, 2 -> 3, 3 -> 4).fullOuterJoin(Seq(1 -> 5, 2 -> 6, 2 -> 7, 4 -> 8)).toList.sorted
+    joined1 should be(List((1,(Some(2),Some(5))), (2,(Some(2),Some(6))), (2,(Some(2),Some(7))), (2,(Some(3),Some(6))), (2,(Some(3),Some(7))), (3,(Some(4),None)), (4,(None,Some(8)))))
+  }
+
+  it should "return all pairs of elements with keys in both collections as (Some, Some) and elements with keys in only one collection as (Some, None) or (None, Some)" in {
     forAll {
       (xs: List[(Int,String)], ys: List[(Int, String)]) => {
         val joined = xs.sorted.fullOuterJoin(ys.sorted).toList
