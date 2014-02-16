@@ -8,6 +8,7 @@ hosted on sonatype
 
 libraryDependencies ++= Seq(
   "com.github.ellchow" %% "scalaton-util" % "0.1.2-SNAPSHOT",
+  "com.github.ellchow" %% "scalaton-collection" % "0.1.2-SNAPSHOT",
   "com.github.ellchow" %% "scalaton-aggregate" % "0.1.2-SNAPSHOT"
 )
 
@@ -17,7 +18,10 @@ h2. util
 
 general utilities like Hashable typeclass, Enums, Url encoding/decoding
 
+h2. collection
+
+additional collections and functions on collections
+
 h2. aggregate
 
 aggregation/approximate/streaming algorithms
-
