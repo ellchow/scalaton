@@ -24,7 +24,7 @@ import scala.util.{ Try, Success, Failure }
 object Tee {
   /* writes left elements in the iterator to an output stream and emits the right values */
   implicit class Tee[T,O](iter: Iterator[Either[T,O]]) {
-    def tee(out: OutputStream, delim: Array[Byte])(ser: T => Array[Byte]): Iterator[O] =
+    def tee(out: OutputStream, ser: T => Array[Byte], delim: Array[Byte]): Iterator[O] =
       new Iterator[Either[T,O]] {
         def hasNext = {
           if (!iter.hasNext) out.close
@@ -46,15 +46,15 @@ object Tee {
         }
       }.collect{ case Right(o) => o }
 
-    def tee(out: OutputStream, delim: String = "\n")(ser: T => String): Iterator[O] =
-      tee(out, delim.getBytes)(ser.andThen(_.getBytes))
+    def tee(out: OutputStream, ser: T => String, delim: String = "\n"): Iterator[O] =
+      tee(out, ser.andThen(_.getBytes), delim.getBytes)
 
     def tee(out: OutputStream)(implicit t: EncodeJson[T]): Iterator[O] =
-      tee(out, "\n")(_.asJson.toString)
+      tee(out, (_: T).asJson.toString, "\n")
 
   }
 
-  /* conversion to tee everything to file while mirroring to output */
+  /* conversion to tee everything to file and forwarding incoming values to output */
   implicit def toTeeId[A](iter: Iterator[A]) = new Tee[A,A](iter.flatMap(a => Seq(Right(a), Left(a))))
 
   /* conversion to enable tee-ing \/ */
