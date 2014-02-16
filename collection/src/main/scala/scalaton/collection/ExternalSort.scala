@@ -24,6 +24,9 @@ import scala.collection.mutable.PriorityQueue
 
 object ExternalSort extends Logging {
 
+  /* external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
+     currently requires elements to have a json codec for serialization to file
+   */
   def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: File = mkTempDir())(key: A => K): Iterator[A] = {
     val chunks = xs.grouped(groupSize)
 

@@ -1,9 +1,6 @@
 import sbt._
 import Keys._
 
-import sbtassembly.Plugin._
-import AssemblyKeys._
-
 object ProjectBuild extends Build{
   /** Settings **/
   val Organization = "com.github.ellchow"
@@ -54,14 +51,6 @@ object ProjectBuild extends Build{
     )
   )
 
-  val customAssemblySettings = Seq(
-    mergeStrategy in assembly <<= (mergeStrategy in assembly) { old => {
-      case x =>
-        val oldstrat = old(x)
-        if (oldstrat == MergeStrategy.deduplicate) MergeStrategy.first else oldstrat
-    }}
-  )
-
   val compilerOptions = Seq(
     // "-Xlog-implicits",
     "-deprecation",
@@ -101,7 +90,7 @@ object ProjectBuild extends Build{
   lazy val utilProject = Project (
     "scalaton-util",
     file ("util"),
-    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+    settings = buildSettings ++ publishSettings ++ Seq(
       libraryDependencies ++= Dependencies.util,
       scalacOptions := compilerOptions
     )
@@ -110,7 +99,7 @@ object ProjectBuild extends Build{
   lazy val collectionProject = Project (
     "scalaton-collection",
     file ("collection"),
-    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+    settings = buildSettings ++ publishSettings ++ Seq(
       libraryDependencies ++= Dependencies.collection,
       scalacOptions := compilerOptions
     )
@@ -119,7 +108,7 @@ object ProjectBuild extends Build{
   lazy val aggregateProject = Project (
     "scalaton-aggregate",
     file ("aggregate"),
-    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+    settings = buildSettings ++ publishSettings ++ Seq(
       libraryDependencies ++= Dependencies.aggregate,
       scalacOptions := compilerOptions
     )
@@ -128,7 +117,7 @@ object ProjectBuild extends Build{
   lazy val root = Project(
     "scalaton",
     file("."),
-    settings = buildSettings ++ publishSettings ++ assemblySettings ++ customAssemblySettings ++ Seq(
+    settings = buildSettings ++ publishSettings ++ Seq(
       scalacOptions := compilerOptions,
       publishArtifact := false
     )

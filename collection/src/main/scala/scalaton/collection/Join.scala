@@ -20,25 +20,20 @@ import java.io._
 import scala.language.implicitConversions
 
 object Join {
-  implicit class MapIteratorJoin[K : Ordering, A](left: Map[K, Seq[A]]) {
-    protected def elementsFor(k: K) =
-      left.get(k).getOrElse(Seq.empty)
 
-    def innerJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,B))] = for {
-      (k, b) <- right
-      a <- elementsFor(k)
-    } yield (k, (a, b))
+  abstract class OuterJoin[K : Ordering, A] {
+
+    def fullOuterJoin[B](right: Iterator[(K, B)]): Iterator[(K,(Option[A],Option[B]))]
+
+    def rightOuterJoin[B](right: Iterator[(K, B)]): Iterator[(K,(Option[A],B))] =
+      fullOuterJoin(right).collect{ case (k, (oa, Some(b))) => (k, (oa, b)) }
+
+    def leftOuterJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,Option[B]))] =
+      fullOuterJoin(right).collect{ case (k, (Some(a), ob)) => (k, (a, ob)) }
   }
 
-  implicit class MapSingleIteratorJoin[K : Ordering, A](left: Map[K, A]) {
-    protected def elementsFor(k: K) =
-      left.get(k).toSeq
-
-    def innerJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,B))] =
-      left.innerJoin(right)
-  }
-
-  implicit class OrderedIteratorOrderedIteratorJoin[K : Ordering, A](left: Iterator[(K, A)]) {
+  /* joins on iterators, where both left and right inputs must be sorted */
+  implicit class OrderedIteratorOrderedIteratorJoin[K : Ordering, A](left: Iterator[(K, A)]) extends OuterJoin[K,A] {
 
     private def readConsecutiveKeys[T](bf: BufferedIterator[(K, T)]): (Option[K], Seq[T]) = {
       if(bf.nonEmpty) {
@@ -69,6 +64,9 @@ object Join {
         private val bufferedLeft = left.buffered
         private val bufferedRight = right.buffered
 
+        private var prevKA: Option[K] = None
+        private var prevKB: Option[K] = None
+
         private var nextAs = readConsecutiveKeys(bufferedLeft)
         private var nextBs = readConsecutiveKeys(bufferedRight)
 
@@ -77,6 +75,11 @@ object Join {
         def next = {
           val (kaOption, as) = nextAs
           val (kbOption, bs) = nextBs
+
+          prevKA.zip(kaOption).foreach{ case (k1, k2) => require(!implicitly[Ordering[K]].gt(k1, k2), s"left keys are not ordered ($k1, $k2)") }
+          prevKB.zip(kbOption).foreach{ case (k1, k2) => require(!implicitly[Ordering[K]].gt(k1, k2), s"right keys are not ordered ($k1, $k2)") }
+          prevKA = kaOption
+          prevKB = kbOption
 
           (kaOption, kbOption) match {
             case (Some(ka), Some(kb)) =>
@@ -129,9 +132,19 @@ object Join {
         oa <- if (as.nonEmpty) as.map(a => Some(a)) else Seq(None)
         ob <- if (bs.nonEmpty) bs.map(b => Some(b)) else Seq(None)
       } yield (k, (oa, ob))
+  }
 
-    def rightOuterJoin[B](right: Iterator[(K, B)]): Iterator[(K,(Option[A],B))] =
-      fullOuterJoin(right).collect{ case (k, (oa, Some(b))) => (k, (oa, b)) }
+  /* hash join implementation */
+  implicit class MapSingleIteratorJoin[K : Ordering, A](left: Map[K, A]) extends OuterJoin[K,A] {
+    def innerJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,B))] = for {
+      (k, b) <- right
+      a <- left.get(k)
+    } yield (k, (a, b))
+
+    /* requires right to be sorted */
+    def fullOuterJoin[B](right: Iterator[(K, B)]) =
+      left.toSeq.sortBy(_._1).iterator.fullOuterJoin(right)
 
   }
+
 }

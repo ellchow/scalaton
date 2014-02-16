@@ -21,7 +21,7 @@ import argonaut._, Argonaut._
 import java.io._
 
 object Tee {
-
+  /* writes left elements in the iterator to an output stream and emits the right values */
   implicit class Tee[T,O](iter: Iterator[Either[T,O]]) {
     def tee(out: OutputStream, delim: Array[Byte])(ser: T => Array[Byte]): Iterator[O] =
       new Iterator[Either[T,O]] {
@@ -53,6 +53,7 @@ object Tee {
 
   }
 
+  /* conversion to tee everything to file while mirroring to output */
   implicit def toTeeId[A](iter: Iterator[A]) = new Tee[A,A](iter.flatMap(a => Seq(Right(a), Left(a))))
 
 }
