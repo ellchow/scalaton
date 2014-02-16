@@ -5,7 +5,7 @@ object ProjectBuild extends Build{
   /** Settings **/
   val Organization = "com.github.ellchow"
   val Version      = "0.1.2-SNAPSHOT"
-  val ScalaVersion = "2.10.2"
+  val ScalaVersion = "2.10.3"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := Organization,
