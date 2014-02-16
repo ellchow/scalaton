@@ -16,13 +16,12 @@
 
 package scalaton.collection
 
-import java.io._
 import argonaut._, Argonaut._
-import com.typesafe.scalalogging.slf4j._
-import scalaton.util._
+import java.io._
 import scala.collection.mutable.PriorityQueue
+import scalaton.util._
 
-object ExternalSort extends Logging {
+object ExternalSort {
 
   /* external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
      currently requires elements to have a json codec for serialization to file

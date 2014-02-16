@@ -16,7 +16,6 @@
 
 package scalaton.collection
 
-import scalaz._, Scalaz._
 import argonaut._, Argonaut._
 import java.io._
 
