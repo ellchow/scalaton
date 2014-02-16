@@ -21,8 +21,6 @@ import scalaton.collection.immutable.Heap
 import scalaz.{ Heap => _, Ordering => _, _ }
 import Scalaz._
 
-import spire.math.Numeric
-
 trait TopKModule{
   case class TopKData[A : Ordering](val k: Int, heap: Heap[A]){
     def isCompatibleWith(that: TopKData[A]) =
