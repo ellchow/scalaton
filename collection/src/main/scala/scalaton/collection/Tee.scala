@@ -18,6 +18,7 @@ package scalaton.collection
 
 import argonaut._, Argonaut._
 import java.io._
+import scalaz._, Scalaz._
 
 object Tee {
   /* writes left elements in the iterator to an output stream and emits the right values */
@@ -54,5 +55,8 @@ object Tee {
 
   /* conversion to tee everything to file while mirroring to output */
   implicit def toTeeId[A](iter: Iterator[A]) = new Tee[A,A](iter.flatMap(a => Seq(Right(a), Left(a))))
+
+  /* conversion of \/ to Either */
+  implicit def teeScalazEither[T,O](iter: Iterator[\/[T,O]]) = new Tee[T,O](iter.map(_.toEither))
 
 }

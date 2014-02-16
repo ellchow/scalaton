@@ -21,6 +21,8 @@ import scala.language.implicitConversions
 
 object Join {
 
+  implicit def iterable2iterator[A](i: Iterable[A]) = i.iterator
+
   abstract class OuterJoin[K : Ordering, A] {
 
     def fullOuterJoin[B](right: Iterator[(K, B)]): Iterator[(K,(Option[A],Option[B]))]
@@ -134,6 +136,8 @@ object Join {
       } yield (k, (oa, ob))
   }
 
+  implicit def iterableToIteratorJoin[K : Ordering,A](i: Iterable[(K, A)]) = new OrderedIteratorOrderedIteratorJoin(i.iterator)
+
   /* hash join implementation */
   implicit class MapSingleIteratorJoin[K : Ordering, A](left: Map[K, A]) extends OuterJoin[K,A] {
     def innerJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,B))] = for {
@@ -146,5 +150,7 @@ object Join {
       left.toSeq.sortBy(_._1).iterator.fullOuterJoin(right)
 
   }
+
+
 
 }
