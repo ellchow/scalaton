@@ -19,6 +19,7 @@ package scalaton.collection
 import argonaut._, Argonaut._
 import java.io._
 import scalaz._, Scalaz._
+import scala.util.{ Try, Success, Failure }
 
 object Tee {
   /* writes left elements in the iterator to an output stream and emits the right values */
@@ -56,7 +57,15 @@ object Tee {
   /* conversion to tee everything to file while mirroring to output */
   implicit def toTeeId[A](iter: Iterator[A]) = new Tee[A,A](iter.flatMap(a => Seq(Right(a), Left(a))))
 
-  /* conversion of \/ to Either */
+  /* conversion to enable tee-ing \/ */
   implicit def teeScalazEither[T,O](iter: Iterator[\/[T,O]]) = new Tee[T,O](iter.map(_.toEither))
+
+  /* conversion to enable tee-ing Try */
+  implicit def teeTry[O](iter: Iterator[Try[O]]) = new Tee[Throwable,O](iter.map{ t =>
+    t match {
+      case Success(s) => Right(s)
+      case Failure(e) => Left(e)
+    }
+  })
 
 }
