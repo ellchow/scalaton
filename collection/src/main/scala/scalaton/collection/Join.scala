@@ -61,6 +61,33 @@ object Join {
       }
     }
 
+    def groupByKey =  new Iterator[(K,Seq[A])] {
+      private val bufferedLeft = left.buffered
+
+      private var prevKA: Option[K] = None
+
+      private var nextAs = readConsecutiveKeys(bufferedLeft)
+
+      def hasNext = nextAs._1.nonEmpty
+
+      def next = {
+        val (kaOption, as) = nextAs
+
+        prevKA.zip(kaOption).foreach{ case (k1, k2) => require(!implicitly[Ordering[K]].gt(k1, k2), s"left keys are not ordered ($k1, $k2)") }
+        prevKA = kaOption
+
+        kaOption match {
+          case Some(ka) =>
+            nextAs = readConsecutiveKeys(bufferedLeft)
+
+            (ka, as)
+
+          case None => throw new NoSuchElementException("next on empty iterator")
+        }
+      }
+
+    }
+
     def coGroup[B](right: Iterator[(K, B)]): Iterator[(K,(Seq[A],Seq[B]))] =
       new Iterator[(K,(Seq[A],Seq[B]))] {
         private val bufferedLeft = left.buffered
@@ -150,7 +177,5 @@ object Join {
       left.toSeq.sortBy(_._1).iterator.fullOuterJoin(right)
 
   }
-
-
 
 }
