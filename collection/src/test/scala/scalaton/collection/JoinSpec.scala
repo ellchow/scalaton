@@ -87,7 +87,7 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     joined2 should be(List((1, (2,4)), (2,(2,5)), (2,(2,6))))
   }
 
-  it should "for hash-join, return all and only pairs of elements whose key is in both collections" in {
+  it should """for hash-join, keys in joined should be a multiset containing all keys in L \/ R; for each k in L /\ R, count should be |{k} /\ L| x |{k} /\ R|""" in {
     forAll {
       (xs: Map[Int,String], ys: List[(Int, String)]) => {
         val joined = xs.innerJoin(ys).toList
@@ -97,7 +97,7 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     }
   }
 
-  it should "for sorted collection, return all and only pairs of elements whose key is in both collections" in {
+  it should """for sorted-join, keys in joined should be a multiset containing all keys in L \/ R; for each k in L /\ R, count should be |{k} /\ L| x |{k} /\ R|""" in {
     forAll {
       (xs: List[(Int,String)], ys: List[(Int, String)]) => {
         val joined = xs.sorted.innerJoin(ys.sorted).toList
@@ -109,12 +109,12 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
 
   behavior of "full outer join"
 
-  it should "return all pairs with keys in both collections or elements with keys in one collection" in {
+  it should "return all pairs of elements with keys in both collections as (Some, Some) and elements with keys in only one collection as (Some, None) or (None, Some)" in {
     val joined1 = Seq(1 -> 2, 2 -> 2, 2 -> 3, 3 -> 4).fullOuterJoin(Seq(1 -> 5, 2 -> 6, 2 -> 7, 4 -> 8)).toList.sorted
     joined1 should be(List((1,(Some(2),Some(5))), (2,(Some(2),Some(6))), (2,(Some(2),Some(7))), (2,(Some(3),Some(6))), (2,(Some(3),Some(7))), (3,(Some(4),None)), (4,(None,Some(8)))))
   }
 
-  it should "return all pairs of elements with keys in both collections as (Some, Some) and elements with keys in only one collection as (Some, None) or (None, Some)" in {
+  it should """keys in joined should be a multiset containing all keys in L \/ R; for each k in L /\ R, count should be |{k} /\ L| x |{k} /\ R|; for each k in L \ R or R \ L, count should be 1""" in {
     forAll {
       (xs: List[(Int,String)], ys: List[(Int, String)]) => {
         val joined = xs.sorted.fullOuterJoin(ys.sorted).toList
@@ -124,13 +124,11 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     }
   }
 
-  behavior of "ordered join"
+  behavior of "sorted join"
 
   it should "fail if collections are not sorted" in {
     intercept[IllegalArgumentException] { Seq((1,1),(3,3),(2,2)).coGroup(Seq((1,1),(3,3),(5,5))).toList }
     intercept[IllegalArgumentException] { Seq((1,1),(3,3),(5,5)).coGroup(Seq((1,1),(3,3),(2,2))).toList }
   }
-
-
 
 }
