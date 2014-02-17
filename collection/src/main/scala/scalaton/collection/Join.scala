@@ -61,7 +61,7 @@ object Join {
       }
     }
 
-    def groupByKey =  new Iterator[(K,Seq[A])] {
+    def groupByKey =  new Iterator[(K, Seq[A])] {
       private val bufferedLeft = left.buffered
 
       private var prevKA: Option[K] = None
@@ -85,68 +85,50 @@ object Join {
           case None => throw new NoSuchElementException("next on empty iterator")
         }
       }
-
     }
 
-    def coGroup[B](right: Iterator[(K, B)]): Iterator[(K,(Seq[A],Seq[B]))] =
+    def coGroup[B](right: Iterator[(K, B)]): Iterator[(K,(Seq[A],Seq[B]))] = {
+      val groupedL = left.groupByKey.buffered
+      val groupedR = right.groupByKey.buffered
+
       new Iterator[(K,(Seq[A],Seq[B]))] {
-        private val bufferedLeft = left.buffered
-        private val bufferedRight = right.buffered
-
-        private var prevKA: Option[K] = None
-        private var prevKB: Option[K] = None
-
-        private var nextAs = readConsecutiveKeys(bufferedLeft)
-        private var nextBs = readConsecutiveKeys(bufferedRight)
-
-        def hasNext = nextAs._1.nonEmpty || nextBs._1.nonEmpty
+        def hasNext = groupedL.hasNext || groupedR.hasNext
 
         def next = {
-          val (kaOption, as) = nextAs
-          val (kbOption, bs) = nextBs
+          val ol = if (groupedL.nonEmpty) Some(groupedL.head) else None
+          val or = if (groupedR.nonEmpty) Some(groupedR.head) else None
 
-          prevKA.zip(kaOption).foreach{ case (k1, k2) => require(!implicitly[Ordering[K]].gt(k1, k2), s"left keys are not ordered ($k1, $k2)") }
-          prevKB.zip(kbOption).foreach{ case (k1, k2) => require(!implicitly[Ordering[K]].gt(k1, k2), s"right keys are not ordered ($k1, $k2)") }
-          prevKA = kaOption
-          prevKB = kbOption
-
-          (kaOption, kbOption) match {
-            case (Some(ka), Some(kb)) =>
+          (ol, or) match {
+            case (Some((kl, l)), Some((kr, r))) =>
               val ord = implicitly[Ordering[K]]
-              ord.compare(ka, kb) match {
+              ord.compare(kl, kr) match {
                 case 0 =>
-                  val nxt = (ka, (as, bs))
-                  nextAs = readConsecutiveKeys(bufferedLeft)
-                  nextBs = readConsecutiveKeys(bufferedRight)
-                  nxt
+                  groupedL.next()
+                  groupedR.next()
+                  (kl, (l, r))
 
-                case x if x < 0 =>
-                  val nxt = (ka, (as, Vector.empty))
-                  nextAs = readConsecutiveKeys(bufferedLeft)
-                  nxt
+                case cmp if cmp < 0 =>
+                  groupedL.next()
+                  (kl, (l, Vector.empty))
 
-                case x if x > 0 =>
-                  val nxt = (kb, (Vector.empty, bs))
-                  nextBs = readConsecutiveKeys(bufferedRight)
-                  nxt
-
-                case _ => throw new Exception(s"${ord.getClass.getName}.compare is not returning valid values")
+                case _ =>
+                  groupedR.next()
+                  (kr, (Vector.empty, r))
               }
 
-            case (Some(ka), None) =>
-              val nxt = (ka, (as, Vector.empty))
-              nextAs = readConsecutiveKeys(bufferedLeft)
-              nxt
+            case (Some((kl, l)), None) =>
+              groupedL.next()
+              (kl, (l, Vector.empty))
 
-            case (None, Some(kb)) =>
-              val nxt = (kb, (Vector.empty, bs))
-              nextBs = readConsecutiveKeys(bufferedRight)
-              nxt
+            case (None, Some((kr, r))) =>
+              groupedR.next()
+              (kr, (Vector.empty, r))
 
-            case _ => throw new Exception("unreachable case")
+            case _ => throw new NoSuchElementException("next called on empty iterator")
           }
         }
       }
+    }
 
     def innerJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,B))] =
       for {
