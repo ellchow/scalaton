@@ -24,7 +24,7 @@ import scala.util.{ Try, Success, Failure }
 object Tee {
   /* writes left elements in the iterator to an output stream and emits the right values */
   implicit class Tee[T,O](iter: Iterator[Either[T,O]]) {
-    def tee(out: OutputStream, ser: T => Array[Byte], delim: Array[Byte]): Iterator[O] =
+    def tee(out: OutputStream, ser: T => Array[Byte], delim: Array[Byte], onWriteError: Throwable => Unit): Iterator[O] =
       new Iterator[Either[T,O]] {
         def hasNext = {
           if (!iter.hasNext) out.close
@@ -36,8 +36,12 @@ object Tee {
 
           x match {
             case Left(t) =>
-              out.write(ser(t))
-              out.write(delim)
+              try {
+                out.write(ser(t))
+                out.write(delim)
+              } catch {
+                case t: Throwable => onWriteError(t)
+              }
 
             case _ => // do nothing
           }
@@ -46,11 +50,17 @@ object Tee {
         }
       }.collect{ case Right(o) => o }
 
-    def tee(out: OutputStream, ser: T => String, delim: String = "\n"): Iterator[O] =
-      tee(out, ser.andThen(_.getBytes), delim.getBytes)
+    def tee(out: OutputStream, ser: T => String, delim: String, onWriteError: Throwable => Unit): Iterator[O] =
+      tee(out, ser.andThen(_.getBytes), delim.getBytes, onWriteError)
+
+    def tee(out: OutputStream, ser: T => String, delim: String): Iterator[O] =
+      tee(out, ser.andThen(_.getBytes), delim.getBytes, (_: Throwable) => ())
+
+    def tee(out: OutputStream, onWriteError: Throwable => Unit)(implicit t: EncodeJson[T]): Iterator[O] =
+      tee(out, (_: T).asJson.toString, "\n", onWriteError)
 
     def tee(out: OutputStream)(implicit t: EncodeJson[T]): Iterator[O] =
-      tee(out, (_: T).asJson.toString, "\n")
+      tee(out, (_: T).asJson.toString, "\n", (_: Throwable) => ())
 
   }
 

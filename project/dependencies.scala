@@ -19,6 +19,7 @@ object Dependencies{
   )
 
   val common = Seq(
+    "org.scalaz.stream" %% "scalaz-stream" % "0.3.1",
     "org.scalaz" % "scalaz-core_2.10" % "7.0.5",
 
     "com.github.nscala-time" %% "nscala-time" % "0.2.0",
