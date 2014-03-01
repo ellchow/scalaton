@@ -29,8 +29,10 @@ object TopologicalSort {
 
 }
 
-/** dependencyMap:  dependent -> dependencies **/
-class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: Map[A,Set[A]]) {
+/** simple topological sort implementation - does NOT check for cycles (should throw IllegalStateException if a cycle is encountered) **/
+class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: Map[A,Set[A]]) extends Iterable[A] { self =>
+  if(independents.isEmpty && dependencyMap.nonEmpty)
+    throw new IllegalStateException("unreachable elements in topological sort graph")
 
   def +(dep: (A, A)): TopologicalSort[A] = dep match {
     case (before, after) =>
@@ -60,16 +62,32 @@ class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: M
     (independents, new TopologicalSort(newIndependents, newDependencyMap))
   }
 
-  def toStream: Stream[A] = if (isEmpty) {
-     Stream.empty
-  } else {
-    val (is, t) = pop
-    is.toStream ++ t.toStream
+  def iterator: Iterator[A] = new Iterator[A] {
+    private var t = self
+    private var is = Vector.empty[A]
+
+    def hasNext = is.nonEmpty || t.nonEmpty
+
+    def next = {
+      if (is.nonEmpty) {
+        val i = is.head
+        is = is.drop(1)
+        i
+      } else {
+        val nxt = t.pop
+        is = nxt._1.toVector
+        t = nxt._2
+        next
+      }
+    }
   }
 
-  def isEmpty = independents.isEmpty && dependencyMap.isEmpty
-  def nonEmpty = !isEmpty
+  override def isEmpty = independents.isEmpty && dependencyMap.isEmpty
+  override def nonEmpty = !isEmpty
+
   def dependenciesOf(a: A) = dependencyMap.getOrElse(a, Set.empty)
   def hasDependencies(a: A) = dependenciesOf(a).nonEmpty
+
+  override def toString = s"TopologicalSort($independents, $dependencyMap)"
 
 }
