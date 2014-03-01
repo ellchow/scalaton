@@ -31,15 +31,16 @@ object TopologicalSort {
 
 /** simple topological sort implementation - does NOT check for cycles (should throw IllegalStateException if a cycle is encountered) **/
 class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: Map[A,Set[A]]) extends Iterable[A] { self =>
-  if(independents.isEmpty && dependencyMap.nonEmpty)
+  if(independents.isEmpty && dependencyMap.nonEmpty) // prevent immediate construction of invalid graph (has cycle)
     throw new IllegalStateException("unreachable elements in topological sort graph")
 
   def +(dep: (A, A)): TopologicalSort[A] = dep match {
-    case (before, after) =>
+    case (before, after) if before != after =>
       new TopologicalSort(
-        independents - after ++ (if (hasDependencies(before)) Set.empty else Set(before)),
-        dependencyMap |+| Map(after -> Set(before))
+        independents - after ++ (if (hasDependencies(before)) Set.empty else Set(before)), // make sure after is not independent, add before as independent if it does not already have dependencies
+        dependencyMap |+| Map(after -> Set(before)) // update dependencyMap with this relation
       )
+    case _ => this
   }
 
   def ++(deps: Iterable[(A, A)]) =
@@ -53,13 +54,29 @@ class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: M
     case (befores, after) => this ++ befores.map(before => (before, after))
   }
 
-  def pop: (Set[A], TopologicalSort[A]) = {
-    val (newIndependents, newDependencyMap) = dependencyMap.foldLeft((Set.empty[A], Map.empty[A,Set[A]])){ case ((is, map), (after, befores0)) =>
-      val befores = befores0 -- independents
-      if (befores.isEmpty) (is + after, map) else (is, map + (after -> befores))
+  def -- (as: Set[A]) = {
+    val init = (independents -- as, Map.empty[A,Set[A]]) // remove as from independents, create dependencyMap from scratch
+    val (newIndependents, newDependencyMap) = dependencyMap.foldLeft(init){
+      case ((is, map), (after, befores0)) =>
+        if (as.contains(after)) {  // remove as that are afters in dependencyMap
+          (is, map)
+        } else {
+          val befores = befores0 -- as // remove as that are befores in dependencyMap
+          if (befores.isEmpty) {
+            (is + after, map) // free up this after as it no longer has dependencies
+          } else {
+            (is, map + (after -> befores)) // add this after back, without removed dependencies
+          }
+        }
     }
+    new TopologicalSort(newIndependents, newDependencyMap)
+  }
 
-    (independents, new TopologicalSort(newIndependents, newDependencyMap))
+  def - (a: A) = this -- Set(a)
+
+  def pop: (Set[A], TopologicalSort[A]) = {
+    val t = this -- independents
+    (independents, t)
   }
 
   def iterator: Iterator[A] = new Iterator[A] {
@@ -89,5 +106,4 @@ class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: M
   def hasDependencies(a: A) = dependenciesOf(a).nonEmpty
 
   override def toString = s"TopologicalSort($independents, $dependencyMap)"
-
 }
