@@ -32,10 +32,14 @@ class TeeSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks 
     forAll {
       (xs: Set[Either[Int,Int]]) => {
         val out = scalaton.util.mkTemp()
-        val rights = xs.iterator.tee(new java.io.FileOutputStream(out)).map(x => Right(x)).toSet
-        val lefts = scala.io.Source.fromFile(out).getLines.flatMap(_.decodeOption[Int].map(x => Left(x)))
+        try {
+          val rights = xs.iterator.tee(new java.io.FileOutputStream(out)).map(x => Right(x)).toSet
+          val lefts = scala.io.Source.fromFile(out).getLines.flatMap(_.decodeOption[Int].map(x => Left(x)))
 
-        xs should be(rights ++ lefts)
+          xs should be(rights ++ lefts)
+        } finally {
+          out.delete()
+        }
       }
     }
   }

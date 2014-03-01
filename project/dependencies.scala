@@ -19,10 +19,7 @@ object Dependencies{
   )
 
   val common = Seq(
-    "org.scalaz.stream" %% "scalaz-stream" % "0.3.1",
     "org.scalaz" % "scalaz-core_2.10" % "7.0.5",
-
-    "com.github.nscala-time" %% "nscala-time" % "0.2.0",
 
     "ch.qos.logback" % "logback-classic" % "1.0.9",
     "com.typesafe" %% "scalalogging-slf4j" % "1.0.1",
@@ -33,6 +30,7 @@ object Dependencies{
 
   val util = common ++ Seq(
     "org.scalaz" % "scalaz-effect_2.10" % "7.0.5",
+    "com.github.nscala-time" %% "nscala-time" % "0.2.0",
     "org.apache.commons" % "commons-io" % "1.3.2",
     "io.argonaut" %% "argonaut" % "6.0.2",
     "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full

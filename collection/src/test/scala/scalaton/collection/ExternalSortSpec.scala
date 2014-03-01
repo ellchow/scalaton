@@ -20,7 +20,6 @@ import org.scalacheck._
 import org.scalatest._
 import org.scalatest.matchers._
 import org.scalatest.prop._
-import scala.util.{ Try, Success, Failure }
 
 class ExternalSortSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   behavior of "ExternalSort"
@@ -30,11 +29,13 @@ class ExternalSortSpec extends FlatSpec with Matchers with GeneratorDrivenProper
       (xs: List[Int]) => {
         val tmp = scalaton.util.mkTempDir()
         val sorted = xs.sorted
-        val externalsorted = ExternalSort.sortBy(xs.iterator, 10, tmp)(identity).toList
 
-        org.apache.commons.io.FileUtils.deleteDirectory(tmp)
-
-        externalsorted should be(sorted)
+        try {
+          val externalsorted = ExternalSort.sortBy(xs.iterator, 10, tmp)(identity).toList
+          externalsorted should be(sorted)
+        } finally {
+          org.apache.commons.io.FileUtils.deleteDirectory(tmp)
+        }
       }
     }
   }
