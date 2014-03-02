@@ -46,4 +46,8 @@ object Dependencies{
     "org.spire-math" %% "spire" % "0.6.0"
   )
 
+  val akka = common ++ Seq(
+    "com.typesafe.akka" %% "akka-actor" % "2.2.3"
+  )
+
 }

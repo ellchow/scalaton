@@ -114,6 +114,16 @@ object ProjectBuild extends Build{
     )
   ) dependsOn(utilProject, collectionProject)
 
+  lazy val akkaProject = Project (
+    "scalaton-akka",
+    file ("akka"),
+    settings = buildSettings ++ publishSettings ++ Seq(
+      libraryDependencies ++= Dependencies.akka,
+      scalacOptions := compilerOptions
+    )
+  ) dependsOn(collectionProject)
+
+
   lazy val root = Project(
     "scalaton",
     file("."),
