@@ -34,7 +34,7 @@ object Join {
       fullOuterJoin(right).collect{ case (k, (Some(a), ob)) => (k, (a, ob)) }
   }
 
-  /* joins on iterators, where both left and right inputs must be sorted */
+  /** joins on iterators, where both left and right inputs must be sorted */
   implicit class OrderedIteratorOrderedIteratorJoin[K : Ordering, A](left: Iterator[(K, A)]) extends OuterJoin[K,A] {
 
     private def readConsecutiveKeys[T](bf: BufferedIterator[(K, T)]): (Option[K], Seq[T]) = {
@@ -147,14 +147,14 @@ object Join {
 
   implicit def iterableToIteratorJoin[K : Ordering,A](i: Iterable[(K, A)]) = new OrderedIteratorOrderedIteratorJoin(i.iterator)
 
-  /* hash join implementation */
+  /** hash join implementation */
   implicit class MapSingleIteratorJoin[K : Ordering, A](left: Map[K, A]) extends OuterJoin[K,A] {
     def innerJoin[B](right: Iterator[(K, B)]): Iterator[(K,(A,B))] = for {
       (k, b) <- right
       a <- left.get(k)
     } yield (k, (a, b))
 
-    /* requires right to be sorted */
+    /** requires right to be sorted */
     def fullOuterJoin[B](right: Iterator[(K, B)]) =
       left.toSeq.sortBy(_._1).iterator.fullOuterJoin(right)
 

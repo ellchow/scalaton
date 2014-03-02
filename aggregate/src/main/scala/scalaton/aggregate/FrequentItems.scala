@@ -19,7 +19,7 @@ package scalaton.aggregate
 import scala.collection.mutable
 import scala.collection.mutable.{ DoubleLinkedList => DLL }
 
-/* heavy hitters algo described in https://www.cs.ucsb.edu/research/tech_reports/reports/2005-23.pdf using a slightly modified data structure */
+/** heavy hitters algo described in https://www.cs.ucsb.edu/research/tech_reports/reports/2005-23.pdf using a slightly modified data structure */
 trait StreamSummaryModule {
 
   private def connect[A](xs: DLL[A], ys: DLL[A]) = {

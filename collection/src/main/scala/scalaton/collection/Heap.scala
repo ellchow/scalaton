@@ -21,23 +21,23 @@ import scala.collection.generic._
 import scala.collection.mutable
 
 
-/* Pairing heap implementation http://www.lb.cs.cmu.edu/afs/cs.cmu.edu/user/sleator/www/papers/pairing-heaps.pdf */
+/** Pairing heap implementation http://www.lb.cs.cmu.edu/afs/cs.cmu.edu/user/sleator/www/papers/pairing-heaps.pdf */
 sealed abstract class Heap[A] extends Iterable[A] with GenericOrderedTraversableTemplate[A, Heap] with IterableLike[A, Heap[A]] {
 
   override val orderedCompanion = Heap
 
   override def newBuilder: mutable.Builder[A, Heap[A]] = Heap.newBuilder[A]
 
-  /* insert element into heap (O(1)) */
+  /** insert element into heap (O(1)) */
   def +(elem: A): Heap[A]
 
-  /* read the min value (O(1)) */
+  /** read the min value (O(1)) */
   def min: A
 
-  /* read the min value and return the heap after removing the min (O(log n)) */
+  /** read the min value and return the heap after removing the min (O(log n)) */
   def removeMin: (A, Heap[A])
 
-  /* merge 2 heaps together (O(1)) */
+  /** merge 2 heaps together (O(1)) */
   def merge(that: Heap[A]): Heap[A]
 
   override def iterator = sortedStream.iterator

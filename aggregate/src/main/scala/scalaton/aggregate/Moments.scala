@@ -21,7 +21,7 @@ import Scalaz._
 
 object moments{
 
-  // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Higher-order_statistics
+  /** http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Higher-order_statistics */
   implicit val momentsMonoid: Monoid[Moments] = Monoid instance ( (xa, xb) => {
     val stabilityRatio = 0.1
 
@@ -75,5 +75,3 @@ object moments{
     def consume(x: Double) = Moments(x) |+| this
   }
 }
-
-

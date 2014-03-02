@@ -22,7 +22,7 @@ import scala.collection.LinearSeqLike
 import scala.collection.mutable
 
 
-/* Banker's Queue implementation */
+/** Banker's Queue implementation */
 class Queue[+A] private (private val f: Stream[A], private val fn: Int, private val r: Stream[A], private val rn: Int)
     extends LinearSeq[A] with GenericTraversableTemplate[A, Queue] with LinearSeqLike[A, Queue[A]] {
 

@@ -22,7 +22,7 @@ import scalaz._, Scalaz._
 import scala.util.{ Try, Success, Failure }
 
 object Tee {
-  /* writes left elements in the iterator to an output stream and emits the right values */
+  /** writes left elements in the iterator to an output stream and emits the right values */
   implicit class Tee[T,O](iter: Iterator[Either[T,O]]) {
     def tee(out: OutputStream, ser: T => Array[Byte], delim: Array[Byte], onWriteError: Throwable => Unit): Iterator[O] =
       new Iterator[Either[T,O]] {
@@ -64,13 +64,13 @@ object Tee {
 
   }
 
-  /* conversion to tee everything to file and forwarding incoming values to output */
+  /** conversion to tee everything to file and forwarding incoming values to output */
   implicit def toTeeId[A](iter: Iterator[A]) = new Tee[A,A](iter.flatMap(a => Seq(Right(a), Left(a))))
 
-  /* conversion to enable tee-ing \/ */
+  /** conversion to enable tee-ing \/ */
   implicit def teeScalazEither[T,O](iter: Iterator[\/[T,O]]) = new Tee[T,O](iter.map(_.toEither))
 
-  /* conversion to enable tee-ing Try */
+  /** conversion to enable tee-ing Try */
   implicit def teeTry[O](iter: Iterator[Try[O]]) = new Tee[Throwable,O](iter.map{ t =>
     t match {
       case Success(s) => Right(s)
