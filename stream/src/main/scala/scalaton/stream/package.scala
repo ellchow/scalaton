@@ -28,6 +28,11 @@ package object stream {
       p.resource(Task.delay(os))(os => Task.delay(os.close))(
         os => Task.now((a: A) => Task.delay{ os.write(a.asJson.toString.getBytes) ; os.write(eol) }))
     }
+  }
 
+  implicit class ProcessOps[+O](val p: Process[Task,O]) extends AnyVal {
+    def zipWithIndex: Process[Task,(O, Int)] = p.zip(Process.constant(0).scan(0)((n, zero) => n + 1))
   }
 }
+
+// val x = Process.from(1 to 20).map(_ => util.Random.nextInt.toString).chunk(4).map(xs => Process.from(xs.sorted)).zipWithIndex.map{ case (p, i) => p.to(io.linesW(file(s"tmp-$i.txt"))).run.run; s"tmp-$i.txt" }.run.run
