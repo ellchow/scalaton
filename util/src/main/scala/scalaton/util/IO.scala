@@ -16,66 +16,36 @@
 
 package scalaton.util
 
-import scalaz._
-import Scalaz._
-import effect._
-
 import java.io._
 
-trait IOModule{
-  object reader{
-    def resourceStream(path: String) = getClass.getClassLoader.getResourceAsStream(path)
+object io {
 
-    def file(path: String) = new BufferedReader(new FileReader(path))
-
-    def inputStream(is: InputStream) = new BufferedReader(new InputStreamReader(is))
-
-    def resource(path: String) = inputStream(resourceStream(path))
-
-    def stdin = inputStream(System.in)
+  def file(f: File, subdirs: String*): File = if (subdirs.isEmpty) {
+    f
+  } else {
+    file(new File(f, subdirs(0)), subdirs.drop(1): _*)
   }
 
-  object writer{
+  def file(path: String, subdirs: String*): File = file(new File(path), subdirs: _*)
 
-    def file(path: String) = new BufferedWriter(new FileWriter(path))
-
-    def outputStream(os: OutputStream) = new BufferedWriter(new OutputStreamWriter(os))
-
-    def stdout = outputStream(System.out)
-
-    def stderr = outputStream(System.err)
-
+  implicit class FileOps(val f: File) extends AnyVal {
+    def resource = getClass.getClassLoader.getResourceAsStream(f.getPath)
+    def asInput = new FileInputStream(f)
+    def asOutput = new FileOutputStream(f)
   }
 
-  object implicits{
-    implicit def toIO[A](a: A): IO[A] = IO(a)
-
-    implicit class RichBufferedReader(r: BufferedReader){
-      def getLines = new Iterable[String]{
-        def iterator = new Iterator[String]{
-          private var ln = r.readLine()
-
-          def hasNext: Boolean = {
-            val res = ln != null
-
-            if(!res)
-              r.close()
-
-            res
-          }
-
-          def next: String = {
-            val emit = ln
-            ln = r.readLine()
-
-            emit
-          }
-        }
-      }
-    }
+  implicit class InputStreamOps(val in: InputStream) extends AnyVal {
+    def gz = new java.util.zip.GZIPInputStream(in)
+    def buffered(n: Int = 4096) = new BufferedInputStream(in, n)
   }
+
+  implicit class OutputStreamOps(val out: OutputStream) extends AnyVal {
+    def gz = new java.util.zip.GZIPOutputStream(out)
+    def buffered(n: Int = 4096) = new BufferedOutputStream(out, n)
+  }
+
+  implicit def fileToInputStream(f: File) = f.asInput
+
+  implicit def fileToOutputStream(f: File) = f.asOutput
 
 }
-
-object io
-extends IOModule
