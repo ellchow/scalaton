@@ -1,0 +1,89 @@
+package scalaton.akka
+
+import akka.actor._
+import scala.concurrent._, duration._
+import scala.util.{ Try, Success, Failure }
+
+object Retrier {
+  case class RetrierTimeout(val id: Long) extends Exception
+  case class Result(val id: Long, val value: Try[Any])
+  case object GetResult
+}
+
+/** generic retrying actor - execute function `run`, which should send a message of type Try[Any] containing the result to the retrier itself
+    Example:
+      context.actorOf(Props(new Retrier(123, List.fill(3)(2.seconds)){ def run() = Future(self ! Try("do something here"))(ExecutionContext.Implicits.global) }))
+*/
+abstract class Retrier(id: Long, timeouts: List[FiniteDuration], autoStart: Option[FiniteDuration] = Some(0.millis)) extends Actor with ActorLogging {
+  import Retrier._
+
+  case object Go
+
+  val receive: Receive = {
+    autoStart.fold(self ! Go)(d => context.system.scheduler.scheduleOnce(d, self, Go)(context.dispatcher))
+    attempting(timeouts)
+  }
+
+  def run(): Unit
+
+  def attempting(remainingTimeouts: List[FiniteDuration]): Receive = {
+    case Go =>
+      remainingTimeouts match {
+        case t :: ts =>
+          log.debug("attempt {} of {}", timeouts.size - ts.size, timeouts.size)
+          context.system.scheduler.scheduleOnce(t, self, Go)(context.dispatcher)
+          context.become(attempting(ts))
+          run()
+
+        case Nil =>
+          notifyParentAndFinish(Failure(RetrierTimeout(id)))
+      }
+
+    case s: Success[_] =>
+      notifyParentAndFinish(s)
+
+    case f: Failure[_] =>
+      remainingTimeouts match {
+        case t :: _ => self ! Go
+        case Nil => notifyParentAndFinish(f)
+      }
+
+  }
+
+  def gotResult(value: Try[Any]): Receive = {
+    case GetResult =>
+      sender ! Result(id, value)
+  }
+
+  def notifyParentAndFinish(value: Try[Any]): Unit = {
+    context.parent ! Result(id, value)
+    context.become(gotResult(value))
+  }
+
+}
+
+/*
+import scalaton.akka._
+import akka.actor._
+import scala.util.{ Try, Success, Failure }
+import scala.concurrent._, duration._
+
+val system = ActorSystem("system")
+val a = system.actorOf(Props(new Actor {
+  override val supervisorStrategy = OneForOneStrategy() {
+    case _ => SupervisorStrategy.Stop
+  }
+
+  def b = context.actorOf(Props(new Retrier(123, List.fill(3)(2.seconds)){
+     val res = if (scala.util.Random.nextDouble < 0.5) Success(123123) else Failure(new Exception(":(" ))
+     def run() = Future{if (scala.util.Random.nextDouble < 0.6) Thread.sleep(10000) ; self ! res }(context.dispatcher)
+   }), "my-retrier")
+
+  val receive: Receive = {
+    case Retrier.Result(id, Success(x: Any)) => println(("Success!", id, x))
+    case Retrier.Result(id, Failure(e: Throwable)) => println(("Failure...", id, e))
+  }
+
+  b
+}), "my-actor" + System.currentTimeMillis)
+*/
