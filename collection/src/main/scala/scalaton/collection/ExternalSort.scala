@@ -23,9 +23,9 @@ import scalaton.util._
 
 object ExternalSort {
 
-  /* external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
+  /** external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
      currently requires elements to have a json codec for serialization to file
-   */
+  */
   def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: File = mkTempDir())(key: A => K): Iterator[A] = {
     val chunks = xs.grouped(groupSize)
 
@@ -44,26 +44,6 @@ object ExternalSort {
       out
     }.toVector
 
-    def pop(iter: Iterator[A]) = if (iter.hasNext) Some((iter.next, iter)) else None
-
-    def merge(iters: Vector[Iterator[A]]) = {
-      implicit def kbOrdering[B] =
-        new Ordering[(K,B)] { def compare(x: (K,B), y: (K,B)) = implicitly[Ordering[K]].reverse.compare(x._1, y._1) }
-
-      new Iterator[A] {
-        private val q = PriorityQueue.empty[(K, (A, Iterator[A]))]
-        iters.foreach(i => pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) })
-
-        def hasNext = q.nonEmpty
-
-        def next = {
-          val (_, (a, i)) = q.dequeue()
-          pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) }
-          a
-        }
-      }
-    }
-
     val is = handles.map{ f =>
       val inp = scala.io.Source.fromInputStream(new FileInputStream(f))
 
@@ -72,7 +52,27 @@ object ExternalSort {
       }
     }
 
-    merge(is)
+    merge(is)(key)
+  }
+
+  def merge[A, K : Ordering](iters: Vector[Iterator[A]])(key: A => K) = {
+    implicit def kbOrdering[B] =
+      new Ordering[(K,B)] { def compare(x: (K,B), y: (K,B)) = implicitly[Ordering[K]].reverse.compare(x._1, y._1) }
+
+    def pop(iter: Iterator[A]) = if (iter.hasNext) Some((iter.next, iter)) else None
+
+    new Iterator[A] {
+      private val q = PriorityQueue.empty[(K, (A, Iterator[A]))]
+      iters.foreach(i => pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) })
+
+      def hasNext = q.nonEmpty
+
+      def next = {
+        val (_, (a, i)) = q.dequeue()
+        pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) }
+        a
+      }
+    }
   }
 
   def sort[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: File = mkTempDir()): Iterator[A] =
