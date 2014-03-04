@@ -35,6 +35,10 @@ class BiMap[A,B] private (forward: Map[A,B], backward: Map[B,A]) extends Iterabl
 
   def contains(a: A): Boolean = get(a).nonEmpty
 
+  def keys = forward.keys
+
+  def keySet = keys.toSet
+
   def flip: BiMap[B,A] = new BiMap(backward, forward)
 
   def iterator = forward.iterator
