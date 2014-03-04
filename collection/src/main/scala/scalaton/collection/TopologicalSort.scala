@@ -18,21 +18,11 @@ package scalaton.collection.immutable
 
 import scalaz._, Scalaz._
 
-object TopologicalSort {
-  def empty[A]: TopologicalSort[A] = new TopologicalSort[A](Set.empty, Map.empty)
-
-  def apply[A](dependencies: Iterable[(A,A)]): TopologicalSort[A] =
-    empty[A] ++ dependencies
-
-  def apply[A](dependencies: (A, A)*): TopologicalSort[A] =
-    apply(dependencies)
-
-}
-
-/** simple topological sort implementation - does NOT check for cycles (should throw IllegalStateException if a cycle is encountered) **/
 class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: Map[A,Set[A]]) extends Iterable[A] { self =>
   if(independents.isEmpty && dependencyMap.nonEmpty) // prevent immediate construction of invalid graph (has cycle)
     throw new IllegalStateException("unreachable elements in topological sort graph")
+
+  def +(a: A) = if (dependencyMap.contains(a)) this else new TopologicalSort(independents + a, dependencyMap)
 
   def +(dep: (A, A)): TopologicalSort[A] = dep match {
     case (before, after) if before != after =>
@@ -46,12 +36,16 @@ class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: M
   def ++(deps: Iterable[(A, A)]) =
     deps.foldLeft(this){ case (t, (before, after)) => t + (before -> after) }
 
-  def addDependents(dep: (A, Set[A])): TopologicalSort[A] = dep match {
-    case (before, afters) => this ++ afters.map(after => (before, after))
+  def addDependents(dep: (A, Set[A])): TopologicalSort[A] = {
+    (dep match {
+      case (before, afters) => this ++ afters.map(after => (before, after))
+    }) + dep._1
   }
 
-  def addDependencies(dep: (Set[A], A)): TopologicalSort[A] = dep match {
-    case (befores, after) => this ++ befores.map(before => (before, after))
+  def addDependencies(dep: (Set[A], A)): TopologicalSort[A] = {
+    (dep match {
+      case (befores, after) => this ++ befores.map(before => (before, after))
+    }) + dep._2
   }
 
   def -- (as: Set[A]) = {
@@ -78,6 +72,8 @@ class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: M
     val t = this -- independents
     (independents, t)
   }
+
+  def contains(a: A) = independents.contains(a) || dependencyMap.contains(a)
 
   def iterator: Iterator[A] = new Iterator[A] {
     private var t = self
@@ -106,4 +102,20 @@ class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: M
   def hasDependencies(a: A) = dependenciesOf(a).nonEmpty
 
   override def toString = s"TopologicalSort($independents, $dependencyMap)"
+}
+
+object TopologicalSort {
+  def empty[A]: TopologicalSort[A] = new TopologicalSort[A](Set.empty, Map.empty)
+
+  def apply[A](dependencies: Iterable[(A,A)]): TopologicalSort[A] =
+    empty[A] ++ dependencies
+
+  def apply[A](dependencies: (A, A)*): TopologicalSort[A] =
+    apply(dependencies)
+
+  def independents[A](as: Iterable[A]): TopologicalSort[A] =
+    as.foldLeft(empty[A])((t, a) => t + a)
+
+  def independents[A](as: A*): TopologicalSort[A] =
+    independents(as)
 }

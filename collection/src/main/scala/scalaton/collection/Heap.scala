@@ -108,7 +108,7 @@ object Heap extends GenericOrderedCompanion[Heap] {
   def heapsort[A : Ordering](xs: Iterable[A]) = fromIterable(xs: Iterable[A]).sorted
 
   def newBuilder[A : Ordering]: mutable.Builder[A, Heap[A]] =
-    new mutable.ListBuffer[A] mapResult { xs => Heap(xs: _*) }
+    new mutable.ArrayBuffer[A] mapResult { xs => Heap(xs: _*) }
 
   implicit def canBuildFrom[A : Ordering]
       : CanBuildFrom[Heap[_], A, Heap[A]] =
