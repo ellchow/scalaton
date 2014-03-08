@@ -35,6 +35,8 @@ abstract class Retrier(id: Long, timeouts: List[FiniteDuration], autoStart: Opti
 
   case object Go
 
+  val responders: Set[ActorRef] = Set(self)
+
   val receive: Receive = {
     autoStart.fold(self ! Go)(d => context.system.scheduler.scheduleOnce(d, self, Go)(context.dispatcher))
     attempting(timeouts)
@@ -55,12 +57,13 @@ abstract class Retrier(id: Long, timeouts: List[FiniteDuration], autoStart: Opti
           notifyParentAndFinish(Failure(RetrierTimeout(id)))
       }
 
-    case s: Success[_] =>
+    case s: Success[_] if responders.contains(sender) =>
       notifyParentAndFinish(s)
 
-    case f: Failure[_] =>
+    case f: Failure[_] if responders.contains(sender) =>
       remainingTimeouts match {
         case t :: _ => self ! Go
+
         case Nil => notifyParentAndFinish(f)
       }
 
@@ -78,6 +81,12 @@ abstract class Retrier(id: Long, timeouts: List[FiniteDuration], autoStart: Opti
 
 }
 
+abstract class FutureRetrier(id: Long, block: =>Any, timeouts: List[FiniteDuration], autoStart: Option[FiniteDuration] = Some(0.millis))(implicit executionContext: ExecutionContext) extends Retrier(id, timeouts, autoStart) {
+
+  def run() = Future(block).onComplete(res => self ! res)
+
+}
+
 /*
 import scalaton.akka._
 import akka.actor._
@@ -90,10 +99,11 @@ val a = system.actorOf(Props(new Actor {
     case _ => SupervisorStrategy.Stop
   }
 
-  def b = context.actorOf(Props(new Retrier(123, List.fill(3)(2.seconds)){
-     val res = if (scala.util.Random.nextDouble < 0.5) Success(123123) else Failure(new Exception(":(" ))
-     def run() = Future{if (scala.util.Random.nextDouble < 0.6) Thread.sleep(10000) ; self ! res }(context.dispatcher)
-   }), "my-retrier")
+  def b = context.actorOf(Props(new FutureRetrier(123, {
+    val res = if (scala.util.Random.nextDouble < 0.5) 123123 else throw new Exception(":(" )
+    if (scala.util.Random.nextDouble < 0.1) Thread.sleep(10000)
+     res
+   }, List.fill(3)(2.seconds))(context.dispatcher) {}), "my-retrier")
 
   val receive: Receive = {
     case Retrier.Result(id, Success(x: Any)) => println(("Success!", id, x))
