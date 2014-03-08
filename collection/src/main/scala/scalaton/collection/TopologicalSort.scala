@@ -101,6 +101,9 @@ class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: M
   def dependenciesOf(a: A) = dependencyMap.getOrElse(a, Set.empty)
   def hasDependencies(a: A) = dependenciesOf(a).nonEmpty
 
+  def dependentsOf(a: A) = dependencyMap.flatMap{ case (after, befores) => if (befores.contains(a)) Some(after) else None }.toSet
+  def hasDependents(a: A) = dependentsOf(a).nonEmpty
+
   override def toString = s"TopologicalSort($independents, $dependencyMap)"
 }
 
