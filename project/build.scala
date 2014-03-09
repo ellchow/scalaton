@@ -114,6 +114,16 @@ object ProjectBuild extends Build{
     )
   ) dependsOn(utilProject, collectionProject)
 
+  lazy val asyncProject = Project (
+    "scalaton-async",
+    file ("async"),
+    settings = buildSettings ++ publishSettings ++ Seq(
+      libraryDependencies ++= Dependencies.async,
+      scalacOptions := compilerOptions
+    )
+  )
+
+
   lazy val root = Project(
     "scalaton",
     file("."),
@@ -121,7 +131,7 @@ object ProjectBuild extends Build{
       scalacOptions := compilerOptions,
       publishArtifact := false
     )
-  ) aggregate(utilProject, aggregateProject, collectionProject, akkaProject)
+  ) aggregate(utilProject, aggregateProject, collectionProject)
 
 
 }

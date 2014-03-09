@@ -40,6 +40,8 @@ object Dependencies{
     "io.argonaut" %% "argonaut" % "6.0.2"
   )
 
+  val async = common
+
   val aggregate = common ++ Seq(
     "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6",
     "org.apache.commons" % "commons-math3" % "3.2",
