@@ -40,19 +40,9 @@ object Dependencies{
     "io.argonaut" %% "argonaut" % "6.0.2"
   )
 
-  val stream = common ++ Seq(
-    "io.argonaut" %% "argonaut" % "6.0.2",
-    "org.scalaz.stream" %% "scalaz-stream" % "0.3.1"
-  )
-
   val aggregate = common ++ Seq(
     "com.googlecode.javaewah" % "JavaEWAH" % "0.6.6",
     "org.apache.commons" % "commons-math3" % "3.2",
     "org.spire-math" %% "spire" % "0.6.0"
   )
-
-  val akka = common ++ Seq(
-    "com.typesafe.akka" %% "akka-actor" % "2.2.3"
-  )
-
 }

@@ -96,15 +96,6 @@ object ProjectBuild extends Build{
     )
   )
 
-  lazy val streamProject = Project (
-    "scalaton-stream",
-    file ("stream"),
-    settings = buildSettings ++ publishSettings ++ Seq(
-      libraryDependencies ++= Dependencies.stream,
-      scalacOptions := compilerOptions
-    )
-  ) dependsOn(utilProject)
-
   lazy val collectionProject = Project (
     "scalaton-collection",
     file ("collection"),
@@ -122,16 +113,6 @@ object ProjectBuild extends Build{
       scalacOptions := compilerOptions
     )
   ) dependsOn(utilProject, collectionProject)
-
-  lazy val akkaProject = Project (
-    "scalaton-akka",
-    file ("akka"),
-    settings = buildSettings ++ publishSettings ++ Seq(
-      libraryDependencies ++= Dependencies.akka,
-      scalacOptions := compilerOptions
-    )
-  ) dependsOn(collectionProject)
-
 
   lazy val root = Project(
     "scalaton",
