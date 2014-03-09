@@ -33,10 +33,10 @@ object ExternalSort {
 
     val handles = sortedChunks.zipWithIndex.map { case (chunk, i) =>
       val out = new File(tmp, i.toString)
-      val w = new BufferedWriter(new FileWriter(out))
+      val w = new PrintStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(out)))
 
       try {
-        chunk.foreach{ x => w.write(x.asJson.toString); w.newLine }
+        chunk.foreach{ x => w.println(x.asJson.toString) }
       } finally {
         w.close()
       }
@@ -45,10 +45,10 @@ object ExternalSort {
     }.toVector
 
     val is = handles.map{ f =>
-      val inp = scala.io.Source.fromInputStream(new FileInputStream(f))
+      val inp = scala.io.Source.fromInputStream(new java.util.zip.GZIPInputStream(new FileInputStream(f)))
 
       inp.getLines.map{ ln =>
-        ln.decodeEither[A].fold(s => throw new Exception(s"failed to deserialize ($s)"), identity)
+        ln.decodeEither[A].fold({ s => inp.close(); throw new Exception(s"failed to deserialize ($s)") }, identity)
       }
     }
 
