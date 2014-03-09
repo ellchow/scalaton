@@ -20,8 +20,13 @@ import scala.concurrent._, duration._
 import java.util.concurrent.Executors
 import scalaz._, Scalaz._
 import scala.util.{ Try, Success, Failure }
+import org.jboss.netty.util._
 
 package object async {
+  object Implicits {
+    implicit lazy val defaultHashedWheelTimer = new HashedWheelTimer
+  }
+
   implicit class ExecutionContextOps(val x: ExecutionContext.type) extends AnyVal {
     def fixedThreadPool(n: Int) =
       ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(n))
@@ -36,11 +41,15 @@ package object async {
   implicit class FutureCompanionOps(val companion: Future.type) extends AnyVal {
     def never[A]: Future[A] = Promise[A]().future
 
-    def waitFor(t: Duration)(implicit executionContext: ExecutionContext): Future[Unit] =
-      Future{
-        try { Await.result(Future.never, t) }
-        catch { case e: TimeoutException =>  }
-      }
+    def waitFor(t: Duration)(implicit hashedWheelTimer: HashedWheelTimer): Future[Unit] = {
+      val p = Promise[Unit]()
+
+      hashedWheelTimer.newTimeout(new TimerTask { def run(timeout: Timeout){ p.complete(Try(Unit)) } },
+        t.toMillis,
+        java.util.concurrent.TimeUnit.MILLISECONDS)
+
+      p.future
+    }
 
     def firstCompletedOf[A,B](fa: Future[A], fb: Future[B])(implicit executionContext: ExecutionContext): Future[A \/ B] = {
       val p = Promise[A \/ B]()
@@ -51,7 +60,7 @@ package object async {
       p.future
     }
 
-    def timed[A](f: Future[A], t: Duration)(implicit executionContext: ExecutionContext): Future[A] = {
+    def timeout[A](f: Future[A], t: Duration)(implicit executionContext: ExecutionContext, hashedWheelTimer: HashedWheelTimer): Future[A] = {
       val result = firstCompletedOf(waitFor(t).map(_ => new TimeoutException), f)
 
       result.map(_.fold(e => throw e, identity))
@@ -70,7 +79,7 @@ package object async {
       p.future
     }
 
-    def retry[A](f: =>Future[A], timeoutDurations: List[Duration], retryOn: Throwable => Boolean = _ => true)(implicit executionContext: ExecutionContext): Future[A] = {
+    def retry[A](f: =>Future[A], timeoutDurations: List[Duration], retryOn: Throwable => Boolean = _ => true)(implicit executionContext: ExecutionContext, hashedWheelTimer: HashedWheelTimer): Future[A] = {
       require(timeoutDurations.nonEmpty, "timeoutDurations size must be > 0")
 
       lazy val cont: Try[A] => Future[A] = {
@@ -87,8 +96,10 @@ package object async {
         }
       }
 
-      continue(timed(f, timeoutDurations.head), cont).flatMap(identity)
+      continue(timeout(f, timeoutDurations.head), cont).flatMap(identity)
     }
+
+    def schedule[A](f: =>Future[A], t: Duration)(implicit executionContext: ExecutionContext, hashedWheelTimer: HashedWheelTimer) = waitFor(t).flatMap(_ => f)
   }
 
   private lazy val futureCompanionOps = new FutureCompanionOps(Future)
@@ -102,17 +113,13 @@ package object async {
     def or[B](g: Future[B])(implicit executionContext: ExecutionContext) =
       futureCompanionOps.firstCompletedOf(f,g)
 
-    def timeoutAfter(t: Duration)(implicit executionContext: ExecutionContext) =
-      futureCompanionOps.timed(f,t)
+    def timeoutAfter(t: Duration)(implicit executionContext: ExecutionContext, hashedWheelTimer: HashedWheelTimer) =
+      futureCompanionOps.timeout(f,t)
 
     def continueWith[B](cont: Future[A] => B)(implicit executionContext: ExecutionContext): Future[B] =
       futureCompanionOps.continueWith(f, cont)
 
     def continue[B](cont: Try[A] => B)(implicit executionContext: ExecutionContext): Future[B] =
       futureCompanionOps.continue(f, cont)
-
   }
-
-
-
 }
