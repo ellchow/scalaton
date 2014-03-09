@@ -20,7 +20,7 @@ import scala.concurrent._, duration._
 import java.util.concurrent.Executors
 import scalaz._, Scalaz._
 import scala.util.{ Try, Success, Failure }
-import org.jboss.netty.util._
+import io.netty.util._
 
 package object async {
   object Implicits {

@@ -41,7 +41,7 @@ object Dependencies{
   )
 
   val async = common ++ Seq(
-    "org.jboss.netty" % "netty" % "3.2.10.Final"
+    "io.netty" % "netty-all" % "4.0.17.Final"
   )
 
   val aggregate = common ++ Seq(
