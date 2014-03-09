@@ -25,6 +25,7 @@ import io.netty.util._
 package object async {
   object Implicits {
     implicit lazy val defaultHashedWheelTimer = new HashedWheelTimer
+    implicit lazy val defaultExecutionContext = ExecutionContext.Implicits.global
   }
 
   implicit class ExecutionContextOps(val x: ExecutionContext.type) extends AnyVal {
