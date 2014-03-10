@@ -26,6 +26,8 @@ trait FutureExtensions {
 
   private lazy val futureCompanionOps = new FutureCompanionOps(Future)
 
+  case class RetryFutureException(val throwables: List[Throwable]) extends Exception
+
   implicit class FutureCompanionOps(val companion: Future.type) {
     def never[A]: Future[A] = Promise[A]().future
 
@@ -70,21 +72,24 @@ trait FutureExtensions {
     def retry[A](f: =>Future[A], timeoutDurations: List[Duration], retryOn: Throwable => Boolean = _ => true)(implicit executionContext: ExecutionContext, hashedWheelTimer: HashedWheelTimer): Future[A] = {
       require(timeoutDurations.nonEmpty, "timeoutDurations size must be > 0")
 
-      lazy val cont: Try[A] => Future[A] = {
-        def again(throwable: Throwable) = timeoutDurations match {
-          case _ :: ts if ts.nonEmpty => retry(f, ts)
-          case _ => throw throwable
-        }
+      def loop(tds: List[Duration], throwables: List[Throwable]): Future[A] = {
+        lazy val cont: Try[A] => Future[A] = {
+          def again(throwable: Throwable) = tds match {
+            case _ :: tail if tail.nonEmpty => loop(tail, throwable :: throwables)
+            case _ => throw RetryFutureException(throwable :: throwables)
+          }
 
-        {
-          case Success(a) => Future.successful(a)
-          case Failure(throwable: TimeoutException) => again(throwable)
-          case Failure(throwable) if retryOn(throwable) => again(throwable)
-          case Failure(throwable) => throw throwable
+          {
+            case Success(a) => Future.successful(a)
+            case Failure(throwable: TimeoutException) => again(throwable)
+            case Failure(throwable) if retryOn(throwable) => again(throwable)
+            case Failure(throwable) => throw RetryFutureException(throwable :: throwables)
+          }
         }
+        continue(timeout(f, tds.head), cont).flatMap(identity)
       }
 
-      continue(timeout(f, timeoutDurations.head), cont).flatMap(identity)
+      loop(timeoutDurations, Nil)
     }
 
     def schedule[A](f: =>Future[A], t: Duration)(implicit executionContext: ExecutionContext, hashedWheelTimer: HashedWheelTimer) =
