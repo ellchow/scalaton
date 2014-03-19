@@ -2,6 +2,7 @@ import sbt._
 
 object Dependencies{
   val resolvers = Seq(
+    "maven2" at "http://repo.maven.apache.org/maven2",
     "sonatype releases"  at "http://oss.sonatype.org/content/repositories/releases",
     "sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
 
@@ -31,7 +32,7 @@ object Dependencies{
   val util = common ++ Seq(
     "org.scalaz" % "scalaz-effect_2.10" % "7.0.5",
     "com.github.nscala-time" %% "nscala-time" % "0.2.0",
-    "org.apache.commons" % "commons-io" % "1.3.2",
+    "commons-io" % "commons-io" % "2.4",
     "io.argonaut" %% "argonaut" % "6.0.2",
     "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full
   )
@@ -41,7 +42,9 @@ object Dependencies{
   )
 
   val async = common ++ Seq(
-    "io.netty" % "netty-all" % "4.0.17.Final"
+    "io.netty" % "netty-all" % "4.0.17.Final",
+    "com.netflix.rxjava" % "rxjava-scala" % "0.17.1",
+    "com.typesafe.akka" %% "akka-agent" % "2.3.0"
   )
 
   val aggregate = common ++ Seq(
