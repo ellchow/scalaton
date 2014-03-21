@@ -21,4 +21,11 @@ package object util {
 
   def mkTemp(base: String = System.getProperty("java.io.tmpdir"), attempts: Int = 1000) =
     new java.io.File(mkTempDir(base, attempts), "file")
+
+  implicit class AnyRefToMap(x: AnyRef) {
+    def toMap: Map[String,Any] = x.getClass.getDeclaredFields.foldLeft(Map.empty[String,Any]){ (a, f) =>
+      f.setAccessible(true)
+      a + (f.getName -> f.get(x))
+    }
+  }
 }
