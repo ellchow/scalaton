@@ -22,17 +22,20 @@ import java.io._
 import argonaut._, Argonaut._
 
 trait PlannedIterator[A,B] { self =>
-  protected def underlying: Iterator[A]
+  import Join._
+
+  protected[collection] def underlying: Iterator[A]
   protected def f: Iterator[A] => Iterator[B]
   protected def completionHook(): Unit
+  protected[collection] def applied = f(underlying)
 
   def apply[C](g: Iterator[B] => Iterator[C]) = new PlannedIterator[A,C] {
-    protected def underlying: Iterator[A] = self.underlying
+    protected[collection] def underlying: Iterator[A] = self.underlying
     protected def f = self.f.andThen(g)
     protected def completionHook(): Unit = self.completionHook
   }
   def convert[C](g: Iterator[B] => C): Try[C] = {
-    val c = Try(g(f(underlying)))
+    val c = Try(g(applied))
     completionHook()
     c
   }
@@ -62,14 +65,12 @@ trait PlannedIterator[A,B] { self =>
 
   def find(pred: B => Boolean) = convert(_.find(pred))
 
-  def grouped(n: Int) = apply(_.grouped(n))
-
   def foldLeft[C](c0: C)(g: (C,B) => C): Try[C] =
     convert(_.foldLeft(c0)(g))
 
-  def sliding(size: Int, step: Int = 1) = apply(_.sliding(size, step))
+  def groupBy[K : Ordering](key: B => K) = map(b => (key(b), b)).apply(_.groupByKey)
 
-  def size = convert(_.size)
+  def grouped(n: Int) = apply(_.grouped(n))
 
   def map[C](g: B => C) = apply(_.map(g))
 
@@ -83,6 +84,10 @@ trait PlannedIterator[A,B] { self =>
 
   def reduce(g: (B,B) => B) = convert(_.reduce(g))
 
+  def sliding(size: Int, step: Int = 1) = apply(_.sliding(size, step))
+
+  def size = convert(_.size)
+
   def take(n: Int) = apply(_.take(n))
 
   def thru(g: B => Unit) = map{ b => g(b) ; b }
@@ -92,7 +97,7 @@ trait PlannedIterator[A,B] { self =>
   def zipWithIndex = apply(_.zipWithIndex)
 
   def zip[A1,B1](other: PlannedIterator[A1,B1]) = new PlannedIterator[A,(B,B1)] {
-    protected def underlying: Iterator[A] = self.underlying
+    protected[collection] def underlying: Iterator[A] = self.underlying
     protected def f = (as: Iterator[A]) => self.f(as).zip(other.f(other.underlying))
     protected def completionHook(): Unit = {
       self.completionHook
@@ -103,7 +108,7 @@ trait PlannedIterator[A,B] { self =>
   def futured(implicit execContext: ExecutionContext) = apply(_.map(b => future(b)))
 
   def addCompletionHook(onComplete: =>Unit) = new PlannedIterator[A,B] {
-    protected def underlying: Iterator[A] = self.underlying
+    protected[collection] def underlying: Iterator[A] = self.underlying
     protected def f = self.f
     protected def completionHook(): Unit = {
       self.completionHook
@@ -114,7 +119,7 @@ trait PlannedIterator[A,B] { self =>
 
 trait PlannedIteratorFunctions {
   def plannedIterator[A](iterator: Iterator[A], onComplete: =>Unit = Unit) = new PlannedIterator[A,A] {
-    protected def underlying: Iterator[A] = iterator
+    protected[collection] def underlying: Iterator[A] = iterator
     protected def f = identity _
     protected def completionHook(): Unit = onComplete
   }
@@ -161,6 +166,27 @@ trait PlannedIteratorFunctions {
         })
       }
     }
+  }
+
+  implicit class KeyedPlannedIteratorOps[K,A,B](p: PlannedIterator[A,(K,B)]) {
+    import Join._
+
+    def groupByKey(implicit ord: Ordering[K]) = p.apply(_.groupByKey)
+
+    def coGroup[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+      p.apply(_.coGroup(other.applied))
+
+    def innerJoin[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+      p.apply(_.innerJoin(other.applied))
+
+    def fullOuterJoin[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+      p.apply(_.fullOuterJoin(other.applied))
+
+    def rightOuterJoin[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+      p.apply(_.rightOuterJoin(other.applied))
+
+    def leftOuterJoin[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+      p.apply(_.leftOuterJoin(other.applied))
   }
 
   implicit class PlannedFutureIteratorOps[A,B](p: PlannedIterator[A,Future[B]]) {
