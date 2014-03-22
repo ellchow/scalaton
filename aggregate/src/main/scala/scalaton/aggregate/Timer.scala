@@ -19,18 +19,43 @@ package scalaton.aggregate
 import com.github.nscala_time.time.Imports._
 import scalaz._, Scalaz._
 import moments._
+import com.typesafe.scalalogging.slf4j._
 
 object timer {
-  def startTimer(label: String) = Timer(label)
+  def startTimer(label: String) = new Timer(label, System.currentTimeMillis)
 
-  case class Timer(label: String , timestamp: Long = System.currentTimeMillis, moments: Moments = implicitly[Monoid[Moments]].zero) {
+  def startLoggingTimer(label: String, trigger: (Long,Long,Moments) => Boolean) = {
+    val t = trigger.curried(System.currentTimeMillis)
+
+    new LoggingTimer(label, t, System.currentTimeMillis)
+  }
+
+  class Timer(label: String , timestamp: Long, moments: Moments = implicitly[Monoid[Moments]].zero) {
     def tick = {
       val now = System.currentTimeMillis
       val delta = (now - timestamp)
 
-      Timer(label, now, moments |+| Moments(delta))
+      new Timer(label, now, moments |+| Moments(delta))
     }
 
-    override def toString = f"Timer($label%s: ${1000.0/moments.mean}%.2f per second)"
+    def info = f"$label%s: rate=${1000.0/moments.mean}%.6f/s, count=${moments.n}"
+
+    override def toString = s"Timer($info)"
   }
+
+  class LoggingTimer(label: String, trigger: Long => Moments => Boolean, timestamp: Long, moments: Moments = implicitly[Monoid[Moments]].zero)
+      extends Timer(label, timestamp, moments) with Logging {
+
+    override def tick = {
+      val now = System.currentTimeMillis
+      val delta = (now - timestamp).max(0)
+      val m = moments |+| Moments(delta)
+
+      val t = new LoggingTimer(label, trigger, now, m)
+      if (trigger(now)(m)) logger.info(t.info)
+      t
+    }
+
+  }
+
 }

@@ -16,7 +16,21 @@
 
 package scalaton
 
+import java.io._
+
 package object util {
+
+  implicit class InputStreamOps(in: InputStream){
+    def gz = new java.util.zip.GZIPInputStream(in)
+    def buffered(n: Int = 4096) = new BufferedInputStream(in, n)
+  }
+
+  implicit class OutputStreamOps(out: OutputStream){
+    def gz = new java.util.zip.GZIPOutputStream(out)
+    def buffered(n: Int = 4096) = new BufferedOutputStream(out, n)
+    def printer = new PrintStream(out)
+  }
+
   implicit class AnyRefToMap(x: AnyRef) {
     def toMap: Map[String,Any] = x.getClass.getDeclaredFields.foldLeft(Map.empty[String,Any]){ (a, f) =>
       f.setAccessible(true)
