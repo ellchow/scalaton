@@ -20,7 +20,7 @@ import argonaut._, Argonaut._
 import java.io._
 import scala.collection.mutable.PriorityQueue
 import scalaton.util._
-import scalaton.util.path._
+import scalaton.util.paths._
 import scala.util.{ Try, Success, Failure }
 
 object ExternalSort {
@@ -28,7 +28,7 @@ object ExternalSort {
   /** external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
      currently requires elements to have a json codec for serialization to file
   */
-  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path = mkTempDir())(key: A => K): Try[PlannedIterator[A,A]] = {
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path)(key: A => K): Try[PlannedIterator[A,A]] = {
     val chunks = plannedIterator(xs).grouped(groupSize)
     val sortedChunks = chunks.map(_.sortBy(key))
 
@@ -56,10 +56,13 @@ object ExternalSort {
       }
       plannedIterator(merge(iterators)(key)).addCompletionHook{
         inputs.foreach{ i => i.close }
-        handles.foreach(f => fs.delete(f))
+        handles.foreach(f => Filesystem.delete(f))
       }
     }
   }
+
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int)(key: A => K)(implicit osSpecific: OSSpecific): Try[PlannedIterator[A,A]] =
+    sortBy(xs, groupSize, Filesystem.mkTempDir())(key)
 
   def merge[A, K : Ordering](iters: Vector[Iterator[A]])(key: A => K) = {
     implicit def kbOrdering[B] =
@@ -81,7 +84,10 @@ object ExternalSort {
     }
   }
 
-  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path = mkTempDir()): Try[PlannedIterator[A,A]] =
+  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path): Try[PlannedIterator[A,A]] =
     sortBy(xs, groupSize, tmp)(identity)
+
+  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int)(implicit osSpecific: OSSpecific): Try[PlannedIterator[A,A]] =
+    sorted(xs, groupSize, Filesystem.mkTempDir())
 
 }

@@ -20,46 +20,56 @@ import java.io._
 import scalaz._, Scalaz._
 import org.apache.commons.io.FileUtils
 
-trait path {
-  implicit def stringToJavaFile(p: String) = new File(p)
-  implicit def stringToPath(p: String) = Path(stringToJavaFile(p))
+trait OSSpecific {
+  val / : String
 
-  implicit class InputStreamOps(in: InputStream){
-    def gz = new java.util.zip.GZIPInputStream(in)
-    def buffered(n: Int = 4096) = new BufferedInputStream(in, n)
+  def path(f0: File, cs: String*) = Path(cs.foldLeft(f0)((f, c) => new File(f, c)))(this)
+}
+
+
+case class Path private[util] (val file: File)(implicit osSpecific: OSSpecific) {
+  def /(s: String) = osSpecific.path(file, s)
+
+  def parent: Option[Path] = Option(file.getParentFile).map(pf => Path(pf))
+
+  def name = file.getName
+
+  def absolute = Path(new File(file.getAbsolutePath))
+
+  def unlinked = Path(new File(file.getCanonicalPath))
+
+  override def toString = file.getCanonicalPath
+}
+
+
+object paths {
+  object Implicits {
+    implicit def stringToJavaFile(p: String) = new File(p)
+    implicit def stringToPath(p: String) = Path(stringToJavaFile(p))
+    implicit def pathToJavaFile(p: Path) = p.file
+
+    implicit class InputStreamOps(in: InputStream){
+      def gz = new java.util.zip.GZIPInputStream(in)
+      def buffered(n: Int = 4096) = new BufferedInputStream(in, n)
+    }
+
+    implicit class OutputStreamOps(out: OutputStream){
+      def gz = new java.util.zip.GZIPOutputStream(out)
+      def buffered(n: Int = 4096) = new BufferedOutputStream(out, n)
+    }
+
+    implicit val unixOsSpecific = new OSSpecific {
+      val / = "/"
+    }
+
   }
 
-  implicit class OutputStreamOps(out: OutputStream){
-    def gz = new java.util.zip.GZIPOutputStream(out)
-    def buffered(n: Int = 4096) = new BufferedOutputStream(out, n)
-  }
+  def path(f0: File, cs: String*)(implicit osSpecific: OSSpecific) = osSpecific.path(f0, cs : _*)
+  def home(implicit osSpecific: OSSpecific) = path(new File(System.getProperty("user.home")))
+  def pwd(implicit osSpecific: OSSpecific) = path(new File(System.getProperty("user.dir")))
 
-
-  case class Path private[util] (val file: File) {
-    def /(s: String) = path(file, s)
-
-    def parent: Option[Path] = Option(file.getParentFile).map(pf => Path(pf))
-
-    def name = file.getName
-
-    def absolute = path(file.getAbsolutePath)
-
-    def unlinked = path(file.getCanonicalPath)
-
-    override def toString = file.getCanonicalPath
-  }
-
-  def path(f0: File, cs: String*) =
-    Path(cs.foldLeft(f0)((f, c) => new File(f, c)))
-
-  val / = path("/")
-
-  def home = path(System.getProperty("user.home"))
-  def ~ = home
-  def pwd = path(System.getProperty("user.dir"))
-
-  object fs {
-    def isRoot(p: Path) = p == /
+  object Filesystem {
+    def isRoot(p: Path)(implicit osSpecific: OSSpecific) = p == path(new File(osSpecific./))
 
     def exists(p: Path) = p.file.exists
 
@@ -86,10 +96,10 @@ trait path {
 
     def outputStream(p: Path) = new FileOutputStream(p.file)
 
-    def listDir(root: Path, recurse: Boolean = false, unlink: Boolean = false): Stream[Path] = {
+    def listDir(root: Path, recurse: Boolean = false, unlink: Boolean = false)(implicit osSpecific: OSSpecific): Stream[Path] = {
       def lst(p: Path) =
         Option((if (unlink) p.unlinked else p).file.listFiles) match {
-          case Some(pp) => pp.toList.map(ff => Path(ff)).partition(x => !isDirectory(x))
+          case Some(pp) => pp.toList.map(ff => path(ff)).partition(x => !isDirectory(x))
           case None => throw new IllegalArgumentException(s"$root does not exist")
         }
 
@@ -107,7 +117,30 @@ trait path {
       val start = lst(root)
       loop(start._1, start._2)
     }
+
+    def mkTempDir(baseFile: File = new File(System.getProperty("java.io.tmpdir")), attempts: Int = 1000)(implicit osSpecific: OSSpecific): Path = {
+      val base = path(baseFile)
+      val timestamp = System.currentTimeMillis + "-"
+
+      var i = 0
+      var tmp = None: Option[Path]
+      while(tmp.isEmpty && i < attempts) {
+        i += 1
+        val t = base / (timestamp + "-" + i)
+
+        if (mkdir(t)) tmp = Some(t)
+      }
+
+      if(tmp.nonEmpty)
+        tmp.get
+      else
+        throw new Exception(s"failed to create temp dir in $base after $attempts attempts")
+    }
+
+    def mkTemp(baseFile: File = new File(System.getProperty("java.io.tmpdir")), attempts: Int = 1000)(implicit osSpecific: OSSpecific) = {
+      val p = mkTempDir(baseFile, attempts) / "file"
+      touch(p)
+      p
+    }
   }
 }
-
-object path extends path

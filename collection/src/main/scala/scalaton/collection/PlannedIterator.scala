@@ -119,6 +119,16 @@ trait PlannedIteratorFunctions {
     protected def completionHook(): Unit = onComplete
   }
 
+  def resourceIterator[A,R <: Closeable](init: =>(R, Iterator[A])) = {
+    val (r, iterator) = init
+    plannedIterator(iterator, r.close())
+  }
+
+  def linesIterator(input: =>InputStream) = {
+    val r = input
+    resourceIterator((r, scala.io.Source.fromInputStream(r).getLines))
+  }
+
   implicit def iteratorToPlannedIterator[A](iterator: Iterator[A]) = plannedIterator(iterator)
 
   implicit class IteratorPlanned[A](iterator: Iterator[A]) {

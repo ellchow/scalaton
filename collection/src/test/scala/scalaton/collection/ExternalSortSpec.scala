@@ -16,6 +16,8 @@
 
 package scalaton.collection
 
+import scalaton.util.paths._, Implicits._
+
 import org.scalacheck._
 import org.scalatest._
 import org.scalatest.matchers._
@@ -27,14 +29,14 @@ class ExternalSortSpec extends FlatSpec with Matchers with GeneratorDrivenProper
   it should "be the same as sorting in memory" in {
     forAll {
       (xs: List[Int]) => {
-        val tmp = scalaton.util.mkTempDir()
+        val tmp = Filesystem.mkTempDir()
         val sorted = xs.sorted
 
         try {
           val externalsorted = ExternalSort.sortBy(xs.iterator, 10, tmp)(identity).flatMap(_.convert(_.toList))
           externalsorted should be(scala.util.Success(sorted))
         } finally {
-          org.apache.commons.io.FileUtils.deleteDirectory(tmp.file)
+          Filesystem.delete(tmp, true)
         }
       }
     }
