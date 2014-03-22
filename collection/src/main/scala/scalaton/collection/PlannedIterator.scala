@@ -99,6 +99,15 @@ private[collection] trait PlannedIterator[A,B] { self =>
   }
 
   def futured(implicit execContext: ExecutionContext) = apply(_.map(b => future(b)))
+
+  def addCompletionHook(onComplete: =>Unit) = new PlannedIterator[A,B] {
+    private[collection] def underlying: Iterator[A] = self.underlying
+    private[collection] def f = self.f
+    private[collection] def completionHook(): Unit = {
+      self.completionHook
+      onComplete
+    }
+  }
 }
 
 trait PlannedIteratorFunctions {
