@@ -17,4 +17,4 @@
 package scalaton
 
 
-package object async extends ExecutionContextExtenstions with FutureExtensions
+package object async extends ExecutionContextExtensions with FutureExtensions

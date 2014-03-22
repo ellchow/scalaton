@@ -26,17 +26,14 @@ class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A,
 
   def +[B1 >: B](kv: (List[A], B1)): Trie[A,B1] = kv._1 match {
     case Nil => new Trie(Some(kv._2), suffixes)
-
     case prefix :: suffix if suffixes.contains(prefix) =>
       new Trie(value, suffixes.updated(prefix, suffixes(prefix) + (suffix -> kv._2)))
-
     case prefix :: suffix =>
       new Trie(value, suffixes + (prefix -> Trie.fromList(suffix, kv._2)))
   }
 
   def -(key: List[A]) = key match {
     case Nil => new Trie(None, suffixes)
-
     case prefix :: rest =>
       if(suffixes.contains(prefix))
         new Trie(value, suffixes.updated(prefix, suffixes(prefix) - rest))
@@ -67,9 +64,7 @@ class Trie[A, +B] private[immutable] (val value: Option[B], val suffixes: Map[A,
 
   def removePrefix(prefix: List[A]): Trie[A,B] = prefix match {
     case Nil => empty
-
     case a :: as if suffixes.contains(a) => new Trie(value, suffixes.updated(a, suffixes(a).removePrefix(as)))
-
     case _ => this
   }
 

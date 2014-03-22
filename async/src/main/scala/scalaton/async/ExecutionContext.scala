@@ -22,7 +22,7 @@ import scala.concurrent._, duration._
 import java.util.concurrent.Executors
 
 
-trait ExecutionContextExtenstions {
+trait ExecutionContextExtensions {
   object Implicits {
     implicit lazy val defaultHashedWheelTimer = new HashedWheelTimer
     implicit lazy val defaultExecutionContext = ExecutionContext.Implicits.global
