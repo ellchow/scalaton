@@ -21,14 +21,16 @@ import scalaz._, Scalaz._
 import moments._
 
 object timer {
-  def startTimer = Timer()
+  def startTimer(label: String) = Timer(label)
 
-  case class Timer(val timestamp: Long = System.currentTimeMillis, val moments: Moments = implicitly[Monoid[Moments]].zero) {
+  case class Timer(label: String , timestamp: Long = System.currentTimeMillis, moments: Moments = implicitly[Monoid[Moments]].zero) {
     def tick = {
       val now = System.currentTimeMillis
       val delta = (now - timestamp)
 
-      Timer(now, moments |+| Moments(delta))
+      Timer(label, now, moments |+| Moments(delta))
     }
+
+    override def toString = f"Timer($label%s: ${1000.0/moments.mean}%.2f per second)"
   }
 }
