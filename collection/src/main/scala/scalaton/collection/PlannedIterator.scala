@@ -142,11 +142,14 @@ trait PlannedIteratorFunctions {
     def to(out: OutputStream, delim: String = "\n", onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit e: EncodeJson[B]): PlannedIterator[A,Unit] =
       to(out, (_:B).asJson.toString.getBytes, delim.getBytes, onWriteError)
 
-    def checkpoint(out: OutputStream, in: =>InputStream, onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit ee: EncodeJson[B], ed: DecodeJson[B]): PlannedIterator[String,B] = {
-      to(out, "\n", onWriteError).run
-
-      val i = in
-      plannedIterator(scala.io.Source.fromInputStream(i).getLines).addCompletionHook(i.close).flatMap(b => b.decodeOption[B])
+    def checkpoint(out: OutputStream, in: =>InputStream, onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit ee: EncodeJson[B], ed: DecodeJson[B]): Try[PlannedIterator[String,B]] = {
+      to(out, "\n", onWriteError).run.map{ _ =>
+        val i = in
+        plannedIterator(scala.io.Source.fromInputStream(i).getLines).addCompletionHook(i.close).map(s => s.decodeOption[B] match {
+          case Some(b) => b
+          case None => throw new IOException("unable to decode json $b")
+        })
+      }
     }
   }
 
