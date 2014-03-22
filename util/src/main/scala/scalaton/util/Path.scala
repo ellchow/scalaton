@@ -54,7 +54,8 @@ trait path {
 
     def touch(p: Path) = FileUtils.touch(p.file)
 
-    def delete(p: Path) = p.file.delete
+    def delete(p: Path, recursive: Boolean = false) =
+      if (recursive) FileUtils.deleteDirectory(p.file) else p.file.delete
 
     def mkdir(p: Path, parents: Boolean = false) =
       if (parents) p.file.mkdirs else p.file.mkdir

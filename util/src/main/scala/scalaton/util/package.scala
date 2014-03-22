@@ -37,8 +37,11 @@ package object util {
       throw new Exception(s"failed to create temp dir in $base after $attempts attempts")
   }
 
-  def mkTemp(base: scalaton.util.path.Path = scalaton.util.path.path(new File(System.getProperty("java.io.tmpdir"))), attempts: Int = 1000) =
-    mkTempDir(base, attempts) / "file"
+  def mkTemp(base: scalaton.util.path.Path = scalaton.util.path.path(new File(System.getProperty("java.io.tmpdir"))), attempts: Int = 1000) = {
+    val p = mkTempDir(base, attempts) / "file"
+    scalaton.util.path.fs.touch(p)
+    p
+  }
 
   implicit class AnyRefToMap(x: AnyRef) {
     def toMap: Map[String,Any] = x.getClass.getDeclaredFields.foldLeft(Map.empty[String,Any]){ (a, f) =>

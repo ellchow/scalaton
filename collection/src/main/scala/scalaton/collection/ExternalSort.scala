@@ -54,7 +54,10 @@ object ExternalSort {
           ln.decodeEither[A].fold({ s => input.close(); throw new Exception(s"failed to deserialize ($s)") }, identity)
         }
       }
-      plannedIterator(merge(iterators)(key)).addCompletionHook(inputs.foreach{ i => i.close})
+      plannedIterator(merge(iterators)(key)).addCompletionHook{
+        inputs.foreach{ i => i.close }
+        handles.foreach(f => fs.delete(f))
+      }
     }
   }
 
