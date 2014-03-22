@@ -24,6 +24,17 @@ trait path {
   implicit def stringToJavaFile(p: String) = new File(p)
   implicit def stringToPath(p: String) = Path(stringToJavaFile(p))
 
+  implicit class InputStreamOps(in: InputStream){
+    def gz = new java.util.zip.GZIPInputStream(in)
+    def buffered(n: Int = 4096) = new BufferedInputStream(in, n)
+  }
+
+  implicit class OutputStreamOps(out: OutputStream){
+    def gz = new java.util.zip.GZIPOutputStream(out)
+    def buffered(n: Int = 4096) = new BufferedOutputStream(out, n)
+  }
+
+
   case class Path private[util] (val file: File) {
     def /(s: String) = path(file, s)
 
@@ -68,6 +79,12 @@ trait path {
     def dirSize(p: Path) = BigInt(FileUtils.sizeOfDirectoryAsBigInteger(p.file))
 
     def size(p: Path) = BigInt(FileUtils.sizeOfAsBigInteger(p.file))
+
+    def resource(p: Path) = getClass.getClassLoader.getResourceAsStream(p.file.getPath)
+
+    def inputStream(p: Path) = new FileInputStream(p.file)
+
+    def outputStream(p: Path) = new FileOutputStream(p.file)
 
     def listDir(root: Path, recurse: Boolean = false, unlink: Boolean = false): Stream[Path] = {
       def lst(p: Path) =
