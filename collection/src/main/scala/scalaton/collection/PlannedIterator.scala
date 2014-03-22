@@ -18,6 +18,8 @@ package scalaton.collection
 
 import scala.util.Try
 import scala.concurrent._, duration._
+import java.io._
+import argonaut._, Argonaut._
 
 trait PlannedIterator[A,B] { self =>
   protected def underlying: Iterator[A]
@@ -119,10 +121,37 @@ trait PlannedIteratorFunctions {
 
   implicit def iteratorToPlannedIterator[A](iterator: Iterator[A]) = plannedIterator(iterator)
 
-  implicit class PlannedIteratorOps[A,B](p: PlannedIterator[A,Future[B]]) {
+  implicit class IteratorPlanned[A](iterator: Iterator[A]) {
+    def planned = plannedIterator(iterator)
+  }
+
+  implicit class PlannedIteratorOps[A,B](p: PlannedIterator[A,B]) {
+    def to(out: OutputStream, ser: B => Array[Byte], delim: Array[Byte], onWriteError: PartialFunction[Throwable,Unit]): PlannedIterator[A,Unit] =
+      p.addCompletionHook(out.close).map{ b =>
+        try {
+          out.write(ser(b))
+          out.write(delim)
+        } catch {
+          onWriteError
+        }
+      }
+
+    def to(out: OutputStream, ser: B => String, delim: String, onWriteError: PartialFunction[Throwable,Unit]): PlannedIterator[A,Unit] =
+      to(out, ser.andThen(_.getBytes), delim.getBytes, onWriteError)
+
+    def to(out: OutputStream, delim: String = "\n", onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit e: EncodeJson[B]): PlannedIterator[A,Unit] =
+      to(out, (_:B).asJson.toString.getBytes, delim.getBytes, onWriteError)
+
+    def checkpoint(out: OutputStream, in: =>InputStream, onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit ee: EncodeJson[B], ed: DecodeJson[B]): PlannedIterator[String,B] = {
+      to(out, "\n", onWriteError).run
+
+      val i = in
+      plannedIterator(scala.io.Source.fromInputStream(i).getLines).addCompletionHook(i.close).flatMap(b => b.decodeOption[B])
+    }
+  }
+
+  implicit class PlannedFutureIteratorOps[A,B](p: PlannedIterator[A,Future[B]]) {
     def runPar(n: Int = 2, timeout: Duration = Duration.Inf)(implicit execContext: ExecutionContext) =
       p.apply(_.grouped(n).flatMap(bs => Await.result(Future.sequence(bs),timeout))).run
   }
-
-
 }
