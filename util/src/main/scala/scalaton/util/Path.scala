@@ -55,6 +55,7 @@ object paths {
   }
 
   def path(f0: File, cs: String*)(implicit osSpecific: OSSpecific) = osSpecific.path(f0, cs : _*)
+  def root(implicit osSpecific: OSSpecific) = path(new File(osSpecific./))
   def home(implicit osSpecific: OSSpecific) = path(new File(System.getProperty("user.home")))
   def pwd(implicit osSpecific: OSSpecific) = path(new File(System.getProperty("user.dir")))
 
