@@ -48,16 +48,6 @@ object paths {
     implicit def stringToPath(p: String) = Path(stringToJavaFile(p))
     implicit def pathToJavaFile(p: Path) = p.file
 
-    implicit class InputStreamOps(in: InputStream){
-      def gz = new java.util.zip.GZIPInputStream(in)
-      def buffered(n: Int = 4096) = new BufferedInputStream(in, n)
-    }
-
-    implicit class OutputStreamOps(out: OutputStream){
-      def gz = new java.util.zip.GZIPOutputStream(out)
-      def buffered(n: Int = 4096) = new BufferedOutputStream(out, n)
-    }
-
     implicit val unixOsSpecific = new OSSpecific {
       val / = "/"
     }
