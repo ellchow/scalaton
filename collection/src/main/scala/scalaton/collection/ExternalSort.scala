@@ -21,18 +21,18 @@ import java.io._
 import scala.collection.mutable.PriorityQueue
 import scalaton.util._
 import scalaton.util.path._
+import scala.util.{ Try, Success, Failure }
 
 object ExternalSort {
 
   /** external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
      currently requires elements to have a json codec for serialization to file
   */
-  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path = mkTempDir())(key: A => K): Iterator[A] = {
-    val chunks = xs.grouped(groupSize)
-
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path = mkTempDir())(key: A => K): Try[PlannedIterator[A,A]] = {
+    val chunks = plannedIterator(xs).grouped(groupSize)
     val sortedChunks = chunks.map(_.sortBy(key))
 
-    val handles = sortedChunks.zipWithIndex.map { case (chunk, i) =>
+    val handlesTry = sortedChunks.zipWithIndex.map{ case (chunk, i) =>
       val out = tmp / i.toString
       val w = new PrintStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(out.file)))
 
@@ -43,17 +43,19 @@ object ExternalSort {
       }
 
       out
-    }.toVector
+    }.convert(_.toVector)
 
-    val is = handles.map{ f =>
-      val inp = scala.io.Source.fromInputStream(new java.util.zip.GZIPInputStream(new FileInputStream(f.file)))
-
-      inp.getLines.map{ ln =>
-        ln.decodeEither[A].fold({ s => inp.close(); throw new Exception(s"failed to deserialize ($s)") }, identity)
+    handlesTry.map{ handles =>
+      val inputs = handles.map{ p =>
+        new java.util.zip.GZIPInputStream(new FileInputStream(p.file))
       }
+      val iterators = inputs.map{ input =>
+        scala.io.Source.fromInputStream(input).getLines.map{ ln =>
+          ln.decodeEither[A].fold({ s => input.close(); throw new Exception(s"failed to deserialize ($s)") }, identity)
+        }
+      }
+      plannedIterator(merge(iterators)(key)).addCompletionHook(inputs.foreach{ i => i.close})
     }
-
-    merge(is)(key)
   }
 
   def merge[A, K : Ordering](iters: Vector[Iterator[A]])(key: A => K) = {
@@ -76,7 +78,7 @@ object ExternalSort {
     }
   }
 
-  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path = mkTempDir()): Iterator[A] =
+  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path = mkTempDir()): Try[PlannedIterator[A,A]] =
     sortBy(xs, groupSize, tmp)(identity)
 
 }
