@@ -9,7 +9,8 @@ hosted on sonatype
 libraryDependencies ++= Seq(
   "com.github.ellchow" %% "scalaton-util" % "0.1.2-SNAPSHOT",
   "com.github.ellchow" %% "scalaton-collection" % "0.1.2-SNAPSHOT",
-  "com.github.ellchow" %% "scalaton-aggregate" % "0.1.2-SNAPSHOT"
+  "com.github.ellchow" %% "scalaton-aggregate" % "0.1.2-SNAPSHOT",
+  "com.github.ellchow" %% "scalaton-async" % "0.1.2-SNAPSHOT"
 )
 
 </pre>
