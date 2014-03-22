@@ -20,20 +20,21 @@ import argonaut._, Argonaut._
 import java.io._
 import scala.collection.mutable.PriorityQueue
 import scalaton.util._
+import scalaton.util.path._
 
 object ExternalSort {
 
   /** external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
      currently requires elements to have a json codec for serialization to file
   */
-  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: File = mkTempDir())(key: A => K): Iterator[A] = {
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path = mkTempDir())(key: A => K): Iterator[A] = {
     val chunks = xs.grouped(groupSize)
 
     val sortedChunks = chunks.map(_.sortBy(key))
 
     val handles = sortedChunks.zipWithIndex.map { case (chunk, i) =>
-      val out = new File(tmp, i.toString)
-      val w = new PrintStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(out)))
+      val out = tmp / i.toString
+      val w = new PrintStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(out.file)))
 
       try {
         chunk.foreach{ x => w.println(x.asJson.toString) }
@@ -45,7 +46,7 @@ object ExternalSort {
     }.toVector
 
     val is = handles.map{ f =>
-      val inp = scala.io.Source.fromInputStream(new java.util.zip.GZIPInputStream(new FileInputStream(f)))
+      val inp = scala.io.Source.fromInputStream(new java.util.zip.GZIPInputStream(new FileInputStream(f.file)))
 
       inp.getLines.map{ ln =>
         ln.decodeEither[A].fold({ s => inp.close(); throw new Exception(s"failed to deserialize ($s)") }, identity)
@@ -75,7 +76,7 @@ object ExternalSort {
     }
   }
 
-  def sort[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: File = mkTempDir()): Iterator[A] =
+  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path = mkTempDir()): Iterator[A] =
     sortBy(xs, groupSize, tmp)(identity)
 
 }

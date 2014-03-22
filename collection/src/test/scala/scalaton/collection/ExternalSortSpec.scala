@@ -34,7 +34,7 @@ class ExternalSortSpec extends FlatSpec with Matchers with GeneratorDrivenProper
           val externalsorted = ExternalSort.sortBy(xs.iterator, 10, tmp)(identity).toList
           externalsorted should be(sorted)
         } finally {
-          org.apache.commons.io.FileUtils.deleteDirectory(tmp)
+          org.apache.commons.io.FileUtils.deleteDirectory(tmp.file)
         }
       }
     }

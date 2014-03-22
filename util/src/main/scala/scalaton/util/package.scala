@@ -17,16 +17,18 @@
 package scalaton
 
 package object util {
-  def mkTempDir(base: String = System.getProperty("java.io.tmpdir"), attempts: Int = 1000): java.io.File = {
+  import java.io._
+
+  def mkTempDir(base: scalaton.util.path.Path = scalaton.util.path.path(new File(System.getProperty("java.io.tmpdir"))), attempts: Int = 1000): scalaton.util.path.Path = {
     val timestamp = System.currentTimeMillis + "-"
 
     var i = 0
-    var tmp = None: Option[java.io.File]
+    var tmp = None: Option[scalaton.util.path.Path]
     while(tmp.isEmpty && i < attempts) {
       i += 1
-      val t = new java.io.File(base, timestamp + i)
-      if (t.mkdir)
-        tmp = Some(t)
+      val t = base / (timestamp + "-" + i)
+
+      if (scalaton.util.path.fs.mkdir(t)) tmp = Some(t)
     }
 
     if(tmp.nonEmpty)
@@ -35,8 +37,8 @@ package object util {
       throw new Exception(s"failed to create temp dir in $base after $attempts attempts")
   }
 
-  def mkTemp(base: String = System.getProperty("java.io.tmpdir"), attempts: Int = 1000) =
-    new java.io.File(mkTempDir(base, attempts), "file")
+  def mkTemp(base: scalaton.util.path.Path = scalaton.util.path.path(new File(System.getProperty("java.io.tmpdir"))), attempts: Int = 1000) =
+    mkTempDir(base, attempts) / "file"
 
   implicit class AnyRefToMap(x: AnyRef) {
     def toMap: Map[String,Any] = x.getClass.getDeclaredFields.foldLeft(Map.empty[String,Any]){ (a, f) =>

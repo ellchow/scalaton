@@ -24,18 +24,18 @@ trait path {
   implicit def stringToJavaFile(p: String) = new File(p)
   implicit def stringToPath(p: String) = Path(stringToJavaFile(p))
 
-  case class Path private[util] (f: File) {
-    def /(s: String) = path(f, s)
+  case class Path private[util] (val file: File) {
+    def /(s: String) = path(file, s)
 
-    def parent: Option[Path] = Option(f.getParentFile).map(pf => Path(pf))
+    def parent: Option[Path] = Option(file.getParentFile).map(pf => Path(pf))
 
-    def name = f.getName
+    def name = file.getName
 
-    def absolute = path(f.getAbsolutePath)
+    def absolute = path(file.getAbsolutePath)
 
-    def unlinked = path(f.getCanonicalPath)
+    def unlinked = path(file.getCanonicalPath)
 
-    override def toString = f.getCanonicalPath
+    override def toString = file.getCanonicalPath
   }
 
   def path(f0: File, cs: String*) =
@@ -50,25 +50,27 @@ trait path {
   object fs {
     def isRoot(p: Path) = p == /
 
-    def exists(p: Path) = p.f.exists
+    def exists(p: Path) = p.file.exists
 
-    def touch(p: Path) = FileUtils.touch(p.f)
+    def touch(p: Path) = FileUtils.touch(p.file)
+
+    def delete(p: Path) = p.file.delete
 
     def mkdir(p: Path, parents: Boolean = false) =
-      if (parents) p.f.mkdirs else p.f.mkdir
+      if (parents) p.file.mkdirs else p.file.mkdir
 
     def write(p: Path, s: String, append: Boolean = true, encoding: java.nio.charset.Charset = null) =
-      FileUtils.writeStringToFile(p.f, s, encoding, append)
+      FileUtils.writeStringToFile(p.file, s, encoding, append)
 
-    def isDirectory(p: Path) = p.f.isDirectory
+    def isDirectory(p: Path) = p.file.isDirectory
 
-    def dirSize(p: Path) = BigInt(FileUtils.sizeOfDirectoryAsBigInteger(p.f))
+    def dirSize(p: Path) = BigInt(FileUtils.sizeOfDirectoryAsBigInteger(p.file))
 
-    def size(p: Path) = BigInt(FileUtils.sizeOfAsBigInteger(p.f))
+    def size(p: Path) = BigInt(FileUtils.sizeOfAsBigInteger(p.file))
 
     def listDir(root: Path, recurse: Boolean = false, unlink: Boolean = false): Stream[Path] = {
       def lst(p: Path) =
-        Option((if (unlink) p.unlinked else p).f.listFiles) match {
+        Option((if (unlink) p.unlinked else p).file.listFiles) match {
           case Some(pp) => pp.toList.map(ff => Path(ff)).partition(x => !isDirectory(x))
           case None => throw new IllegalArgumentException(s"$root does not exist")
         }

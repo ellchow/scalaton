@@ -21,6 +21,7 @@ import org.scalatest._
 import org.scalatest.matchers._
 import org.scalatest.prop._
 import scala.util.{ Try, Success, Failure }
+import scalaton.util.path._
 
 class TeeSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   import Tee._
@@ -33,12 +34,12 @@ class TeeSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks 
       (xs: Set[Either[Int,Int]]) => {
         val out = scalaton.util.mkTemp()
         try {
-          val rights = xs.iterator.tee(new java.io.FileOutputStream(out)).map(x => Right(x)).toSet
-          val lefts = scala.io.Source.fromFile(out).getLines.flatMap(_.decodeOption[Int].map(x => Left(x)))
+          val rights = xs.iterator.tee(new java.io.FileOutputStream(out.file)).map(x => Right(x)).toSet
+          val lefts = scala.io.Source.fromFile(out.file).getLines.flatMap(_.decodeOption[Int].map(x => Left(x)))
 
           xs should be(rights ++ lefts)
         } finally {
-          out.delete()
+          fs.delete(out)
         }
       }
     }
