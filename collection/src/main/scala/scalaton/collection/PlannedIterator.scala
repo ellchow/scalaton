@@ -20,14 +20,14 @@ import scala.util.Try
 import scala.concurrent._, duration._
 
 private[collection] trait PlannedIterator[A,B] { self =>
-  protected def underlying: Iterator[A]
-  protected def f: Iterator[A] => Iterator[B]
-  protected def completionHook(): Unit
+  private[collection] def underlying: Iterator[A]
+  private[collection] def f: Iterator[A] => Iterator[B]
+  private[collection] def completionHook(): Unit
 
   def apply[C](g: Iterator[B] => Iterator[C]) = new PlannedIterator[A,C] {
-    protected def underlying: Iterator[A] = self.underlying
-    protected def f = self.f.andThen(g)
-    protected def completionHook(): Unit = self.completionHook
+    private[collection] def underlying: Iterator[A] = self.underlying
+    private[collection] def f = self.f.andThen(g)
+    private[collection] def completionHook(): Unit = self.completionHook
   }
   def convert[C](g: Iterator[B] => C): Try[C] = {
     val c = Try(g(f(underlying)))
@@ -87,14 +87,25 @@ private[collection] trait PlannedIterator[A,B] { self =>
 
   def takeWhile(pred: B => Boolean) = apply(_.takeWhile(pred))
 
+  def zipWithIndex = apply(_.zipWithIndex)
+
+  def zip[A1,B1](other: PlannedIterator[A1,B1]) = new PlannedIterator[A,(B,B1)] {
+    private[collection] def underlying: Iterator[A] = self.underlying
+    private[collection] def f = (as: Iterator[A]) => self.f(as).zip(other.f(other.underlying))
+    private[collection] def completionHook(): Unit = {
+      self.completionHook
+      other.completionHook
+    }
+  }
+
   def futured(implicit execContext: ExecutionContext) = apply(_.map(b => future(b)))
 }
 
 trait PlannedIteratorFunctions {
   def plannedIterator[A](iterator: Iterator[A], onComplete: =>Unit = Unit) = new PlannedIterator[A,A] {
-    protected def underlying: Iterator[A] = iterator
-    protected def f = identity _
-    protected def completionHook(): Unit = onComplete
+    private[collection] def underlying: Iterator[A] = iterator
+    private[collection] def f = identity _
+    private[collection] def completionHook(): Unit = onComplete
   }
 
   implicit class PlannedIteratorOps[A,B](p: PlannedIterator[A,Future[B]]) {
