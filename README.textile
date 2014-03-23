@@ -17,12 +17,62 @@ libraryDependencies ++= Seq(
 
 h2. util
 
-general utilities like Hashable typeclass, Enums, Url encoding/decoding
+* more generic hashing for basic datatypes and tuples (32 bit, 64 bit, 128 bit)
+
+* path manipulation and filesystem navigation
+
+* monoid instances
+
+* simple csv parse using parser-combinators
 
 h2. collection
 
-additional collections and functions on collections
+_additional collections and enhancements on standard scala collections_
+
+* BiMap - very basic bidirectional map
+
+* External sort
+
+* Immutable Heap (pairing heap implementation)
+
+* Immutable Queue (banker's queue implementation)
+
+* Joins on iterators
+
+* Tee - "tee"-ing an iterator into an output stream
+
+* PlannedIterator - wrapper of iterator that separates composition from consumption of the iterator, allows for easy
+
+* Immutable graph structure for running the topological sort algorithm
+
+* Immutable Trie
+
 
 h2. aggregate
 
-aggregation/approximate/streaming algorithms
+_aggregation/approximate/streaming algorithms_
+
+* Streaming bootstrap - use poisson approximation to draw a bootstrap estimate from a stream
+
+* FrequentItems - heavy hitters algorithm base on the StreamSummary data structure
+
+* Histogram - online histogram building by bucketization
+
+* Moments - moments aggregation (count, mean, variance, kurtosis, skewness)
+
+* Reservoir Sampling
+
+* Timer - simple timer for calculating average rates
+
+* TopK - maintain the top k items of a stream
+
+* Bloom Filters
+
+* Frequency Sketches - generic sketch structure, with CountMinSketch implementation
+
+* HyperLogLog - approximate cardinality algorithm
+
+
+h2. async
+
+* Enhancements on Scala Futures (timers/schedulers)
