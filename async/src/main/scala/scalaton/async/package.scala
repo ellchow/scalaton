@@ -16,5 +16,29 @@
 
 package scalaton
 
+import scala.concurrent._, duration._
+import rx.lang.scala._
+import play.api.libs.iteratee._
+import scala.util.{ Try, Success, Failure }
 
-package object async extends ExecutionContextExtensions with FutureExtensions
+package object async extends ExecutionContextExtensions with FutureExtensions {
+
+  /** blatantly copied from https://github.com/gilbertw1/rxplay-example */
+  implicit class PlayEnumeratorToObservable[T](enum: Enumerator[T]) {
+    def toObservable(implicit executionContext: ExecutionContext) = {
+      Observable({ observer: Observer[T] =>
+        var cancelled = false
+        val cancellableEnum = enum through Enumeratee.breakE[T](_ => cancelled)
+
+        cancellableEnum (
+          Iteratee.foreach(observer.onNext(_))
+        ).onComplete {
+          case Success(_) => observer.onCompleted()
+          case Failure(e) => observer.onError(e)
+        }
+
+        new Subscription { override def unsubscribe() = { cancelled = true } }
+      })
+    }
+  }
+}
