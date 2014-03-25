@@ -45,7 +45,8 @@ object Dependencies{
     "io.netty" % "netty-all" % "4.0.17.Final",
     "com.netflix.rxjava" % "rxjava-scala" % "0.17.1",
     "com.typesafe.play" %% "play-iteratees" % "2.2.0",
-    "com.typesafe.akka" %% "akka-actor" % "2.3.0"
+    "com.typesafe.akka" %% "akka-actor" % "2.3.0",
+    "com.github.nscala-time" %% "nscala-time" % "0.2.0"
   )
 
   val aggregate = common ++ Seq(
