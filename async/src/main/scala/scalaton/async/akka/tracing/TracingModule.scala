@@ -20,28 +20,6 @@ import akka.actor._
 import com.github.nscala_time.time.Imports._
 import scalaton.async.akka._
 
-
-/*
-import scalaton.async.akka.tracing._
-import akka.actor._
-import scala.concurrent._, duration._
-
-lazy val sys = ActorSystem("system")
-
-object Main extends TracingModule {
- lazy val system = sys
-
- val a = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("forward", msg)); c >+ msg })}))
- val b = system.actorOf(Props(new Actor { val receive: Receive = { case _ =>  } }))
- val c = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("echo", msg)) })}))
-}
-import Main._
-
-c !+ "hello"
-a !+ "hello"
-
-*/
-
 trait TracingModule extends Akka {
   import TraceAggregator._
 
@@ -115,3 +93,24 @@ class TraceAggregator extends Actor with ActorLogging {
       log.debug(ft.prettify)
   }
 }
+
+/*
+import scalaton.async.akka.tracing._
+import akka.actor._
+import scala.concurrent._, duration._
+
+lazy val sys = ActorSystem("system")
+
+object Main extends TracingModule {
+ lazy val system = sys
+
+ val a = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("forward", msg)); c >+ msg })}))
+ val b = system.actorOf(Props(new Actor { val receive: Receive = { case _ =>  } }))
+ val c = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("echo", msg)) })}))
+}
+import Main._
+
+c !+ "hello"
+a !+ "hello"
+
+*/
