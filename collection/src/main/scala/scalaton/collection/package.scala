@@ -1,3 +1,3 @@
 package scalaton
 
-package object collection extends PlannedIteratorFunctions
+package object collection extends ComposedIteratorFunctions

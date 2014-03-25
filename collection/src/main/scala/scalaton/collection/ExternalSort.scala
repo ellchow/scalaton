@@ -28,8 +28,8 @@ object ExternalSort {
   /** external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
      currently requires elements to have a json codec for serialization to file
   */
-  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path)(key: A => K): Try[PlannedIterator[A,A]] = {
-    val chunks = plannedIterator(xs).grouped(groupSize)
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path)(key: A => K): Try[ComposedIterator[A,A]] = {
+    val chunks = composedIterator(xs).grouped(groupSize)
     val sortedChunks = chunks.map(_.sortBy(key))
 
     val handlesTry = sortedChunks.zipWithIndex.map{ case (chunk, i) =>
@@ -54,14 +54,14 @@ object ExternalSort {
           ln.decodeEither[A].fold({ s => input.close(); throw new Exception(s"failed to deserialize ($s)") }, identity)
         }
       }
-      plannedIterator(merge(iterators)(key)).addCompletionHook{
+      composedIterator(merge(iterators)(key)).addCompletionHook{
         inputs.foreach{ i => i.close }
         handles.foreach(f => Filesystem.delete(f))
       }
     }
   }
 
-  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int)(key: A => K)(implicit osSpecific: OSSpecific): Try[PlannedIterator[A,A]] =
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int)(key: A => K)(implicit osSpecific: OSSpecific): Try[ComposedIterator[A,A]] =
     sortBy(xs, groupSize, Filesystem.mkTempDir())(key)
 
   def merge[A, K : Ordering](iters: Vector[Iterator[A]])(key: A => K) = {
@@ -84,10 +84,10 @@ object ExternalSort {
     }
   }
 
-  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path): Try[PlannedIterator[A,A]] =
+  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path): Try[ComposedIterator[A,A]] =
     sortBy(xs, groupSize, tmp)(identity)
 
-  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int)(implicit osSpecific: OSSpecific): Try[PlannedIterator[A,A]] =
+  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int)(implicit osSpecific: OSSpecific): Try[ComposedIterator[A,A]] =
     sorted(xs, groupSize, Filesystem.mkTempDir())
 
 }

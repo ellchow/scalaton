@@ -21,7 +21,7 @@ import scala.concurrent._, duration._
 import java.io._
 import argonaut._, Argonaut._
 
-trait PlannedIterator[A,B] { self =>
+trait ComposedIterator[A,B] { self =>
   import Join._
 
   protected[collection] def underlying: Iterator[A]
@@ -29,7 +29,7 @@ trait PlannedIterator[A,B] { self =>
   protected def completionHook(): Unit
   protected[collection] def applied = f(underlying)
 
-  def apply[C](g: Iterator[B] => Iterator[C]) = new PlannedIterator[A,C] {
+  def apply[C](g: Iterator[B] => Iterator[C]) = new ComposedIterator[A,C] {
     protected[collection] def underlying: Iterator[A] = self.underlying
     protected def f = self.f.andThen(g)
     protected def completionHook(): Unit = self.completionHook
@@ -96,7 +96,7 @@ trait PlannedIterator[A,B] { self =>
 
   def zipWithIndex = apply(_.zipWithIndex)
 
-  def zip[A1,B1](other: PlannedIterator[A1,B1]) = new PlannedIterator[A,(B,B1)] {
+  def zip[A1,B1](other: ComposedIterator[A1,B1]) = new ComposedIterator[A,(B,B1)] {
     protected[collection] def underlying: Iterator[A] = self.underlying
     protected def f = (as: Iterator[A]) => self.f(as).zip(other.f(other.underlying))
     protected def completionHook(): Unit = {
@@ -105,9 +105,7 @@ trait PlannedIterator[A,B] { self =>
     }
   }
 
-  def futured(implicit execContext: ExecutionContext) = apply(_.map(b => future(b)))
-
-  def addCompletionHook(onComplete: =>Unit) = new PlannedIterator[A,B] {
+  def addCompletionHook(onComplete: =>Unit) = new ComposedIterator[A,B] {
     protected[collection] def underlying: Iterator[A] = self.underlying
     protected def f = self.f
     protected def completionHook(): Unit = {
@@ -117,8 +115,8 @@ trait PlannedIterator[A,B] { self =>
   }
 }
 
-trait PlannedIteratorFunctions {
-  def plannedIterator[A](iterator: Iterator[A], onComplete: =>Unit = Unit) = new PlannedIterator[A,A] {
+trait ComposedIteratorFunctions {
+  def composedIterator[A](iterator: Iterator[A], onComplete: =>Unit = Unit) = new ComposedIterator[A,A] {
     protected[collection] def underlying: Iterator[A] = iterator
     protected def f = identity _
     protected def completionHook(): Unit = onComplete
@@ -126,7 +124,7 @@ trait PlannedIteratorFunctions {
 
   def resourceIterator[A,R <: Closeable](init: =>(R, Iterator[A])) = {
     val (r, iterator) = init
-    plannedIterator(iterator, r.close())
+    composedIterator(iterator, r.close())
   }
 
   def linesIterator(input: =>InputStream) = {
@@ -134,14 +132,14 @@ trait PlannedIteratorFunctions {
     resourceIterator((r, scala.io.Source.fromInputStream(r).getLines))
   }
 
-  implicit def iteratorToPlannedIterator[A](iterator: Iterator[A]) = plannedIterator(iterator)
+  implicit def iteratorToComposedIterator[A](iterator: Iterator[A]) = composedIterator(iterator)
 
-  implicit class IteratorPlanned[A](iterator: Iterator[A]) {
-    def planned = plannedIterator(iterator)
+  implicit class IteratorComposed[A](iterator: Iterator[A]) {
+    def composed = composedIterator(iterator)
   }
 
-  implicit class PlannedIteratorOps[A,B](p: PlannedIterator[A,B]) {
-    def to(out: OutputStream, ser: B => Array[Byte], delim: Array[Byte], onWriteError: PartialFunction[Throwable,Unit]): PlannedIterator[A,Unit] =
+  implicit class ComposedIteratorOps[A,B](p: ComposedIterator[A,B]) {
+    def to(out: OutputStream, ser: B => Array[Byte], delim: Array[Byte], onWriteError: PartialFunction[Throwable,Unit]): ComposedIterator[A,Unit] =
       p.addCompletionHook(out.close).map{ b =>
         try {
           out.write(ser(b))
@@ -151,16 +149,16 @@ trait PlannedIteratorFunctions {
         }
       }
 
-    def to(out: OutputStream, ser: B => String, delim: String, onWriteError: PartialFunction[Throwable,Unit]): PlannedIterator[A,Unit] =
+    def to(out: OutputStream, ser: B => String, delim: String, onWriteError: PartialFunction[Throwable,Unit]): ComposedIterator[A,Unit] =
       to(out, ser.andThen(_.getBytes), delim.getBytes, onWriteError)
 
-    def to(out: OutputStream, delim: String = "\n", onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit e: EncodeJson[B]): PlannedIterator[A,Unit] =
+    def to(out: OutputStream, delim: String = "\n", onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit e: EncodeJson[B]): ComposedIterator[A,Unit] =
       to(out, (_:B).asJson.toString.getBytes, delim.getBytes, onWriteError)
 
-    def checkpoint(out: OutputStream, in: =>InputStream, onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit ee: EncodeJson[B], ed: DecodeJson[B]): Try[PlannedIterator[String,B]] = {
+    def checkpoint(out: OutputStream, in: =>InputStream, onWriteError: PartialFunction[Throwable,Unit] = { case t => throw t })(implicit ee: EncodeJson[B], ed: DecodeJson[B]): Try[ComposedIterator[String,B]] = {
       to(out, "\n", onWriteError).run.map{ _ =>
         val i = in
-        plannedIterator(scala.io.Source.fromInputStream(i).getLines).addCompletionHook(i.close).map(s => s.decodeOption[B] match {
+        composedIterator(scala.io.Source.fromInputStream(i).getLines).addCompletionHook(i.close).map(s => s.decodeOption[B] match {
           case Some(b) => b
           case None => throw new IOException("unable to decode json $b")
         })
@@ -168,29 +166,24 @@ trait PlannedIteratorFunctions {
     }
   }
 
-  implicit class KeyedPlannedIteratorOps[K,A,B](p: PlannedIterator[A,(K,B)]) {
+  implicit class KeyedComposedIteratorOps[K,A,B](p: ComposedIterator[A,(K,B)]) {
     import Join._
 
     def groupByKey(implicit ord: Ordering[K]) = p.apply(_.groupByKey)
 
-    def coGroup[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+    def coGroup[A1,B1](other: ComposedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
       p.apply(_.coGroup(other.applied))
 
-    def innerJoin[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+    def innerJoin[A1,B1](other: ComposedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
       p.apply(_.innerJoin(other.applied))
 
-    def fullOuterJoin[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+    def fullOuterJoin[A1,B1](other: ComposedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
       p.apply(_.fullOuterJoin(other.applied))
 
-    def rightOuterJoin[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+    def rightOuterJoin[A1,B1](other: ComposedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
       p.apply(_.rightOuterJoin(other.applied))
 
-    def leftOuterJoin[A1,B1](other: PlannedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
+    def leftOuterJoin[A1,B1](other: ComposedIterator[A1,(K,B1)])(implicit ord: Ordering[K]) =
       p.apply(_.leftOuterJoin(other.applied))
-  }
-
-  implicit class PlannedFutureIteratorOps[A,B](p: PlannedIterator[A,Future[B]]) {
-    def unfutured(n: Int = 2, timeout: Duration = Duration.Inf)(implicit execContext: ExecutionContext) =
-      p.apply(_.grouped(n).flatMap(bs => Await.result(Future.sequence(bs), timeout)))
   }
 }
