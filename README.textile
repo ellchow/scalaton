@@ -75,4 +75,5 @@ _aggregation/approximate/streaming algorithms_
 
 h2. async
 
-* Enhancements on Scala Futures (timers/schedulers)
+* Enhancements on Scala Futures (timers/schedulers, retries, racing, ...)
+* Simple Akka Message Tracing
