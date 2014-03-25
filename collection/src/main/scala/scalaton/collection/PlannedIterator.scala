@@ -190,7 +190,7 @@ trait PlannedIteratorFunctions {
   }
 
   implicit class PlannedFutureIteratorOps[A,B](p: PlannedIterator[A,Future[B]]) {
-    def runPar(n: Int = 2, timeout: Duration = Duration.Inf)(implicit execContext: ExecutionContext) =
-      p.apply(_.grouped(n).flatMap(bs => Await.result(Future.sequence(bs),timeout))).run
+    def unfutured(n: Int = 2, timeout: Duration = Duration.Inf)(implicit execContext: ExecutionContext) =
+      p.apply(_.grouped(n).flatMap(bs => Await.result(Future.sequence(bs), timeout)))
   }
 }

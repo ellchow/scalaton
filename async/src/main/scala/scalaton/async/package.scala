@@ -26,7 +26,7 @@ package object async extends ExecutionContextExtensions with FutureExtensions {
   /** blatantly copied from https://github.com/gilbertw1/rxplay-example */
   implicit class PlayEnumeratorToObservable[T](enum: Enumerator[T]) {
     def toObservable(implicit executionContext: ExecutionContext) = {
-      Observable({ observer: Observer[T] =>
+      Observable{ observer: Observer[T] =>
         var cancelled = false
         val cancellableEnum = enum through Enumeratee.breakE[T](_ => cancelled)
 
@@ -38,7 +38,7 @@ package object async extends ExecutionContextExtensions with FutureExtensions {
         }
 
         new Subscription { override def unsubscribe() = { cancelled = true } }
-      })
+      }
     }
   }
 }
