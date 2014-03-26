@@ -79,9 +79,8 @@ object TraceAggregator {
     val traceType = "send"
 
     def prettify = {
-      // val t = (new DateTime(System.currentTimeMillis)).toString(org.joda.time.format.ISODateTimeFormat.dateTime)
-      val s = sender.map(_.path.name).getOrElse("deadLetters")
-      s"| trace:SEND | timestamp:$timestamp | sender:$s | receiver:${receiver.path.name} | $msg"
+      val s = sender.map(_.path.toString).getOrElse("deadLetters")
+      s"| trace:SEND | timestamp:$timestamp | sender:$s | receiver:${receiver.path.toString} | $msg"
     }
   }
 
@@ -89,8 +88,8 @@ object TraceAggregator {
     lazy val msgType = msgTypeOption.getOrElse(msg.getClass.getName)
     val traceType = "receive"
     def prettify = {
-      val s = sender.map(_.path.name).getOrElse("deadLetters")
-      s"| trace:RECEIVE | timestamp:$timestamp | sender:${s} | receiver:${receiver.path.name} | $msg"
+      val s = sender.map(_.path.toString).getOrElse("deadLetters")
+      s"| trace:RECEIVE | timestamp:$timestamp | sender:${s} | receiver:${receiver.path.toString} | $msg"
     }
   }
 
@@ -99,8 +98,8 @@ object TraceAggregator {
     val traceType = "forward"
 
     def prettify = {
-      val s = sender.map(_.path.name).getOrElse("deadLetters")
-      s"| trace:FORWARD | timestamp:$timestamp | sender:${s} | through:${through.path.name} | receiver:${receiver.path.name} | $msg"
+      val s = sender.map(_.path.toString).getOrElse("deadLetters")
+      s"| trace:FORWARD | timestamp:$timestamp | sender:${s} | through:${through.path.toString} | receiver:${receiver.path.toString} | $msg"
     }
   }
 }
@@ -145,9 +144,9 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends 
 
   def timeline = {
     val byTime = buf.take(tracingTimelineSize).toList.map{
-      case mt@SendTrace(sender, receiver, timestamp, msg, _) => (sender.map(_.path.name).getOrElse("deadLetters"), mt)
-      case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => (receiver.path.name, mt)
-      case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => (through.path.name, mt)
+      case mt@SendTrace(sender, receiver, timestamp, msg, _) => (sender.map(_.path.toString).getOrElse("deadLetters"), mt)
+      case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => (receiver.path.toString, mt)
+      case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => (through.path.toString, mt)
     }.sortBy(_._2.timestamp)
     val cols = byTime.map(_._1).toSet.toVector.sorted
     val colnum = cols.zipWithIndex.toMap
@@ -180,9 +179,9 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends 
         case TimelineAsciiFormat =>
           val xs = ("time \\ actor" +: columns) +: table.view.map{
             case (datetime, rows) => datetime.toString(org.joda.time.format.ISODateTimeFormat.dateTime) +: rows.map(row => row.fold(""){
-              case mt@SendTrace(sender, receiver, timestamp, msg, _) => s"S ${msg.toString} -> ${receiver.path.name}"
-              case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => val sdr = sender.map(_.path.name).getOrElse("deadLetters") ; s"R ${msg.toString} <- $sdr"
-              case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => val sdr = sender.map(_.path.name).getOrElse("deadLetters"); s"F ${msg.toString} $sdr ~> ${receiver.path.name}"
+              case mt@SendTrace(sender, receiver, timestamp, msg, _) => s"S ${msg.toString} -> ${receiver.path.toString}"
+              case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("deadLetters") ; s"R ${msg.toString} <- $sdr"
+              case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("deadLetters"); s"F ${msg.toString} $sdr ~> ${receiver.path.toString}"
             })
           }
 
@@ -207,7 +206,7 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends 
   }
 }
 
-/*
+
 object SampleTracingRun extends App {
   import scala.concurrent._, duration._, ExecutionContext.Implicits.global
   import akka.pattern.ask
@@ -218,9 +217,9 @@ object SampleTracingRun extends App {
   object Main extends TracingModule {
     lazy val system = sys
 
-    val a = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("forward", msg)); c >+ msg })}))
-    val b = system.actorOf(Props(new Actor { val receive: Receive = { case _ =>  } }))
-    val c = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("echo", msg)) })}))
+    val a = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("forward", msg)); c >+ msg })}), "AA")
+    val b = system.actorOf(Props(new Actor { val receive: Receive = { case _ =>  } }), "BB")
+    val c = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("echo", msg)) })}), "CC")
   }
   import Main._
 
@@ -248,4 +247,3 @@ object SampleTracingRun extends App {
 
   akka.pattern.after(DurationInt(5).seconds, system.scheduler)(Future(system.shutdown))
 }
-*/
