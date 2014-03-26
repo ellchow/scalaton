@@ -27,16 +27,14 @@ trait TracingModule extends Akka {
 
   implicit class TracingOps(receiver: ActorRef) {
     def !+[A](msg: A)(implicit sender: ActorRef = Actor.noSender): Unit = {
-      if (turnOnTracing)
-        traceAggregator ! SendTrace(Option(sender), receiver, System.currentTimeMillis, msg)
+      traceAggregator ! SendTrace(Option(sender), receiver, System.currentTimeMillis, msg)
       receiver ! msg
     }
 
     def tell_+[A](msg: A, sender: ActorRef) = !+(msg)(sender)
 
     def >+[A](msg: A)(implicit context: ActorContext): Unit = {
-      if (turnOnTracing)
-        traceAggregator ! ForwardTrace(Option(context.sender), receiver, context.self, System.currentTimeMillis, msg)
+      traceAggregator ! ForwardTrace(Option(context.sender), receiver, context.self, System.currentTimeMillis, msg)
       receiver forward msg
     }
 
@@ -60,11 +58,14 @@ trait TracingModule extends Akka {
   val turnOnTracing = true
   val tracingStatsBufferSize = 1000
   val tracingTimelineSize = 100
-  lazy val traceAggregator: ActorRef = system.actorOf(Props(new TraceAggregator(tracingStatsBufferSize, tracingTimelineSize)), "trace-aggregator")
+  val traceAggregator: ActorRef = system.actorOf(Props(new TraceAggregator(tracingStatsBufferSize, tracingTimelineSize, turnOnTracing)), "trace-aggregator")
 }
 
 object TraceAggregator {
-  sealed trait MessageTrace[A] {
+  case object TurnOnTracing
+  case object TurnOffTracing
+
+   private[tracing] sealed trait MessageTrace[A] {
     val sender: Option[ActorRef]
     val receiver: ActorRef
     val timestamp: Long
@@ -74,7 +75,7 @@ object TraceAggregator {
     def prettify: String
   }
 
-  case class SendTrace[A](val sender: Option[ActorRef], val receiver: ActorRef, val timestamp: Long , val msg: A, val msgTypeOption: Option[String] = None) extends MessageTrace[A] {
+  case class SendTrace[A] private[tracing](val sender: Option[ActorRef], val receiver: ActorRef, val timestamp: Long , val msg: A, val msgTypeOption: Option[String] = None) extends MessageTrace[A] {
     lazy val msgType = msgTypeOption.getOrElse(msg.getClass.getName)
     val traceType = "send"
 
@@ -84,7 +85,7 @@ object TraceAggregator {
     }
   }
 
-  case class ReceiveTrace(val sender: Option[ActorRef], val receiver: ActorRef, val timestamp: Long, val msg: Any, val msgTypeOption: Option[String] = None) extends MessageTrace[Any] {
+  case class ReceiveTrace private[tracing](val sender: Option[ActorRef], val receiver: ActorRef, val timestamp: Long, val msg: Any, val msgTypeOption: Option[String] = None) extends MessageTrace[Any] {
     lazy val msgType = msgTypeOption.getOrElse(msg.getClass.getName)
     val traceType = "receive"
     def prettify = {
@@ -93,7 +94,7 @@ object TraceAggregator {
     }
   }
 
-  case class ForwardTrace[A](val sender: Option[ActorRef], val receiver: ActorRef, val through: ActorRef, val timestamp: Long , val msg: A, val msgTypeOption: Option[String] = None) extends MessageTrace[A] {
+  case class ForwardTrace[A] private[tracing](val sender: Option[ActorRef], val receiver: ActorRef, val through: ActorRef, val timestamp: Long , val msg: A, val msgTypeOption: Option[String] = None) extends MessageTrace[A] {
     lazy val msgType = msgTypeOption.getOrElse(msg.getClass.getName)
     val traceType = "forward"
 
@@ -103,20 +104,36 @@ object TraceAggregator {
     }
   }
 }
-class TraceAggregator(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends Actor with ActorLogging {
+class TraceAggregator(tracingStatsBufferSize: Int, tracingTimelineSize: Int, turnOnTracing: Boolean) extends Actor with ActorLogging {
   import TraceAggregator._
 
-  val stats = context.actorOf(Props(new TraceStats(tracingStatsBufferSize, tracingTimelineSize)), "trace-stats")
+  var on = turnOnTracing
+
+  val stats = context.actorOf(Props(new TraceStats(tracingStatsBufferSize, tracingTimelineSize, turnOnTracing)), "trace-stats")
 
   val receive: Receive = {
-    case messageTrace: MessageTrace[_] =>
-      log.info(messageTrace.prettify)
-      stats ! messageTrace
-  }
+    ({
+      case TurnOnTracing =>
+        log.debug("turn on tracing")
+        on = true
+        stats ! TraceStats.TurnOn
+      case TurnOffTracing =>
+        log.debug("turn off tracing")
+        on = false
+        stats ! TraceStats.TurnOff
+      case _ if !on => log.warning("tracing is turned off")
+    }: Receive) orElse {
+      case messageTrace: MessageTrace[_] =>
+        log.info(messageTrace.prettify)
+        stats ! messageTrace
+    }}
 }
 
 object TraceStats {
   import TraceAggregator._
+
+  private[tracing] case object TurnOn
+  private[tracing] case object TurnOff
 
   case object GetOverallMessageCounts
   case class OverallMessageCounts(val counts: Map[String,Map[String,Long]])
@@ -133,10 +150,11 @@ object TraceStats {
   case object TimelineAsciiFormat extends TimelineFmt
 
 }
-class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends Actor with ActorLogging {
+class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int, turnOnTracing: Boolean) extends Actor with ActorLogging {
   import TraceAggregator._
   import TraceStats._
 
+  var on = turnOnTracing
   var buf = Queue.empty[MessageTrace[_]]
 
   def overallMessageCounts =
@@ -158,7 +176,17 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends 
     (cols, table)
   }
 
-  lazy val receive: Receive = processMessage orElse handleRequest
+  lazy val receive: Receive = {
+    ({
+      case TurnOn =>
+        log.debug("turn on tracing")
+        on = true
+      case TurnOff =>
+        log.debug("turn off tracing")
+        on = false
+      case _ if !on=> log.warning("tracing is turned off")
+    }: Receive) orElse processMessage orElse handleRequest
+  }
 
   val processMessage: Receive = {
     case messageTrace: MessageTrace[_] =>
@@ -215,6 +243,7 @@ object SampleTracingRun extends App {
   lazy val sys = ActorSystem("system")
 
   object Main extends TracingModule {
+    override val turnOnTracing = true
     lazy val system = sys
 
     val a = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("forward", msg)); c >+ msg })}), "AA")
@@ -230,6 +259,11 @@ object SampleTracingRun extends App {
 
   Await.result(traceStats ? TraceStats.GetOverallMessageCounts, Duration.Inf).asInstanceOf[TraceStats.OverallMessageCounts].counts.foreach(println)
 
+  traceAggregator ! TraceAggregator.TurnOffTracing
+
+  a !+ "hello - untraced"
+
+  traceAggregator ! TraceAggregator.TurnOnTracing
 
   a !+ "hello"
 
