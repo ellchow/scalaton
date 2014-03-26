@@ -58,8 +58,9 @@ trait TracingModule extends Akka {
   }
 
   val turnOnTracing = true
-  val tracingStatsBufferSize = 10000
-  lazy val traceAggregator: ActorRef = system.actorOf(Props(new TraceAggregator(tracingStatsBufferSize)), "trace-aggregator")
+  val tracingStatsBufferSize = 1000
+  val tracingTimelineSize = 100
+  lazy val traceAggregator: ActorRef = system.actorOf(Props(new TraceAggregator(tracingStatsBufferSize, tracingTimelineSize)), "trace-aggregator")
 }
 
 object TraceAggregator {
@@ -79,7 +80,7 @@ object TraceAggregator {
 
     def prettify = {
       // val t = (new DateTime(System.currentTimeMillis)).toString(org.joda.time.format.ISODateTimeFormat.dateTime)
-      val s = sender.map(_.path.name).getOrElse("<NA>")
+      val s = sender.map(_.path.name).getOrElse("deadLetters")
       s"| trace:SEND | timestamp:$timestamp | sender:$s | receiver:${receiver.path.name} | $msg"
     }
   }
@@ -88,7 +89,7 @@ object TraceAggregator {
     lazy val msgType = msgTypeOption.getOrElse(msg.getClass.getName)
     val traceType = "receive"
     def prettify = {
-      val s = sender.map(_.path.name).getOrElse("<NA>")
+      val s = sender.map(_.path.name).getOrElse("deadLetters")
       s"| trace:RECEIVE | timestamp:$timestamp | sender:${s} | receiver:${receiver.path.name} | $msg"
     }
   }
@@ -98,15 +99,15 @@ object TraceAggregator {
     val traceType = "forward"
 
     def prettify = {
-      val s = sender.map(_.path.name).getOrElse("<NA>")
+      val s = sender.map(_.path.name).getOrElse("deadLetters")
       s"| trace:FORWARD | timestamp:$timestamp | sender:${s} | through:${through.path.name} | receiver:${receiver.path.name} | $msg"
     }
   }
 }
-class TraceAggregator(tracingStatsBufferSize: Int) extends Actor with ActorLogging {
+class TraceAggregator(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends Actor with ActorLogging {
   import TraceAggregator._
 
-  val stats = context.actorOf(Props(new TraceStats(tracingStatsBufferSize)), "trace-stats")
+  val stats = context.actorOf(Props(new TraceStats(tracingStatsBufferSize, tracingTimelineSize)), "trace-stats")
 
   val receive: Receive = {
     case messageTrace: MessageTrace[_] =>
@@ -116,13 +117,24 @@ class TraceAggregator(tracingStatsBufferSize: Int) extends Actor with ActorLoggi
 }
 
 object TraceStats {
+  import TraceAggregator._
+
   case object GetOverallMessageCounts
   case class OverallMessageCounts(val counts: Map[String,Map[String,Long]])
 
   case object GetBufferedMessageTraces
-  case class BufferedMessageTraces(val counts: Seq[TraceAggregator.MessageTrace[_]])
+  case class BufferedMessageTraces(val counts: Seq[MessageTrace[_]])
+
+  case class GetTimeline(val format: TimelineFmt)
+  case class TimelineTable(val columns: Vector[String], val table: Vector[Vector[Option[MessageTrace[_]]]])
+  case class TimelineAscii(val table: String)
+
+  sealed trait TimelineFmt
+  case object TimelineTableFormat extends TimelineFmt
+  case object TimelineAsciiFormat extends TimelineFmt
+
 }
-class TraceStats(tracingStatsBufferSize: Int) extends Actor with ActorLogging {
+class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends Actor with ActorLogging {
   import TraceAggregator._
   import TraceStats._
 
@@ -130,6 +142,22 @@ class TraceStats(tracingStatsBufferSize: Int) extends Actor with ActorLogging {
 
   def overallMessageCounts =
     buf.foldLeft(Map.empty[String,Map[String,Long]])((counts, m) => counts |+| Map(m.msgType -> Map(m.traceType -> 1)))
+
+  def timeline = {
+    val byTime = buf.take(tracingTimelineSize).toList.map{
+      case mt@SendTrace(sender, receiver, timestamp, msg, _) => (sender.map(_.path.name).getOrElse("deadLetters"), mt)
+      case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => (receiver.path.name, mt)
+      case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => (through.path.name, mt)
+    }.sortBy(_._2.timestamp)
+    val cols = byTime.map(_._1).toSet.toVector.sorted
+    val colnum = cols.zipWithIndex.toMap
+    val n = colnum.size
+    val table = byTime.foldLeft(Vector.empty[(DateTime,Vector[Option[MessageTrace[_]]])]){ case (t, (a, mt)) =>
+      t :+ (new DateTime(mt.timestamp), Vector.fill(n)(none[MessageTrace[_]]).updated(colnum(a), mt.some))
+    }
+
+    (cols, table)
+  }
 
   lazy val receive: Receive = processMessage orElse handleRequest
 
@@ -143,6 +171,81 @@ class TraceStats(tracingStatsBufferSize: Int) extends Actor with ActorLogging {
 
   val handleRequest: Receive = {
     case GetOverallMessageCounts => sender ! OverallMessageCounts(overallMessageCounts)
-    case BufferedMessageTraces => sender ! BufferedMessageTraces(buf)
+    case GetBufferedMessageTraces => sender ! BufferedMessageTraces(buf)
+    case GetTimeline(fmt) =>
+      val (columns, table) = timeline
+
+      fmt match {
+        case TimelineTableFormat => sender ! TimelineTable(columns, table.map(_._2))
+        case TimelineAsciiFormat =>
+          val xs = ("time \\ actor" +: columns) +: table.view.map{
+            case (datetime, rows) => datetime.toString(org.joda.time.format.ISODateTimeFormat.dateTime) +: rows.map(row => row.fold(""){
+              case mt@SendTrace(sender, receiver, timestamp, msg, _) => s"S ${msg.toString} -> ${receiver.path.name}"
+              case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => val sdr = sender.map(_.path.name).getOrElse("deadLetters") ; s"R ${msg.toString} <- $sdr"
+              case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => val sdr = sender.map(_.path.name).getOrElse("deadLetters"); s"F ${msg.toString} $sdr ~> ${receiver.path.name}"
+            })
+          }
+
+          val longestSizes = xs.foldLeft(Vector.fill(columns.size + 1)(0)){ (szs, row) =>
+            szs.zip(row.map(_.size)).map{ case (a,b) => a.max(b) }
+          }
+
+
+          val ys = xs.map{ row =>
+            row.zip(longestSizes).map{ case (s, longestSize) =>
+              val pad = (" " * (longestSize - s.size))
+
+              s + pad
+            }.mkString(" | ")
+          }
+
+          val ascii = (Vector(ys.head, "-" * ys.head.size) ++ ys.tail).mkString("\n")
+
+          sender ! TimelineAscii(ascii)
+      }
+
   }
 }
+
+/*
+object SampleTracingRun extends App {
+  import scala.concurrent._, duration._, ExecutionContext.Implicits.global
+  import akka.pattern.ask
+
+  case object Foo
+  lazy val sys = ActorSystem("system")
+
+  object Main extends TracingModule {
+    lazy val system = sys
+
+    val a = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("forward", msg)); c >+ msg })}))
+    val b = system.actorOf(Props(new Actor { val receive: Receive = { case _ =>  } }))
+    val c = system.actorOf(Props(new TracingActor { val receive: Receive = tracedReceive({ case msg => println(("echo", msg)) })}))
+  }
+  import Main._
+
+  implicit val timeout = akka.util.Timeout(DurationInt(1).seconds)
+  val traceStats = system.actorSelection("akka://system/user/trace-aggregator/trace-stats")
+
+  c !+ "hello"
+
+  Await.result(traceStats ? TraceStats.GetOverallMessageCounts, Duration.Inf).asInstanceOf[TraceStats.OverallMessageCounts].counts.foreach(println)
+
+
+  a !+ "hello"
+
+  Await.result(traceStats ? TraceStats.GetOverallMessageCounts, Duration.Inf).asInstanceOf[TraceStats.OverallMessageCounts].counts.foreach(println)
+
+
+  c !+ Foo
+
+  Await.result(traceStats ? TraceStats.GetOverallMessageCounts, Duration.Inf).asInstanceOf[TraceStats.OverallMessageCounts].counts.foreach(println)
+
+  println("------------------------")
+
+  val timeline = Await.result(traceStats ? TraceStats.GetTimeline(TraceStats.TimelineAsciiFormat), Duration.Inf).asInstanceOf[TraceStats.TimelineAscii]
+  println(timeline.table)
+
+  akka.pattern.after(DurationInt(5).seconds, system.scheduler)(Future(system.shutdown))
+}
+*/
