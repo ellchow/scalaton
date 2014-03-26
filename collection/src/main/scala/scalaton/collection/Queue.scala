@@ -65,7 +65,7 @@ object Queue extends SeqFactory[Queue] {
   implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, Queue[A]] = new GenericCanBuildFrom[A]
 
   def newBuilder[A]: mutable.Builder[A, Queue[A]] =
-    new mutable.ListBuffer[A] mapResult { x => new Queue(x.reverse.toStream, 0, Stream.empty, 0) }
+    new mutable.ArrayBuffer[A] mapResult { x => new Queue(x.toStream, 0, Stream.empty, 0) }
 
   override def empty[A] = new Queue[A](Stream.empty, 0, Stream.empty, 0)
 
