@@ -206,7 +206,7 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends 
   }
 }
 
-
+/*
 object SampleTracingRun extends App {
   import scala.concurrent._, duration._, ExecutionContext.Implicits.global
   import akka.pattern.ask
@@ -247,3 +247,4 @@ object SampleTracingRun extends App {
 
   akka.pattern.after(DurationInt(5).seconds, system.scheduler)(Future(system.shutdown))
 }
+ */
