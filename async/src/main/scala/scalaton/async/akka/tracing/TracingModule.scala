@@ -79,7 +79,7 @@ object TraceAggregator {
     val traceType = "send"
 
     def prettify = {
-      val s = sender.map(_.path.toString).getOrElse("deadLetters")
+      val s = sender.map(_.path.toString).getOrElse("akka://system/deadLetters")
       s"| trace:SEND | timestamp:$timestamp | sender:$s | receiver:${receiver.path.toString} | $msg"
     }
   }
@@ -88,7 +88,7 @@ object TraceAggregator {
     lazy val msgType = msgTypeOption.getOrElse(msg.getClass.getName)
     val traceType = "receive"
     def prettify = {
-      val s = sender.map(_.path.toString).getOrElse("deadLetters")
+      val s = sender.map(_.path.toString).getOrElse("akka://system/deadLetters")
       s"| trace:RECEIVE | timestamp:$timestamp | sender:${s} | receiver:${receiver.path.toString} | $msg"
     }
   }
@@ -98,7 +98,7 @@ object TraceAggregator {
     val traceType = "forward"
 
     def prettify = {
-      val s = sender.map(_.path.toString).getOrElse("deadLetters")
+      val s = sender.map(_.path.toString).getOrElse("akka://system/deadLetters")
       s"| trace:FORWARD | timestamp:$timestamp | sender:${s} | through:${through.path.toString} | receiver:${receiver.path.toString} | $msg"
     }
   }
@@ -144,7 +144,7 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends 
 
   def timeline = {
     val byTime = buf.take(tracingTimelineSize).toList.map{
-      case mt@SendTrace(sender, receiver, timestamp, msg, _) => (sender.map(_.path.toString).getOrElse("deadLetters"), mt)
+      case mt@SendTrace(sender, receiver, timestamp, msg, _) => (sender.map(_.path.toString).getOrElse("akka://system/deadLetters"), mt)
       case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => (receiver.path.toString, mt)
       case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => (through.path.toString, mt)
     }.sortBy(_._2.timestamp)
@@ -180,8 +180,8 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends 
           val xs = ("time \\ actor" +: columns) +: table.view.map{
             case (datetime, rows) => datetime.toString(org.joda.time.format.ISODateTimeFormat.dateTime) +: rows.map(row => row.fold(""){
               case mt@SendTrace(sender, receiver, timestamp, msg, _) => s"S ${msg.toString} -> ${receiver.path.toString}"
-              case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("deadLetters") ; s"R ${msg.toString} <- $sdr"
-              case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("deadLetters"); s"F ${msg.toString} -> ${receiver.path.toString}"
+              case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("akka://system/deadLetters") ; s"R ${msg.toString} <- $sdr"
+              case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("akka://system/deadLetters"); s"F ${msg.toString} -> ${receiver.path.toString}"
             })
           }
 
