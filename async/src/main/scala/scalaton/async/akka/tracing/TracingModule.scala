@@ -181,7 +181,7 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int) extends 
             case (datetime, rows) => datetime.toString(org.joda.time.format.ISODateTimeFormat.dateTime) +: rows.map(row => row.fold(""){
               case mt@SendTrace(sender, receiver, timestamp, msg, _) => s"S ${msg.toString} -> ${receiver.path.toString}"
               case mt@ReceiveTrace(sender, receiver, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("deadLetters") ; s"R ${msg.toString} <- $sdr"
-              case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("deadLetters"); s"F ${msg.toString} $sdr ~> ${receiver.path.toString}"
+              case mt@ForwardTrace(sender, receiver, through, timestamp, msg, _) => val sdr = sender.map(_.path.toString).getOrElse("deadLetters"); s"F ${msg.toString} -> ${receiver.path.toString}"
             })
           }
 
