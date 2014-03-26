@@ -20,6 +20,7 @@ import akka.actor._
 import com.github.nscala_time.time.Imports._
 import scalaton.async.akka._
 import scalaz._, Scalaz._
+import scalaton.collection.immutable._
 
 trait TracingModule extends Akka {
   import TraceAggregator._
@@ -56,8 +57,9 @@ trait TracingModule extends Akka {
     }
   }
 
-  def turnOnTracing = true
-  lazy val traceAggregator: ActorRef = system.actorOf(Props[TraceAggregator], "trace-aggregator")
+  val turnOnTracing = true
+  val tracingStatsBufferSize = 10000
+  lazy val traceAggregator: ActorRef = system.actorOf(Props(new TraceAggregator(tracingStatsBufferSize)), "trace-aggregator")
 }
 
 object TraceAggregator {
@@ -78,7 +80,7 @@ object TraceAggregator {
     def prettify = {
       // val t = (new DateTime(System.currentTimeMillis)).toString(org.joda.time.format.ISODateTimeFormat.dateTime)
       val s = sender.map(_.path.name).getOrElse("<NA>")
-      s"| TRACE:SEND | $timestamp | sender:$s | receiver:${receiver.path.name} | $msg"
+      s"| trace:SEND | timestamp:$timestamp | sender:$s | receiver:${receiver.path.name} | $msg"
     }
   }
 
@@ -87,7 +89,7 @@ object TraceAggregator {
     val traceType = "receive"
     def prettify = {
       val s = sender.map(_.path.name).getOrElse("<NA>")
-      s"| TRACE:RECEIVE | $timestamp | sender:${s} | receiver:${receiver.path.name} | $msg"
+      s"| trace:RECEIVE | timestamp:$timestamp | sender:${s} | receiver:${receiver.path.name} | $msg"
     }
   }
 
@@ -97,14 +99,14 @@ object TraceAggregator {
 
     def prettify = {
       val s = sender.map(_.path.name).getOrElse("<NA>")
-      s"| TRACE:FORWARD | $timestamp | sender:${s} | through:${through.path.name} | receiver:${receiver.path.name} | $msg"
+      s"| trace:FORWARD | timestamp:$timestamp | sender:${s} | through:${through.path.name} | receiver:${receiver.path.name} | $msg"
     }
   }
 }
-class TraceAggregator extends Actor with ActorLogging {
+class TraceAggregator(tracingStatsBufferSize: Int) extends Actor with ActorLogging {
   import TraceAggregator._
 
-  val stats = context.actorOf(Props(new TraceStats), "trace-stats")
+  val stats = context.actorOf(Props(new TraceStats(tracingStatsBufferSize)), "trace-stats")
 
   val receive: Receive = {
     case messageTrace: MessageTrace[_] =>
@@ -116,21 +118,31 @@ class TraceAggregator extends Actor with ActorLogging {
 object TraceStats {
   case object GetOverallMessageCounts
   case class OverallMessageCounts(val counts: Map[String,Map[String,Long]])
+
+  case object GetBufferedMessageTraces
+  case class BufferedMessageTraces(val counts: Seq[TraceAggregator.MessageTrace[_]])
 }
-class TraceStats extends Actor with ActorLogging {
+class TraceStats(tracingStatsBufferSize: Int) extends Actor with ActorLogging {
   import TraceAggregator._
   import TraceStats._
 
-  var overallMessageCounts = Map.empty[String,Map[String,Long]] // message type -> trace type -> Long
+  var buf = Queue.empty[MessageTrace[_]]
+
+  def overallMessageCounts =
+    buf.foldLeft(Map.empty[String,Map[String,Long]])((counts, m) => counts |+| Map(m.msgType -> Map(m.traceType -> 1)))
 
   lazy val receive: Receive = processMessage orElse handleRequest
 
   val processMessage: Receive = {
     case messageTrace: MessageTrace[_] =>
-      overallMessageCounts = overallMessageCounts |+| Map(messageTrace.msgType -> Map(messageTrace.traceType -> 1))
+      buf = buf.enqueue(messageTrace)
+      if (buf.size > tracingStatsBufferSize) {
+        buf = buf.dequeue._2
+      }
   }
 
   val handleRequest: Receive = {
     case GetOverallMessageCounts => sender ! OverallMessageCounts(overallMessageCounts)
+    case BufferedMessageTraces => sender ! BufferedMessageTraces(buf)
   }
 }

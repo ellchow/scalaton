@@ -121,7 +121,7 @@ object ProjectBuild extends Build{
       libraryDependencies ++= Dependencies.async,
       scalacOptions := compilerOptions
     )
-  )
+  ) dependsOn(collectionProject, aggregateProject)
 
 
   lazy val root = Project(
