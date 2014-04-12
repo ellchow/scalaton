@@ -46,5 +46,4 @@ object Json {
     def w = WEJson(m)
   }
   case class LeafBuildWithJson(w: WEJson) extends BuildWithJson
-
 }

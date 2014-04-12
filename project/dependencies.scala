@@ -21,6 +21,7 @@ object Dependencies{
 
   val common = Seq(
     "org.scalaz" % "scalaz-core_2.10" % "7.0.5",
+    "com.fasterxml.jackson.module" % "jackson-module-scala_2.10" % "2.3.2",
 
     "ch.qos.logback" % "logback-classic" % "1.0.9",
     "com.typesafe" %% "scalalogging-slf4j" % "1.0.1",
