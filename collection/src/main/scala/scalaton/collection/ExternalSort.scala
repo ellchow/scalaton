@@ -22,46 +22,45 @@ import scala.collection.mutable.PriorityQueue
 import scalaton.util._
 import scalaton.util.paths._
 import scala.util.{ Try, Success, Failure }
+import scalaz.{ Ordering => _ , _ }, Scalaz._
 
 object ExternalSort {
 
   /** external sort implementation that sorts chunks of the incoming input and writes each to file; each chunk is read incrementally and merged together.
      currently requires elements to have a json codec for serialization to file
   */
-  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path)(key: A => K): Try[ComposedIterator[A,A]] = {
-    val chunks = composedIterator(xs).grouped(groupSize)
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path)(key: A => K): Seq[Throwable] \/ (Iterator[A], Seq[InputStream]) = {
+    val chunks = xs.grouped(groupSize)
     val sortedChunks = chunks.map(_.sortBy(key))
 
-    val handlesTry = sortedChunks.zipWithIndex.map{ case (chunk, i) =>
+    val handlesD = sortedChunks.zipWithIndex.map{ case (chunk, i) =>
       val out = tmp / i.toString
-      val w = new PrintStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(out.file)))
-
-      try {
+      lazy val w = new PrintStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(out.file)))
+      val x = \/.fromTryCatch{
         chunk.foreach{ x => w.println(x.asJson.toString) }
-      } finally {
-        w.close()
-      }
+      }.fold(t => Vector(t).left, _ => Vector(out).right)
 
-      out
-    }.convert(_.toVector)
+      (x, w)
+    }.foldLeft(Vector.empty[Path].right[Vector[Throwable]]){ case (hs, (x, w)) =>
+        w.close
+        hs |+| x
+    }
 
-    handlesTry.map{ handles =>
-      val inputs = handles.map{ p =>
+    handlesD.map{ handles =>
+      lazy val inputs = handles.map{ p =>
         new java.util.zip.GZIPInputStream(new FileInputStream(p.file))
       }
-      val iterators = inputs.map{ input =>
+      lazy val iterators = inputs.map{ input =>
         scala.io.Source.fromInputStream(input).getLines.map{ ln =>
           ln.decodeEither[A].fold({ s => input.close(); throw new Exception(s"failed to deserialize ($s)") }, identity)
         }
       }
-      composedIterator(merge(iterators)(key)).addCompletionHook{
-        inputs.foreach{ i => i.close }
-        handles.foreach(f => Filesystem.delete(f))
-      }
+
+      (merge(iterators)(key), inputs)
     }
   }
 
-  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int)(key: A => K)(implicit osSpecific: OSSpecific): Try[ComposedIterator[A,A]] =
+  def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Iterator[A], groupSize: Int)(key: A => K)(implicit osSpecific: OSSpecific): Seq[Throwable] \/ (Iterator[A], Seq[InputStream]) =
     sortBy(xs, groupSize, Filesystem.mkTempDir())(key)
 
   def merge[A, K : Ordering](iters: Vector[Iterator[A]])(key: A => K) = {
@@ -84,10 +83,10 @@ object ExternalSort {
     }
   }
 
-  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path): Try[ComposedIterator[A,A]] =
+  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int, tmp: Path): Seq[Throwable] \/ (Iterator[A], Seq[InputStream]) =
     sortBy(xs, groupSize, tmp)(identity)
 
-  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int)(implicit osSpecific: OSSpecific): Try[ComposedIterator[A,A]] =
+  def sorted[A : EncodeJson : DecodeJson : Ordering](xs: Iterator[A], groupSize: Int)(implicit osSpecific: OSSpecific): Seq[Throwable] \/ (Iterator[A], Seq[InputStream]) =
     sorted(xs, groupSize, Filesystem.mkTempDir())
 
 }
