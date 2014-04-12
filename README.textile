@@ -41,8 +41,6 @@ _additional collections and enhancements on standard scala collections_
 
 * Tee - "tee"-ing an iterator into an output stream
 
-* ComposedIterator - wrapper of iterator that separates composition from consumption of the iterator, allows for easy
-
 * Immutable graph structure for running the topological sort algorithm
 
 * Immutable Trie
