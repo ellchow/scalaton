@@ -45,7 +45,7 @@ object Jackson {
   }
 
   def fieldFromPath(x: Any, path: List[String])(implicit mapper: ObjectMapper) = {
-    val any = x.toJson.decode[Any]
+    val any = x.toJson.fromJson[Any]
     def loop(any: Any, remaining: List[String]): Throwable \/ Any = (any, remaining) match {
       case (_, Nil) => any.right
       case (m: Map[_, _], p :: ps) =>
