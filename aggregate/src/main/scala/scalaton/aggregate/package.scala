@@ -22,7 +22,6 @@ package object aggregate {
     require(lb > 0)
     require(ub <= n)
 
-    val numLevels = math.ceil(math.log(n) / math.log(2)).toInt - 1
 
     def wholeIntervals(lb0: Int, ub0: Int, level: Int): (List[(Int,Int)], List[(Int,Int)]) = {
       // convert to 0 based, upper bound exclusive
@@ -58,6 +57,6 @@ package object aggregate {
       }
     }
 
-    loop(lb, ub, numLevels)
+    loop(lb, ub, math.ceil(math.log(n) / math.log(2)).toInt - 1)
   }
 }
