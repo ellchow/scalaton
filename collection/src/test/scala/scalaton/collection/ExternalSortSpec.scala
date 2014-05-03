@@ -17,12 +17,14 @@
 package scalaton.collection
 
 import scalaton.util.paths._, Implicits._
-
 import org.scalacheck._
 import org.scalatest._
 import org.scalatest.matchers._
 import org.scalatest.prop._
 import scalaz._, Scalaz._
+import scalaz.stream._
+import scalaz.concurrent._
+
 
 class ExternalSortSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   behavior of "ExternalSort"
@@ -32,13 +34,10 @@ class ExternalSortSpec extends FlatSpec with Matchers with GeneratorDrivenProper
       (xs: List[Int]) => {
         val tmp = Filesystem.mkTempDir()
         val sorted = xs.sorted
-        try {
-          val externalsorted = ExternalSort.sortBy(xs.iterator, 10, tmp)(identity)
-            .map{ case (xs, is) => \/.fromTryCatch(xs.toList).fold({ t => is.foreach(_.close) ; throw t }, identity) }
-          externalsorted should be(sorted.right[Vector[Throwable]])
-        } finally {
-          Filesystem.delete(tmp, true)
-        }
+        val externalsorted = ExternalSort.sort(xs, 10, tmp).runLog.run
+
+        externalsorted should be(sorted)
+        Filesystem.exists(tmp) should be(false)
       }
     }
   }
