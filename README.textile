@@ -48,7 +48,7 @@ _additional collections and enhancements on standard scala collections_
 
 h2. aggregate
 
-_aggregation/approximate/streaming algorithms_
+_aggregation/approximate/streaming algorithms and helpers_
 
 * Streaming bootstrap - use poisson approximation to draw a bootstrap estimate from a stream
 
@@ -69,6 +69,8 @@ _aggregation/approximate/streaming algorithms_
 * Frequency Sketches - generic sketch structure, with CountMinSketch implementation
 
 * HyperLogLog - approximate cardinality algorithm
+
+* Dyadic Decomposition of integer ranges
 
 
 h2. async
