@@ -20,7 +20,7 @@ import akka.actor._
 import com.github.nscala_time.time.Imports._
 import scalaton.async.akka._
 import scalaz._, Scalaz._
-import scalaton.collection.immutable._
+import scala.collection.mutable
 
 trait TracingModule extends Akka {
   import TraceAggregator._
@@ -56,7 +56,7 @@ trait TracingModule extends Akka {
   }
 
   val turnOnTracing = true
-  val tracingStatsBufferSize = 1000
+  val tracingStatsBufferSize = 2
   val tracingTimelineSize = 100
   val traceAggregator: ActorRef = system.actorOf(Props(new TraceAggregator(tracingStatsBufferSize, tracingTimelineSize, turnOnTracing)), "trace-aggregator")
 }
@@ -155,7 +155,7 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int, turnOnTr
   import TraceStats._
 
   var on = turnOnTracing
-  var buf = Queue.empty[MessageTrace[_]]
+  val buf = mutable.Queue.empty[MessageTrace[_]]
 
   def overallMessageCounts =
     buf.foldLeft(Map.empty[String,Map[String,Long]])((counts, m) => counts |+| Map(m.msgType -> Map(m.traceType -> 1)))
@@ -190,10 +190,9 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int, turnOnTr
 
   val processMessage: Receive = {
     case messageTrace: MessageTrace[_] =>
-      buf = buf.enqueue(messageTrace)
-      if (buf.size > tracingStatsBufferSize) {
-        buf = buf.dequeue._2
-      }
+      buf.enqueue(messageTrace)
+      if (buf.size > tracingStatsBufferSize)
+        buf.dequeue
   }
 
   val handleRequest: Receive = {
@@ -234,7 +233,7 @@ class TraceStats(tracingStatsBufferSize: Int, tracingTimelineSize: Int, turnOnTr
   }
 }
 
-/*
+
 object SampleTracingRun extends App {
   import scala.concurrent._, duration._, ExecutionContext.Implicits.global
   import akka.pattern.ask
@@ -269,7 +268,6 @@ object SampleTracingRun extends App {
 
   Await.result(traceStats ? TraceStats.GetOverallMessageCounts, Duration.Inf).asInstanceOf[TraceStats.OverallMessageCounts].counts.foreach(println)
 
-
   c !+ Foo
 
   Await.result(traceStats ? TraceStats.GetOverallMessageCounts, Duration.Inf).asInstanceOf[TraceStats.OverallMessageCounts].counts.foreach(println)
@@ -281,4 +279,3 @@ object SampleTracingRun extends App {
 
   akka.pattern.after(DurationInt(5).seconds, system.scheduler)(Future(system.shutdown))
 }
- */
