@@ -16,9 +16,73 @@
 
 package scalaton.collection
 
-import java.io._
-import scala.language.implicitConversions
+import scalaz.{ Ordering => _ , _ }, Scalaz._
+import scalaz.stream._
+import scalaz.concurrent._
+import scala.collection.immutable.TreeMap
+import scalaton.util.monoids._
 
+object Join {
+  /* cogroup 2 processes, assume both are sorted by K */
+  def coGroup[L, R, K : Ordering](lefts: Process[Task,(K,L)], rights: Process[Task,(K,R)]) = {
+    val mixed = scalaz.stream.merge.mergeN(Process(lefts.map(_.left), rights.map(_.right)))
+
+    case class Info(
+      val lk: Option[K] = None,
+      val lm: TreeMap[K, Vector[L]] = TreeMap.empty,
+      val rk: Option[K] = None,
+      val rm: TreeMap[K, Vector[R]] = TreeMap.empty)
+
+    implicit val infoSemigroup = new Semigroup[Info] {
+      def append(i1: Info, i2: =>Info) = Info(
+        i2.lk.map(_.some).getOrElse(i1.lk),
+        i1.lm |+| i2.lm,
+        i2.rk.map(_.some).getOrElse(i1.rk),
+        i1.rm |+| i2.rm
+      )
+    }
+
+    val kord = implicitly[Ordering[K]]
+
+    mixed.scan((Info(), Vector.empty[(K,(Option[Vector[L]],Option[Vector[R]]))])){
+      case ((info@Info(None, _, _, _), _), -\/((k, l))) =>
+        (info |+| Info(lk = k.some, lm = TreeMap(k -> Vector(l))), Vector.empty)
+
+      case ((info@Info(_, _, None, _), _), \/-((k, r))) =>
+        (info |+| Info(rk = k.some, rm = TreeMap(k -> Vector(r))), Vector.empty)
+
+      case ((info@Info(Some(lk), lm, _, _), _), -\/((k, l))) =>
+        if (lk == k) {
+          (info |+| Info(lm = TreeMap(k -> Vector(l))), Vector.empty)
+        } else {
+          if (info.rk.map(_ > lk).getOrElse(false)) {
+            (info.copy(lk = k.some, lm = info.lm - lk, rm = info.rm.dropWhile(x => !kord.gt(x._1,lk))),
+              info.rm.takeWhile(x => kord.lt(x._1, lk))
+                .map{ case (k,vs) => (k, (None, Some(vs))) }.toVector  :+ (lk, (info.lm.get(lk), info.rm.get(lk)))
+            )
+          } else {
+            (info |+| Info(lk = k.some, lm = TreeMap(k -> Vector(l))), Vector.empty)
+          }
+        }
+
+      case ((info@Info(_, _, Some(rk), rm), _), \/-((k, r))) =>
+        if (rk == k) {
+          (info |+| Info(rm = TreeMap(k -> Vector(r))), Vector.empty)
+        } else {
+          if (info.lk.map(_ > rk).getOrElse(false)) {
+            (info.copy(lm = info.lm.dropWhile(x => !kord.gt(x._1,rk)), rk = k.some, rm = info.rm - rk),
+              info.lm.takeWhile(x => kord.lt(x._1, rk))
+                .map{ case (k,vs) => (k, (Some(vs), None)) }.toVector :+ ((rk, (info.lm.get(rk), info.rm.get(rk))))
+            )
+          } else {
+            (info |+| Info(rk = k.some, rm = TreeMap(k -> Vector(r))), Vector.empty)
+          }
+        }
+    }
+  }
+}
+
+/*
 object Join {
 
   implicit def iterable2iterator[A](i: Iterable[A]) = i.iterator
@@ -161,3 +225,4 @@ object Join {
   }
 
 }
+ */

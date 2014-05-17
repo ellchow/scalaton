@@ -19,6 +19,7 @@ package scalaton.async.akka
 import akka.actor._
 import scala.concurrent._, duration._
 import scala.util.{ Try, Success, Failure }
+import scala.collection.mutable
 
 object Retrier {
   case class RetrierTimeout(val id: Long) extends Exception
@@ -81,19 +82,66 @@ abstract class Retrier(id: Long, timeouts: List[FiniteDuration], autoStart: Opti
 
 }
 
-abstract class FutureRetrier(id: Long, block: =>Any, timeouts: List[FiniteDuration], autoStart: Option[FiniteDuration] = Some(0.millis))(implicit executionContext: ExecutionContext) extends Retrier(id, timeouts, autoStart) {
+class FutureRetrier(id: Long, block: =>Any, timeouts: List[FiniteDuration], autoStart: Option[FiniteDuration] = Some(0.millis))(implicit executionContext: ExecutionContext) extends Retrier(id, timeouts, autoStart) {
 
   def run() = Future(block).onComplete(res => self ! res)
 
 }
+
+class UniformRetrier(create: PartialFunction[Any,Retrier], maxWorkers: Int = 5) extends Actor with ActorLogging {
+  import UniformRetrier._
+
+  val buf = mutable.Queue.empty[() => (ActorRef, ActorRef)] // (requester, retrier)
+
+  var requests = Map.empty[ActorRef, ActorRef] // retrier -> requester
+
+  val receive: Receive = {
+    case a if create.isDefinedAt(a) =>
+      val requester = sender
+      buf.enqueue(() => (requester, context.actorOf(Props(create(a)))))
+      runNext()
+
+    case result: Retrier.Result =>
+      requests.get(sender) match {
+        case Some(requester) =>
+          requester ! result
+          context.stop(sender)
+        case None =>
+          runNext()
+      }
+
+    case Terminated(retrier) =>
+      requests = requests - retrier
+      runNext()
+  }
+
+  def runNext(): Unit = {
+    if (requests.size < maxWorkers && buf.nonEmpty) {
+      val init = buf.dequeue
+      val (requester, retrier) = init()
+      requests = requests + (retrier -> requester)
+      context.watch(retrier)
+      runNext()
+    }
+  }
+}
+
+
 
 /*
 import scalaton.async.akka._
 import akka.actor._
 import scala.util.{ Try, Success, Failure }
 import scala.concurrent._, duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 val system = ActorSystem("system")
+val c = system.actorOf(Props(new UniformRetrier({ case x: Int => new FutureRetrier(x, { println(("attempt", x)); Thread.sleep(100); val y = scala.util.Random.nextDouble ; if (y < 0.5) throw new Exception(":(") else "ok " + x }, List(1.seconds,1.seconds)) }: PartialFunction[Any,Retrier])))
+val d = system.actorOf(Props(new Actor {  val receive: Receive = { case x => println(("done", x)) } }), "FOO")
+(1 to 10).foreach(i => c.tell(i,d))
+
+
+
 val a = system.actorOf(Props(new Actor {
   override val supervisorStrategy = OneForOneStrategy() {
     case _ => SupervisorStrategy.Stop
@@ -112,4 +160,8 @@ val a = system.actorOf(Props(new Actor {
 
   b
 }), "my-actor" + System.currentTimeMillis)
+
+
+
+
 */
