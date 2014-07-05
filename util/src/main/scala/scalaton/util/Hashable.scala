@@ -17,9 +17,9 @@
 package scalaton.util
 
 trait Hashable[A,B] { self =>
-  def hash(a: A): B
+  def hash(a: A, seed: Long): B
 
   def map[C](f: B => C): Hashable[A,C] = new Hashable[A,C]{
-    def hash(a: A) = f(self.hash(a))
+    def hash(a: A, seed: Long) = f(self.hash(a, seed))
   }
 }
