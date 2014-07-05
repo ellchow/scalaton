@@ -43,7 +43,7 @@ object Hash extends HashFunctions with HashableTupleInstances {
      println(s"""implicit val ${XX}ToMurmurHash${yy}Hashable = new Hashable[${xx},${t}] { def hash(a: ${xx}): ${t} = MurmurHash${yy}Instance.apply(a) }""")
      }}
      */
-    type Hashable32[A] = Hashable[A,Int]
+
     implicit val ArrayByteToMurmurHash32Hashable = new Hashable[Array[Byte],Int] { def hash(a: Array[Byte]): Int = MurmurHash32Instance.apply(a) }
     implicit val ArrayCharToMurmurHash32Hashable = new Hashable[Array[Char],Int] { def hash(a: Array[Char]): Int = MurmurHash32Instance.apply(a) }
     implicit val ArrayShortToMurmurHash32Hashable = new Hashable[Array[Short],Int] { def hash(a: Array[Short]): Int = MurmurHash32Instance.apply(a) }
@@ -63,7 +63,6 @@ object Hash extends HashFunctions with HashableTupleInstances {
     implicit def IterableToMurmurHash32Hashable[A : Hashable32, F[A] <: Iterable[A]] = new Hashable[F[A], Int] { def hash(a: F[A]) = combine(a.map(x => Hash.apply(x))) }
   }
   object MurmurHash64Implicits extends Tuple64Instances {
-    type Hashable64[A] = Hashable[A,Long]
     implicit val ArrayByteToMurmurHash64Hashable = new Hashable[Array[Byte],Long] { def hash(a: Array[Byte]): Long = MurmurHash64Instance.apply(a) }
     implicit val ArrayCharToMurmurHash64Hashable = new Hashable[Array[Char],Long] { def hash(a: Array[Char]): Long = MurmurHash64Instance.apply(a) }
     implicit val ArrayShortToMurmurHash64Hashable = new Hashable[Array[Short],Long] { def hash(a: Array[Short]): Long = MurmurHash64Instance.apply(a) }
@@ -83,7 +82,6 @@ object Hash extends HashFunctions with HashableTupleInstances {
     implicit def IterableToMurmurHash64Hashable[A : Hashable64, F[A] <: Iterable[A]] = new Hashable[F[A], Long] { def hash(a: F[A]) = combine(a.map(x => Hash.apply(x))) }
   }
   object MurmurHash128Instances extends Tuple128Instances {
-    type Hashable128[A] = Hashable[A,(Long,Long)]
     implicit val ArrayByteToMurmurHash128Hashable = new Hashable[Array[Byte],(Long,Long)] { def hash(a: Array[Byte]): (Long,Long) = MurmurHash128Instance.apply(a) }
     implicit val ArrayCharToMurmurHash128Hashable = new Hashable[Array[Char],(Long,Long)] { def hash(a: Array[Char]): (Long,Long) = MurmurHash128Instance.apply(a) }
     implicit val ArrayShortToMurmurHash128Hashable = new Hashable[Array[Short],(Long,Long)] { def hash(a: Array[Short]): (Long,Long) = MurmurHash128Instance.apply(a) }

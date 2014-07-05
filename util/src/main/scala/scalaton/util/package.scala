@@ -19,6 +19,9 @@ package scalaton
 import java.io._
 
 package object util {
+  type Hashable32[A] = Hashable[A,Int]
+  type Hashable64[A] = Hashable[A,Long]
+  type Hashable128[A] = Hashable[A,(Long,Long)]
 
   implicit class InputStreamOps(in: InputStream){
     def gz = new java.util.zip.GZIPInputStream(in)
