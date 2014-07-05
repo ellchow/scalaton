@@ -37,7 +37,7 @@ object Dependencies{
     "com.github.nscala-time" %% "nscala-time" % "0.2.0",
     "commons-io" % "commons-io" % "2.4",
     "io.argonaut" %% "argonaut" % "6.0.2",
-    "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full
+    "com.chuusai" % "shapeless_2.10.4" % "2.0.0"
   )
 
   val collection = common ++ Seq(
