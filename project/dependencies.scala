@@ -40,9 +40,7 @@ object Dependencies{
     "com.chuusai" % "shapeless_2.10.4" % "2.0.0"
   )
 
-  val collection = common ++ Seq(
-    "io.argonaut" %% "argonaut" % "6.0.2"
-  )
+  val collection = common
 
   val async = common ++ Seq(
     "io.netty" % "netty-all" % "4.0.17.Final",
