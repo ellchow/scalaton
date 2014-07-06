@@ -24,17 +24,19 @@ import scalaton.util.monoids._
 
 object Join {
   /* cogroup 2 processes - ASSUMES both are sorted by K */
+  def groupByKey[L, K](lefts: Process[Task,(K,L)])(implicit kord: Ordering[K]): Process[Task, (K, Vector[L])] =
+    (lefts.map(_.some) ++ emit(None))
+      .chunkBy2(_.map(_._1) == _.map(_._1)).map{ xs =>
+      val ys = xs.collect{ case Some(x) => x }
+      ys.headOption.map(_._1 -> ys.map(_._2))
+    }.collect{ case Some(x) => x }
+
+  /* cogroup 2 processes - ASSUMES both are sorted by K */
   def coGroup[L, R, K](lefts: Process[Task,(K,L)], rights: Process[Task,(K,R)])(implicit kord: Ordering[K]): Process[Task,(K, (Vector[L],Vector[R]))] = {
-    val chunkedLeft: Process[Task,Option[(K, Vector[L])]] = (lefts.map(_.some) ++ emit(None))
-      .chunkBy2(_.map(_._1) == _.map(_._1)).map{ xs =>
-      val ys = xs.collect{ case Some(x) => x }
-      ys.headOption.map(_._1 -> ys.map(_._2))
-    }.collect{ case x@Some(_) => x } ++ constant(none)
-    val chunkedRight: Process[Task,Option[(K, Vector[R])]] = (rights.map(_.some) ++ emit(None))
-      .chunkBy2(_.map(_._1) == _.map(_._1)).map{ xs =>
-      val ys = xs.collect{ case Some(x) => x }
-      ys.headOption.map(_._1 -> ys.map(_._2))
-    }.collect{ case x@Some(_) => x } ++ constant(none)
+    val chunkedLeft: Process[Task,Option[(K, Vector[L])]] =
+      groupByKey(lefts).map(_.some) ++ constant(none)
+    val chunkedRight: Process[Task,Option[(K, Vector[R])]] =
+      groupByKey(rights).map(_.some) ++ constant(none)
 
     sealed trait Action
     case object Left extends Action
