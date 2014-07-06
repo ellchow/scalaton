@@ -59,14 +59,14 @@ abstract class Sketch[K,V : Monoid,W,D,T <: Sketch[K,V,W,D,T]] extends DoubleHas
   }
 }
 
-abstract class  VectorBackedSketch[K,V : Monoid,W,T <: VectorBackedSketch[K,V,W,T]](data: Vector[Vector[V]], size: Long, numHashes: Int, width: Int, seed: Long = 0)(implicit val hashable: Hashable32[K]) extends Sketch[K,V,W,Vector[Vector[V]],T] {
+abstract class  VectorBackedSketch[K,V : Monoid,W,T <: VectorBackedSketch[K,V,W,T]](data: Vector[Vector[V]], size: Long, numHashes: Int, width: Int, seed: Long = 0) extends Sketch[K,V,W,Vector[Vector[V]],T] {
   def readCell(d: Vector[Vector[V]], i: Int, j: Int) = d(i)(j)
 
   def updateCell(d: Vector[Vector[V]], i: Int, j: Int, v: V) =
     d.updated(i, d(i).updated(j, readCell(d, i, j) |+| v))
 }
 
-case class CountMinSketch[K : Hashable32](data: Vector[Vector[Long]], size: Long, numHashes: Int, width: Int, seed: Long = 0) extends VectorBackedSketch[K,Long,Long,CountMinSketch[K]](data,size,numHashes,width,seed) {
+case class CountMinSketch[K](data: Vector[Vector[Long]], size: Long, numHashes: Int, width: Int, seed: Long = 0)(implicit val hashable: Hashable32[K]) extends VectorBackedSketch[K,Long,Long,CountMinSketch[K]](data,size,numHashes,width,seed) {
   def apply(d: Vector[Vector[Long]], n: Long) = this.copy(data = d, size = size)
   def estimate(vs: Iterable[Long]) = vs.min
 }
