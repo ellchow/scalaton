@@ -1,3 +1,59 @@
+/*
+ Copyright 2014 Elliot Chow
+
+ Licensed under the Apache License, Version 2.0 (the "License")
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+
+package scalaton.aggregate.hashed
+
+import scalaz._
+import Scalaz._
+
+import scalaton.util._
+
+trait HashedCollection[A]{
+  val numHashes: Int
+  val seed: Long
+  protected val hashable: Hashable32[A]
+
+  def isCompatible(x: HashedCollection[A]) = (seed == x.seed) && (numHashes == x.numHashes) && (hashable == x.hashable)
+
+  protected def hashItem(a: A): Seq[Int] =
+    (0 until numHashes).map{ s => Hash(a, seed + s)(hashable) }
+}
+
+trait HashModdedCollection[A] extends HashedCollection[A] {
+  val width: Int
+  override def isCompatible(x: HashedCollection[A]) = super.isCompatible(x) && (x match {
+    case y: HashModdedCollection[A] => (width == y.width)
+    case _ => false
+  })
+
+  override protected def hashItem(a: A): Seq[Int] =
+    super.hashItem(a).map(_ % width)
+
+}
+
+trait DoubleHashModdedCollection[A] extends HashModdedCollection[A] {
+  override protected def hashItem(a: A): Seq[Int] = {
+    val x = Hash(a, seed)(hashable)
+    val y = Hash(a, seed + 1)(hashable)
+      (0 until numHashes).map{ i => math.abs((x + (i * y) + (i * i))) % width }
+  }
+}
+
+
+
 // /*
 //  Copyright 2013 Elliot Chow
 
