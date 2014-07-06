@@ -114,4 +114,17 @@ trait FutureExtensions {
     def continue[B](cont: Try[A] => B)(implicit executionContext: ExecutionContext): Future[B] =
       futureCompanionOps.continue(f, cont)
   }
+
+  implicit class FutureDSimplifyOp[A](fd: Future[Throwable \/ A]) {
+    def simplify(implicit executionContext: ExecutionContext): Future[A] = fd.flatMap{
+      case -\/(t) => Future.failed(t)
+      case \/-(a) => Future.successful(a)
+    }
+  }
+
+  implicit class FutureDDisjunctionOp[A](f: Future[A]) {
+    def disjunction(implicit executionContext: ExecutionContext): Future[Throwable \/ A] =
+      f.flatMap(a => Future.successful(a.right)).recoverWith{ case t: Throwable => Future.successful(t.left)  }
+  }
+
 }
