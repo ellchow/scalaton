@@ -16,7 +16,9 @@
 
 package scalaton.collection
 
-import scalaton.util.paths._, Implicits._
+import scalaton.util._
+import scalaton.util.Implicits._
+import scalaton.util.paths._
 import org.scalacheck._
 import org.scalatest._
 import org.scalatest.matchers._

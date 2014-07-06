@@ -21,7 +21,8 @@ import org.scalatest._
 import org.scalatest.matchers._
 import org.scalatest.prop._
 import scala.util.{ Try, Success, Failure }
-import scalaton.util.paths._, Implicits._
+import scalaton.util.Implicits._
+import scalaton.util.paths._
 
 class TeeSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   import Tee._

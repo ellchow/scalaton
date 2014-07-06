@@ -41,4 +41,13 @@ package object util {
     }
   }
 
+  object Implicits {
+    implicit val unixOsSpecific = new OSSpecific {
+      val / = "/"
+    }
+
+    implicit def stringToJavaFile(p: String) = new File(p)
+    implicit def stringToPath(p: String)(implicit osSpecific: OSSpecific) = Path(stringToJavaFile(p))(osSpecific)
+    implicit def pathToJavaFile(p: Path) = p.file
+  }
 }

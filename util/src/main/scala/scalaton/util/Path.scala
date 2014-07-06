@@ -43,17 +43,6 @@ case class Path private[util] (val file: File)(implicit osSpecific: OSSpecific) 
 
 
 object paths {
-  object Implicits {
-    implicit def stringToJavaFile(p: String) = new File(p)
-    implicit def stringToPath(p: String) = Path(stringToJavaFile(p))
-    implicit def pathToJavaFile(p: Path) = p.file
-
-    implicit val unixOsSpecific = new OSSpecific {
-      val / = "/"
-    }
-
-  }
-
   def path(f0: File, cs: String*)(implicit osSpecific: OSSpecific) = osSpecific.path(f0, cs : _*)
   def root(implicit osSpecific: OSSpecific) = path(new File(osSpecific./))
   def home(implicit osSpecific: OSSpecific) = path(new File(System.getProperty("user.home")))
