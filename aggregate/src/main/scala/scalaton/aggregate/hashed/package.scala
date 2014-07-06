@@ -36,4 +36,13 @@ package object hashed {
     def empty[A : Hashable32](numHashes: Int, width: Int, seed: Long = 0) = CountMinSketch(Vector.fill(numHashes, width)(0L), 0, numHashes, width, seed)
     def fromData[A : Hashable32](numHashes: Int, width: Int, seed: Long = 0)(xs: Iterable[(A,Long)]) = xs.foldLeft(empty[A](numHashes, width, seed))((t,x) => t + x)
   }
+
+  implicit class StandardHyperLogLogSingletonOps(sbf: StandardHyperLogLog.type) {
+    def empty[A : Hashable32](b: Int, seed: Long = 0) = StandardHyperLogLog(Vector.fill[Byte](1 << (b - 1))(0), b, seed)
+    def fromData[A : Hashable32](b: Int, seed: Long = 0)(xs: Iterable[A]) = xs.foldLeft(empty[A](b, seed))(_ + _)
+  }
+  implicit class SparseHyperLogLogSingletonOps(sbf: SparseHyperLogLog.type) {
+    def empty[A : Hashable32](b: Int, seed: Long = 0) = SparseHyperLogLog(Map.empty, b, seed)
+    def fromData[A : Hashable32](b: Int, seed: Long = 0)(xs: Iterable[A]) = xs.foldLeft(empty[A](b, seed))(_ + _)
+  }
 }
