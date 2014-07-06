@@ -50,51 +50,57 @@ object ExternalSort {
     sortBy(emitAll(xs.toSeq): Process[Task,A], groupSize, Filesystem.mkTempDir())(key)
 
   def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Process[Task,A], chunkSize: Int, tmp: Path)(key: A => K): Process[Task,A] = {
+    def grouped[I](n: Int): Process.Process1[I,Vector[I]] = {
+      def go(m: Int, acc: Vector[I]): Process.Process1[I,Vector[I]] =
+        if (m <= 0) emit(acc) ++ go(n, Vector())
+        else await1[I].flatMap(i => go(m-1, acc :+ i))
+      go(n, Vector.empty)
+    }
     // sort chunks
 
-    val paths = xs.chunk(chunkSize).zipWithIndex.flatMap{ case (chunk, i) =>
+    ((xs.map(_.some) ++ emitSeq(Vector.fill(chunkSize)(none))) |> grouped(chunkSize)).map(_.collect{ case Some(x) => x }).zipWithIndex.flatMap{ case (chunk, i) =>
       val out = tmp / i.toString
+
       (emitAll(chunk.sortBy(key)): Process[Task, A])
-        .map(_.asJson.toString)
+        .map{ x => x.asJson.toString  }
         .intersperse("\n")
         .pipe(text.utf8Encode)
-        .to(io.fileChunkW(out.toString)).run.run
-      if (Filesystem.exists(out)) emit(out) else halt
-    }.runLog.run
+        .to(io.fileChunkW(out.toString)).drain ++ emit(if (Filesystem.exists(out)) Vector(out) else Vector.empty)
+    }.foldMonoid.lastOr(Vector.empty).flatMap{ paths =>
+      // merge chunks
+      implicit def kbOrdering[B] =
+        new Ordering[(K,B)] { def compare(x: (K,B), y: (K,B)) = implicitly[Ordering[K]].reverse.compare(x._1, y._1) }
 
-    // merge chunks
-    implicit def kbOrdering[B] =
-      new Ordering[(K,B)] { def compare(x: (K,B), y: (K,B)) = implicitly[Ordering[K]].reverse.compare(x._1, y._1) }
+      def pop(iter: Iterator[A]) = if (iter.hasNext) Some((iter.next, iter)) else None
 
-    def pop(iter: Iterator[A]) = if (iter.hasNext) Some((iter.next, iter)) else None
+      lazy val inps = paths.map(p => new BufferedInputStream(new FileInputStream(p.toString)))
+      lazy val sort = new Iterator[A] {
+        private val q = PriorityQueue.empty[(K, (A, Iterator[A]))]
 
-    lazy val inps = paths.map(p => new BufferedInputStream(new FileInputStream(p.toString)))
-    lazy val sort = new Iterator[A] {
-      private val q = PriorityQueue.empty[(K, (A, Iterator[A]))]
+        private lazy val iters = {
 
-      private lazy val iters = {
-
-        val is = inps.map{ i => scala.io.Source.fromInputStream(i).getLines
-          .map(_.decodeEither[A].fold({ s => throw new Exception(s"failed to deserialize ($s)") }, identity))
+          val is = inps.map{ i => scala.io.Source.fromInputStream(i).getLines
+            .map(_.decodeEither[A].fold({ s => throw new Exception(s"failed to deserialize ($s)") }, identity))
+          }
+          is.foreach(i => pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) })
+          is
         }
-        is.foreach(i => pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) })
-        is
+
+        def hasNext = {
+          iters
+          q.nonEmpty
+        }
+
+        def next = {
+          val (_, (a, i)) = q.dequeue()
+          pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) }
+          a
+        }
       }
 
-      def hasNext = {
-        iters
-        q.nonEmpty
-      }
-
-      def next = {
-        val (_, (a, i)) = q.dequeue()
-        pop(i).foreach{ case (a, rest) => q.enqueue((key(a), (a, rest))) }
-        a
-      }
+      io.resource(Task.delay(sort))(_ =>
+        Task.delay{ inps.foreach{ i => i.close }; Filesystem.delete(tmp, true) })(
+        s => Task.delay{ if (s.hasNext) s.next else throw Process.End })
     }
-
-    io.resource(Task.delay(sort))(_ =>
-      Task.delay{ inps.foreach{ i => i.close } ; Filesystem.delete(tmp, true) })(
-      s => Task.delay{ if (s.hasNext) s.next else throw Process.End })
   }
 }
