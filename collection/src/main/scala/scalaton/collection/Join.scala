@@ -40,6 +40,7 @@ object Join {
     case object Left extends Action
     case object Right extends Action
     case object Both extends Action
+
     def go(prevL: Option[(K, Vector[L])], prevR: Option[(K, Vector[R])], action: Option[Action], maxL: Option[K], maxR: Option[K]):
         Process.Tee[Option[(K, Vector[L])], Option[(K, Vector[R])], (K, (Vector[L], Vector[R]))] =
       action match {
