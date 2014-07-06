@@ -72,7 +72,7 @@ class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrive
     forAll(genSettings) { (settings: (Int, Double, Long)) =>
       whenever(settings._1 > 0 && settings._1 < 50){
         val (numItems, fpProb, s) = settings
-        val (h, w) = BloomFilter.optimalParameters(100, fpProb)
+        val (h, w) = StandardBloomFilter.optimalParameters(100, fpProb)
 
         val fps = (0 until 100).map{ _ => StandardBloomFilter.fromData(h,w,s)(0 until numItems).contains(-1) ? 1.0 | 0.0 }
 
@@ -84,7 +84,7 @@ class StandardBloomFilterSpec extends FlatSpec with Matchers with GeneratorDrive
   it should "estimate size well for elements less than the intended number of elements" in {
     forAll{ (xs: Set[String]) =>
       whenever(xs.size > 0){
-        val (h,w) = BloomFilter.optimalParameters(xs.size * 10, 0.05)
+        val (h,w) = StandardBloomFilter.optimalParameters(xs.size * 10, 0.05)
         val err = math.abs(StandardBloomFilter.fromData(h,w,0L)(xs).size.get - xs.size).toDouble / xs.size
         err should be <= (0.1 max (1.0 / xs.size))
       }

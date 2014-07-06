@@ -49,7 +49,7 @@ trait BloomFilter[A,BS, T <: BloomFilter[A,BS,T]] extends DoubleHashModdedCollec
     }
   }
 }
-object BloomFilter {
+trait StandardBloomFilterParameters {
   def optimalNumHashes(numItems: Int, width: Int): Int = {
     require(numItems gt 0, "numItems must be > 0")
     require(width gt 0, "width must be > 0")
