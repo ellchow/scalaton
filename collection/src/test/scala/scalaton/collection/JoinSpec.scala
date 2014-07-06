@@ -22,6 +22,8 @@ import org.scalatest.matchers._
 import org.scalatest.prop._
 import scala.util.{ Try, Success, Failure }
 import scalaz._, Scalaz._
+import scalaz.stream._
+import scalaz.concurrent._
 
 class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
   import Join._
@@ -80,33 +82,32 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
   }
 
   it should "return elements with keys in both collections" in {
-    val joined1 = Seq(1 -> 2, 2 -> 2, 2 -> 3, 3 -> 4).innerJoin(Seq(1 -> 5, 2 -> 6, 2 -> 7, 4 -> 8)).toList.sorted
-    joined1 should be(List((1, (2,5)), (2,(2,6)), (2,(2,7)), (2,(3,6)), (2,(3,7))))
+    val joined1 = Join.innerJoin(
+      Process(1 -> 2, 2 -> 2, 2 -> 3, 3 -> 4): Process[Task,(Int,Int)],
+      Process(1 -> 5, 2 -> 6, 2 -> 7, 4 -> 8): Process[Task,(Int,Int)]).runLog.run.sorted
 
-    val joined2 = Map(1 -> 2, 2 -> 2, 3 -> 3).innerJoin(Seq(1 -> 4, 2 -> 5, 2 -> 6, 4 -> 7)).toList.sorted
-    joined2 should be(List((1, (2,4)), (2,(2,5)), (2,(2,6))))
+    joined1 should be(Vector((1, (2,5)), (2,(2,6)), (2,(2,7)), (2,(3,6)), (2,(3,7))))
   }
 
-  it should """for hash-join, keys in joined should be a multiset containing all keys in L \/ R; for each k in L /\ R, count should be |{k} /\ L| x |{k} /\ R|""" in {
-    forAll {
-      (xs: Map[Int,String], ys: List[(Int, String)]) => {
-        val joined = xs.innerJoin(ys).toList
-
-        checkInnerJoin(xs.toSeq, ys, joined)
-      }
-    }
-  }
 
   it should """for sorted-join, keys in joined should be a multiset containing all keys in L \/ R; for each k in L /\ R, count should be |{k} /\ L| x |{k} /\ R|""" in {
     forAll {
-      (xs: List[(Int,String)], ys: List[(Int, String)]) => {
-        val joined = xs.sorted.innerJoin(ys.sorted).toList
+      (xs: List[(Int,Int)], ys: List[(Int, Int)]) => {
+        val joined = Join.innerJoin(
+          Process(xs.sorted: _*): Process[Task,(Int,Int)],
+          Process(ys.sorted: _*): Process[Task,(Int,Int)]
+        ).runLog.run
 
-        checkInnerJoin(xs, ys, joined)
+        println("===")
+        println(joined)
+        println("@@@@@")
+
+        checkInnerJoin(xs.map(x => x.copy(_2 = x._2.toString)), ys.map(x => x.copy(_2 = x._2.toString)), joined.map{ case (k, (a,b)) => (k, (a.toString, b.toString)) } )
       }
     }
   }
 
+  /*
   behavior of "full outer join"
 
   it should "return all pairs of elements with keys in both collections as (Some, Some) and elements with keys in only one collection as (Some, None) or (None, Some)" in {
@@ -130,5 +131,6 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     intercept[IllegalArgumentException] { Seq((1,1),(3,3),(2,2)).coGroup(Seq((1,1),(3,3),(5,5))).toList }
     intercept[IllegalArgumentException] { Seq((1,1),(3,3),(5,5)).coGroup(Seq((1,1),(3,3),(2,2))).toList }
   }
+   */
 
 }

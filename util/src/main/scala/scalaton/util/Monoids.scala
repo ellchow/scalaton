@@ -78,4 +78,3 @@ trait MonoidInstances{
 
 object monoids
 extends MonoidInstances
-
