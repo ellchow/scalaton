@@ -89,7 +89,6 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     joined1 should be(Vector((1, (2,5)), (2,(2,6)), (2,(2,7)), (2,(3,6)), (2,(3,7))))
   }
 
-
   it should """for sorted-join, keys in joined should be a multiset containing all keys in L \/ R; for each k in L /\ R, count should be |{k} /\ L| x |{k} /\ R|""" in {
     forAll {
       (xs: List[(Int,Int)], ys: List[(Int, Int)]) => {
@@ -98,39 +97,42 @@ class JoinSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
           Process(ys.sorted: _*): Process[Task,(Int,Int)]
         ).runLog.run
 
-        println("===")
-        println(joined)
-        println("@@@@@")
-
         checkInnerJoin(xs.map(x => x.copy(_2 = x._2.toString)), ys.map(x => x.copy(_2 = x._2.toString)), joined.map{ case (k, (a,b)) => (k, (a.toString, b.toString)) } )
       }
     }
   }
 
-  /*
+
   behavior of "full outer join"
 
   it should "return all pairs of elements with keys in both collections as (Some, Some) and elements with keys in only one collection as (Some, None) or (None, Some)" in {
-    val joined1 = Seq(1 -> 2, 2 -> 2, 2 -> 3, 3 -> 4).fullOuterJoin(Seq(1 -> 5, 2 -> 6, 2 -> 7, 4 -> 8)).toList.sorted
-    joined1 should be(List((1,(Some(2),Some(5))), (2,(Some(2),Some(6))), (2,(Some(2),Some(7))), (2,(Some(3),Some(6))), (2,(Some(3),Some(7))), (3,(Some(4),None)), (4,(None,Some(8)))))
+    val joined1 = Join.fullOuterJoin(
+      Process(1 -> 2, 2 -> 2, 2 -> 3, 3 -> 4),
+      Process(1 -> 5, 2 -> 6, 2 -> 7, 4 -> 8)
+    ).runLog.run.sorted
+
+    joined1 should be(Vector((1,(Some(2),Some(5))), (2,(Some(2),Some(6))), (2,(Some(2),Some(7))), (2,(Some(3),Some(6))), (2,(Some(3),Some(7))), (3,(Some(4),None)), (4,(None,Some(8)))))
   }
 
   it should """keys in joined should be a multiset containing all keys in L \/ R; for each k in L /\ R, count should be |{k} /\ L| x |{k} /\ R|; for each k in L \ R or R \ L, count should be 1""" in {
     forAll {
       (xs: List[(Int,String)], ys: List[(Int, String)]) => {
-        val joined = xs.sorted.fullOuterJoin(ys.sorted).toList
+        val joined = Join.fullOuterJoin(
+          Process(xs.sorted: _*),
+          Process(ys.sorted: _*)
+        ).runLog.run
 
         checkFullOuterJoin(xs, ys, joined)
       }
     }
   }
 
+
   behavior of "sorted join"
 
   it should "fail if collections are not sorted" in {
-    intercept[IllegalArgumentException] { Seq((1,1),(3,3),(2,2)).coGroup(Seq((1,1),(3,3),(5,5))).toList }
-    intercept[IllegalArgumentException] { Seq((1,1),(3,3),(5,5)).coGroup(Seq((1,1),(3,3),(2,2))).toList }
+    intercept[IllegalArgumentException] { Join.coGroup(Process((1,1),(3,3),(2,2)), Process((1,1),(3,3),(5,5))).run.run }
+    intercept[IllegalArgumentException] { Join.coGroup(Process((1,1),(3,3),(5,5)), Process((1,1),(3,3),(2,2))).run.run }
   }
-   */
 
 }

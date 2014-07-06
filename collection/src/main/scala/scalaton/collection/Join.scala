@@ -24,105 +24,78 @@ import scalaton.util.monoids._
 
 object Join {
   /* cogroup 2 processes - ASSUMES both are sorted by K */
-  def coGroup[L, R, K : Ordering](lefts: Process[Task,(K,L)], rights: Process[Task,(K,R)]): Process[Task,(K, (Vector[L],Vector[R]))] = {
-    val chunkedLeft = (lefts.map(_.some) ++ emit(None))
+  def coGroup[L, R, K](lefts: Process[Task,(K,L)], rights: Process[Task,(K,R)])(implicit kord: Ordering[K]): Process[Task,(K, (Vector[L],Vector[R]))] = {
+    val chunkedLeft: Process[Task,Option[(K, Vector[L])]] = (lefts.map(_.some) ++ emit(None))
       .chunkBy2(_.map(_._1) == _.map(_._1)).map{ xs =>
       val ys = xs.collect{ case Some(x) => x }
-      ys.head._1 -> ys.map(_._2)
-    }
-    val chunkedRight = (rights.map(_.some) ++ emit(None))
+      ys.headOption.map(_._1 -> ys.map(_._2))
+    }.collect{ case x@Some(_) => x } ++ constant(none)
+    val chunkedRight: Process[Task,Option[(K, Vector[R])]] = (rights.map(_.some) ++ emit(None))
       .chunkBy2(_.map(_._1) == _.map(_._1)).map{ xs =>
       val ys = xs.collect{ case Some(x) => x }
-      ys.head._1 -> ys.map(_._2)
-    }
-    def go(pl: Process[Task,(K,Vector[L])], pr: Process[Task,(K,Vector[R])]): Process[Task,(K,(Vector[L],Vector[R]))] = (pl, pr) match {
-      case (Emit(hl, tl), Emit(hr, tr)) =>
-        (hl.headOption, hr.headOption) match {
-          case (Some((kl, ls)), Some((kr, rs))) =>
-            if (kl == kr) {
-              emit(kl -> (ls, rs)) ++ go(emitAll(hl.drop(1)) ++ tl, emitAll(hr.drop(1)) ++ tr)
-            } else if (kl < kr) {
-              emit(kl -> (ls, Vector.empty)) ++ go(emitAll(hl.drop(1)) ++ tl, pr)
-            } else {
-              emit(kr -> (Vector.empty, rs)) ++ go(pl, emitAll(hr.drop(1)) ++ tr)
+      ys.headOption.map(_._1 -> ys.map(_._2))
+    }.collect{ case x@Some(_) => x } ++ constant(none)
+
+    sealed trait Action
+    case object Left extends Action
+    case object Right extends Action
+    case object Both extends Action
+    def go(prevL: Option[(K, Vector[L])], prevR: Option[(K, Vector[R])], action: Option[Action], maxL: Option[K], maxR: Option[K]):
+        Process.Tee[Option[(K, Vector[L])], Option[(K, Vector[R])], (K, (Vector[L], Vector[R]))] =
+      action match {
+        case Some(Both) =>
+          for {
+            l <- awaitL[Option[(K, Vector[L])]]
+            r <- awaitR[Option[(K, Vector[R])]]
+            out <- {
+              val checkL = (for { max <- maxL ; curr <- l } yield kord.lt(max, curr._1)).getOrElse(true)
+              val checkR = (for { max <- maxR ; curr <- r } yield kord.lt(max, curr._1)).getOrElse(true)
+              (checkL, checkR) match {
+                case (true, true) => go(l, r, None, l.map(_._1.some).getOrElse(maxL), r.map(_._1.some).getOrElse(maxR))
+                case (false, _) => Halt(new IllegalArgumentException("left is not sorted"))
+                case (_, false) => Halt(new IllegalArgumentException("right is not sorted"))
+              }
             }
-        }
-    }
-
-    ???
+          } yield out
+        case Some(Left) =>
+          for {
+            l <- awaitL[Option[(K, Vector[L])]]
+            out <- {
+              val checkL = (for { max <- maxL ; curr <- l } yield kord.lt(max, curr._1)).getOrElse(true)
+              checkL match {
+                case true => go(l, prevR, None, l.map(_._1.some).getOrElse(maxL) , maxR)
+                case false => Halt(new IllegalArgumentException("left is not sorted"))
+              }
+            }
+          } yield out
+        case Some(Right) =>
+          for {
+            r <- awaitR[Option[(K, Vector[R])]]
+            out <- {
+              val checkR = (for { max <- maxR ; curr <- r } yield kord.lt(max, curr._1)).getOrElse(true)
+              checkR match {
+                case true => go(prevL, r, None, maxL, r.map(_._1.some).getOrElse(maxR))
+                case false => Halt(new IllegalArgumentException("right is not sorted"))
+              }
+            }
+          } yield out
+        case None =>
+          (prevL, prevR) match {
+            case (None, None) => halt
+            case (Some((kl, ls)), Some((kr, rs))) =>
+              if (kl < kr) {
+                emit(kl -> (ls, Vector.empty)) ++ go(none, prevR, Left.some, maxL, maxR)
+              } else if (kl > kr) {
+                emit(kr -> (Vector.empty, rs)) ++ go(prevL, none, Right.some, maxL, maxR)
+              } else {
+                emit(kl -> (ls, rs)) ++ go(none, none, Both.some, maxL, maxR)
+              }
+            case (Some((kl, ls)), None) => emit(kl -> (ls, Vector.empty)) ++ go(none, none, Left.some, maxL, maxR)
+            case (None, Some((kr, rs))) => emit(kr -> (Vector.empty, rs)) ++ go(none, none, Right.some, maxL, maxR)
+          }
+      }
+    chunkedLeft.tee(chunkedRight)(go(none, none, Both.some, none, none))
   }
-
-
-    // chunkedLeft.interleave(chunkedRight)
-    //   .scan(((Vector.empty[Vector[(K,L)]], Vector.empty[Vector[(K,R)]]), Vector.empty[(K, (Vector[L],Vector[R]))])){ case ((prev, _), c) =>
-    //     (prev, c) match {
-    //       case ((ls, rs), -\/(curr)) if ls.isEmpty =>
-    //         ((Vector(curr), rs), Vector.empty)
-
-    //       case ((ls, rs), \/-(curr)) if rs.isEmpty =>
-    //         ((ls, Vector(curr)), Vector.empty)
-
-
-
-    //     }
-
-    //   // println("----------")
-    //   // println((prev, c))
-    //   //   val res = (prev, c) match {
-    //   //   case ((Some(l), Some(r)), (Some(curr))) =>
-    //   //     val kl = l.head._1
-    //   //     val kr = r.head._1
-    //   //     val out = if (kl == kr) {
-    //   //       Seq(kl -> (l.map(_._2), r.map(_._2)))
-    //   //     } else {
-    //   //       Seq(
-    //   //         kl -> (l.map(_._2), Vector.empty),
-    //   //         kr -> (Vector.empty, r.map(_._2))
-    //   //       ).sortBy(_._1)
-    //   //     }
-
-    //   //     (disjunctionToTuple(curr), out)
-
-    //   //     case ((Some(l), None), Some(curr)) if curr.isRight =>
-    //   //       ((disjunctionToTuple(curr)) |+| prev, Seq.empty)
-    //   //     case ((Some(l), None), Some(curr)) =>
-    //   //       ((disjunctionToTuple(curr)._1, none), Seq(l.head._1 -> (l.map(_._2), Vector.empty)))
-    //   //     case ((None, Some(r)), Some(curr)) if curr.isLeft =>
-    //   //       ((disjunctionToTuple(curr)) |+| prev, Seq.empty)
-    //   //     case ((None, Some(r)), Some(curr)) =>
-    //   //       ((none, disjunctionToTuple(curr)._2), Seq(r.head._1 -> (Vector.empty, r.map(_._2))))
-
-    //   //     case ((None, None), Some(curr)) =>
-    //   //       ((disjunctionToTuple(curr)) |+| prev, Seq.empty)
-
-    //   //     case ((ol, or), None) =>
-    //   //       val out = (ol, or) match {
-    //   //         case (Some(l), Some(r))=>
-    //   //           val kl = l.head._1
-    //   //           val kr = r.head._1
-    //   //           if (kl == kr) {
-    //   //             Seq(kl -> (l.map(_._2), r.map(_._2)))
-    //   //           } else {
-    //   //             Seq(
-    //   //               kl -> (l.map(_._2), Vector.empty),
-    //   //               kr -> (Vector.empty, r.map(_._2))
-    //   //             ).sortBy(_._1)
-    //   //           }
-    //   //         case _ =>
-    //   //           (ol.toSeq.map(x => x.head._1 -> (x.map(_._2), Vector.empty)) ++
-    //   //             or.toSeq.map(x => x.head._1 -> (Vector.empty, x.map(_._2)))).sortBy(_._1)
-    //   //       }
-
-    //   //       ((none, none), out)
-
-    //   // }
-
-    //   // println(("!!!",res))
-    //   // res
-    // }.flatMap{ case (_, out) =>
-    //     emitAll(Sout)
-    // }
-  // }
 
   def fullOuterJoin[L, R, K : Ordering](lefts: Process[Task,(K,L)], rights: Process[Task,(K,R)]): Process[Task,(K, (Option[L], Option[R]))] = {
     for {
