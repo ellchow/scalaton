@@ -25,11 +25,7 @@ import scalaton.util.monoids._
 object Join {
   /* cogroup 2 processes - ASSUMES both are sorted by K */
   def groupByKey[L, K](lefts: Process[Task,(K,L)])(implicit kord: Ordering[K]): Process[Task, (K, Vector[L])] =
-    (lefts.map(_.some) ++ emit(None))
-      .chunkBy2(_.map(_._1) == _.map(_._1)).map{ xs =>
-      val ys = xs.collect{ case Some(x) => x }
-      ys.headOption.map(_._1 -> ys.map(_._2))
-    }.collect{ case Some(x) => x }
+    (lefts |> process.group[(K, L)](_._1 == _._1)).map(vs => (vs.head._1, vs.map(_._2)))
 
   /* cogroup 2 processes - ASSUMES both are sorted by K */
   def coGroup[L, R, K](lefts: Process[Task,(K,L)], rights: Process[Task,(K,R)])(implicit kord: Ordering[K]): Process[Task,(K, (Vector[L],Vector[R]))] = {
