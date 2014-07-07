@@ -100,6 +100,23 @@ object Join {
     chunkedLeft.tee(chunkedRight)(go(none, none, Both.some, none, none))
   }
 
+  def meld[K](lefts: Process[Task,K], rights: Process[Task,K])(implicit kord: Ordering[K]): Process[Task,K] = {
+    coGroup(lefts.map(k => (k, k)), rights.map(k => (k, k)))
+      .flatMap{ case (_, (k1, k2)) => emitAll(k1) ++ emitAll(k2)}
+  }
+
+  def meldAll[K : Ordering](ps: Vector[Process[Task,K]]): Process[Task,K] = {
+    if (ps.isEmpty) {
+      halt
+    } else if (ps.size == 1) {
+      ps.head
+    } else if (ps.size == 2) {
+      meld(ps(0), ps(1))
+    } else {
+      meldAll(ps.grouped(2).map(xs => meldAll(xs)).toVector)
+    }
+  }
+
   def fullOuterJoin[L, R, K : Ordering](lefts: Process[Task,(K,L)], rights: Process[Task,(K,R)]): Process[Task,(K, (Option[L], Option[R]))] = {
     for {
       (k, (ls, rs)) <- coGroup(lefts, rights)

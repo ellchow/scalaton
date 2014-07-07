@@ -63,52 +63,17 @@ object ExternalSort {
     }.scan(Vector.empty[Path])((v, p) => v :+ p).last.flatMap{ paths =>
       // merge chunks
       implicit def kbOrdering[B] =
-        new Ordering[(K,B)] { def compare(x: (K,B), y: (K,B)) = implicitly[Ordering[K]].reverse.compare(x._1, y._1) }
+        new Ordering[(K,B)] { def compare(x: (K,B), y: (K,B)) = implicitly[Ordering[K]].compare(x._1, y._1) }
 
-      val inputs: Vector[Process[Task,A]] = paths.map{ p =>
+      val inputs: Vector[Process[Task,(K, A)]] = paths.map{ p =>
         io.linesR(p.file.getAbsolutePath)
         .flatMap(_.decodeEither[A].fold(
           s => Halt(new Exception(s"failed to deserialize ($s)")),
-          x => emit(x)
+          { a => emit((key(a), a)) }
         ))
       }
 
-      sealed trait Action
-      case class Get(i: Int) extends Action
-      // case object Output extends Action
-
-      def go(inps: Vector[Process[Task,A]], q: mutable.PriorityQueue[(K, (A, Int))], actions: List[Action]): Process[Task,A] = {
-        actions match {
-          case Get(i) :: remaining =>
-            inps(i) match {
-              case h@Halt(e) =>
-                e match {
-                  case Process.End => go(inps, q, remaining)
-                  case _ => h
-                }
-              case Emit(h, t) =>
-                if (h.isEmpty) {
-                  go(inps.updated(i, t), q, Get(i) :: remaining)
-                } else {
-                  val a = h.head
-                  q.enqueue((key(a), (a, i)))
-                  go(inps.updated(i, emitAll(h.drop(1)) ++ t), q, remaining)
-                }
-              case Await(req, recv, fb, c) =>
-                await(req)(recv.andThen(p => go(inps.updated(i, p), q, Get(i) :: remaining)), fb, c)
-            }
-
-          case Nil =>
-            if (q.nonEmpty) {
-              val (_, (a, i)) = q.dequeue
-              emit(a) ++ go(inps, q, Get(i) :: Nil)
-            } else {
-              halt
-            }
-        }
-      }
-
-      go(inputs, mutable.PriorityQueue.empty, (0 until inputs.size).toList.map(i => Get(i)))
+      Join.meldAll(inputs).map(_._2)
     }
   }
 }

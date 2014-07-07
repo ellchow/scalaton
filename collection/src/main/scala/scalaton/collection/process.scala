@@ -18,7 +18,7 @@ package scalaton.collection
 
 import scalaz.stream._, Process._
 import scalaz.concurrent._
-
+import scalaz.{ Ordering => ZOrdering, _ }, Scalaz._
 
 object process {
   def grouped[I](n: Int): Process.Process1[I,Vector[I]] = {
@@ -37,5 +37,4 @@ object process {
 
     await1[I].flatMap(i => go(Vector(i), i))
   }
-
 }
