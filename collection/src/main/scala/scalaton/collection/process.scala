@@ -24,7 +24,7 @@ object process {
   def grouped[I](n: Int): Process.Process1[I,Vector[I]] = {
     def go(m: Int, acc: Vector[I]): Process.Process1[I,Vector[I]] =
       if (m <= 0) emit(acc) ++ go(n, Vector())
-      else await1[I].flatMap(i => go(m-1, acc :+ i))
+      else await1[I].flatMap(i => go(m - 1, acc :+ i))
     go(n, Vector.empty)
   }
 
