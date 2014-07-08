@@ -50,17 +50,25 @@ object ExternalSort {
     sortBy(emitAll(xs.toSeq): Process[Task,A], groupSize, Filesystem.mkTempDir())(key)
 
   def sortBy[A : EncodeJson : DecodeJson, K : Ordering](xs: Process[Task,A], chunkSize: Int, tmp: Path)(key: A => K): Process[Task,A] = {
-    // sort chunks
-    ((xs.map(_.some) ++ emitSeq(Vector.fill(chunkSize)(none))) |> process.grouped(chunkSize)).map(_.collect{ case Some(x) => x }).zipWithIndex.flatMap{ case (chunk, i) =>
-      val out = tmp / i.toString
+    val ps = await(Task.delay{
+      val res = \/.fromTryCatch{
+        ((xs.map(_.some) ++ emitSeq(Vector.fill(chunkSize)(none))) |> process.grouped(chunkSize)).map(_.collect{ case Some(x) => x })
+          .zipWithIndex
+          .flatMap{ case (chunk, i) =>
+            val out = tmp / i.toString
 
-      (emitAll(chunk.sortBy(key)): Process[Task, A])
-        .map{ x => x.asJson.toString  }
-        .intersperse("\n")
-        .pipe(text.utf8Encode)
-        .to(io.fileChunkW(out.toString)).drain ++
-      emitSeq(if (Filesystem.exists(out)) Vector(out) else Vector.empty)
-    }.scan(Vector.empty[Path])((v, p) => v :+ p).last.flatMap{ paths =>
+            (emitAll(chunk.sortBy(key)): Process[Task, A])
+              .map{ x => x.asJson.toString  }
+              .intersperse("\n")
+              .pipe(text.utf8Encode)
+              .to(io.fileChunkW(out.toString)).drain ++
+            emit(if (Filesystem.exists(out)) Vector(out) else Vector.empty)
+        }.foldMonoid.runLastOr(Vector.empty).run
+      }
+      res
+    })(disj => disj.fold(e => Halt(e), paths => emit(paths)))
+
+    ps.flatMap{ paths =>
       // merge chunks
       implicit def kbOrdering[B] =
         new Ordering[(K,B)] { def compare(x: (K,B), y: (K,B)) = implicitly[Ordering[K]].compare(x._1, y._1) }
@@ -73,7 +81,17 @@ object ExternalSort {
         ))
       }
 
-      Join.meldAll(inputs).map(_._2)
+      def run(p: Process[Task,A]): Process[Task,A] = p match {
+        case h@Halt(_) =>
+          paths.foreach(p => Filesystem.delete(p))
+          h
+        case e@Emit(h, t) =>
+          emitAll(h) ++ run(t)
+        case Await(req,recv,fb,c) =>
+          await(req)(recv.andThen(run _), run(fb), run(c))
+      }
+
+      run(Join.meldAll(inputs).map(_._2))
     }
   }
 }
