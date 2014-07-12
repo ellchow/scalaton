@@ -10,18 +10,6 @@ import scalaton.async.akka._
 import scalaz._, Scalaz._
 import argonaut._, Argonaut._
 
-object AMQP {
-  case class Ack()
-  case class Nack()
-
-  sealed trait ExchangeType {
-    def name: String
-  }
-  object ExchangeType {
-    case object Direct extends ExchangeType { val name = "direct" }
-  }
-}
-
 object RabbitManager {
   import AMQP._
 
@@ -30,8 +18,8 @@ object RabbitManager {
   case class DeclareQueue(exchange: String, queue: String, routingKey: String = "", durable: Boolean = false, exclusive: Boolean = false, autoDelete: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
   case class BindQueue(exchange: String, queue: String, routingKey: String)
 
-  case class ExchangeDeclared(exchange: String)
-  case class QueueDeclared(exchange: String, queue: String)
+  case class GetQueue(exchange: String, queue: String)
+  case class Queue(actorRef: ActorRef)
 
   sealed trait State
   case class Connected(since: Long = System.currentTimeMillis) extends State
