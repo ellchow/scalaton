@@ -36,11 +36,12 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
   val reconnectRetryInterval = 500.millis
   val maxDisconnectedDuration = 5.seconds
 
-
   private var connCh: Option[(Connection, Channel)] = None
   private var exchanges: Map[String,DeclareExchange] = Map.empty // exchange name -> exchange declaration
   private var queues: Map[(String,String),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
   private var state: State = Idle
+
+  // receive
 
   lazy val receive = ({
     case Connect => connect()
@@ -89,8 +90,7 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
     close()
   }
 
-
-
+  // set states
 
   def connected() = {
     state match {
@@ -109,6 +109,8 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
     state = Idle
     connCh = None
   }
+
+  // connection handling
 
   def close() = {
     log.info("closing rabbit connections")
