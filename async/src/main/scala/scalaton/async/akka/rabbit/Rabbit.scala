@@ -1,17 +1,17 @@
 package scalaton.async.akka.rabbit
 
-
 import akka.actor._, SupervisorStrategy._
 import com.rabbitmq.client._
 import scala.collection.JavaConversions._
-import scala.concurrent.Future
+import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
 import scalaton.async.akka._
+import scalaton.util.Json._
 import scalaz._, Scalaz._
 import argonaut._, Argonaut._
 
-object RabbitManager {
-  import AMQP._
+object Manager {
+  import Amqp._
 
   case object Connect
   case class DeclareExchange(exchange: String, exchangeType: ExchangeType = ExchangeType.Direct, isDurable: Boolean = false, autoDelete: Boolean = true, isInternal: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
@@ -29,9 +29,9 @@ object RabbitManager {
   def queueName(exchange: String, queue: String) = s"${exchange}+${queue}+queue"
 }
 
-class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
-  import AMQP._
-  import RabbitManager._
+class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
+  import Amqp._
+  import Manager._
 
   val reconnectRetryInterval = 500.millis
   val maxDisconnectedDuration = 5.seconds
@@ -40,6 +40,8 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
   private var exchanges: Map[String,DeclareExchange] = Map.empty // exchange name -> exchange declaration
   private var queues: Map[(String,String),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
   private var state: State = Idle
+  private var publishers: Map[String,ActorRef] = Map.empty // exchange name -> publisher actor
+  private var listeners: Map[(String,String),ActorRef] = Map.empty // (exchange name, queue name) -> listener actor
 
   // receive
 
@@ -166,26 +168,65 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
   }
 }
 
-abstract class RabbitQueue[Msg : EncodeJson : DecodeJson] extends Actor with ActorLogging {
-  def akkaReceive: Receive
-  def processMessage(msg: Msg): Unit
+object Publisher {
+  case class SetChannel private (channel: Channel)
+  case class Publish(msg: WEJson, routingKey: String, mandatory: Boolean = false, immediate: Boolean = false, props: AMQP.BasicProperties)
+  case class PublishOk(pub: Publish)
+  case class PublishFailed(pub: Publish)
+}
+class Publisher(exchange: String, private var channel: Channel)(implicit executionContext: ExecutionContext) extends Actor with ActorLogging {
+  import Publisher._
 
-  lazy val receive: Receive = rabbitReceive.orElse(akkaReceive)
+  private var requests: Map[Publish, ActorRef] = Map.empty
 
-  lazy val rabbitReceive: Receive = {
-    case s: String => s.decodeEither[Msg] match {
-      case \/-(msg) => processMessage(msg)
-      case -\/(_) => akkaReceive(s)
-    }
+  lazy val receive: Receive = {
+    case SetChannel(ch) =>
+      channel = ch
+
+    case p@Publish(msg, routingKey, mandatory, immediate, props) =>
+      context.actorOf(Props(new FutureRetrier(123,{
+        channel.basicPublish(exchange, routingKey, mandatory, immediate, props, msg.asJson.toString.getBytes)
+        p
+      }, List.fill(3)(1.seconds))))
+
+    case Success(p: Publish) =>
+      requests.get(p) match {
+        case Some(a) =>
+          a ! PublishOk(p)
+          requests = requests - p
+        case None =>
+      }
+
+    case Failure(p: Publish) =>
+      requests.get(p) match {
+        case Some(a) =>
+          a ! PublishFailed(p)
+          requests = requests - p
+        case None =>
+      }
   }
 }
+
+// abstract class RabbitQueue[Msg : EncodeJson : DecodeJson] extends Actor with ActorLogging {
+//   def akkaReceive: Receive
+//   def processMessage(msg: Msg): Unit
+
+//   lazy val receive: Receive = rabbitReceive.orElse(akkaReceive)
+
+//   lazy val rabbitReceive: Receive = {
+//     case s: String => s.decodeEither[Msg] match {
+//       case \/-(msg) => processMessage(msg)
+//       case -\/(_) => akkaReceive(s)
+//     }
+//   }
+// }
 
 object Main extends App {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val system = ActorSystem("rabbit")
-  val manager = system.actorOf(Props(new RabbitManager(new ConnectionFactory)))
-  manager ! RabbitManager.Connect
+  val manager = system.actorOf(Props(new Manager(new ConnectionFactory)))
+  manager ! Manager.Connect
 
   akka.pattern.after(30.seconds, system.scheduler)(Future{
     println("shutting down system...")

@@ -21,7 +21,7 @@ object Json {
   implicit def wrapInFAWEJson[F[_], A](fa: F[A])(implicit e: EncodeJson[F[A]]) = WEJson(fa)
   implicit val weJsonEncodeJson = EncodeJson((w: WEJson) => w.json)
 
-  private[util]trait WEJson {
+  private[scalaton] trait WEJson {
     type A
     val value: A
     def json: Json

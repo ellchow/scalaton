@@ -1,6 +1,6 @@
 package scalaton.async.akka.rabbit
 
-object AMQP {
+object Amqp {
   case class Ack()
   case class Nack()
 
