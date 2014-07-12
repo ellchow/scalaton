@@ -19,6 +19,8 @@ object Dependencies{
     "cloudera" at "https://repository.cloudera.com/content/repositories/releases/"
   )
 
+  val akkaVersion = "2.3.0"
+
   val common = Seq(
     "org.scalaz" % "scalaz-core_2.10" % "7.0.6",
     "org.scalaz" % "scalaz-concurrent_2.10" % "7.0.6",
@@ -46,7 +48,8 @@ object Dependencies{
     "io.netty" % "netty-all" % "4.0.17.Final",
     "com.netflix.rxjava" % "rxjava-scala" % "0.17.1",
     "com.typesafe.play" %% "play-iteratees" % "2.2.0",
-    "com.typesafe.akka" %% "akka-actor" % "2.3.0",
+    "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+    "com.typesafe.akka" %% "akka-agent" % akkaVersion,
     "com.rabbitmq" % "amqp-client" % "3.3.4",
     "com.github.nscala-time" %% "nscala-time" % "0.2.0"
   )
