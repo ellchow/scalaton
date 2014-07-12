@@ -27,7 +27,8 @@ object RabbitManager {
 
   case object Connect
   case class DeclareExchange(exchange: String, exchangeType: ExchangeType = ExchangeType.Direct, isDurable: Boolean = false, autoDelete: Boolean = true, isInternal: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
-  case class DeclareQueue[A : EncodeJson : DecodeJson](exchange: String, queue: String, constructor: () => RabbitQueue[A], routingKey: String = "", durable: Boolean = false, exclusive: Boolean = false, autoDelete: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
+  case class DeclareQueue(exchange: String, queue: String, routingKey: String = "", durable: Boolean = false, exclusive: Boolean = false, autoDelete: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
+  case class BindQueue(exchange: String, queue: String, routingKey: String)
 
   case class ExchangeDeclared(exchange: String)
   case class QueueDeclared(exchange: String, queue: String)
@@ -50,33 +51,58 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
 
   private var connCh: Option[(Connection, Channel)] = None
   private var exchanges: Map[String,DeclareExchange] = Map.empty // exchange name -> exchange declaration
-  private var queues: Map[(String,String),DeclareQueue[_]] = Map.empty // (exchange name, queue name) -> queue declaration
-  private var workers: Map[ActorRef, (String,String)] = Map.empty // rabbit worker -> (exchange name, queue name)
+  private var queues: Map[(String,String),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
   private var state: State = Idle
 
   lazy val receive = ({
     case Connect => connect()
 
     case de@DeclareExchange(exchange, exchangeType, isDurable, autoDelete, isInternal, arguments) =>
-      log.info(s"declaring exchange $exchange")
-      connCh.foreach{ case (_, channel) =>
-        exchanges = exchanges + (exchange -> de)
-        log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
-        channel.exchangeDeclare(exchange, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
-
+      connCh match {
+        case Some((_, channel)) =>
+          log.info(s"declaring exchange $exchange")
+          exchanges = exchanges + (exchange -> de)
+          log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
+          channel.exchangeDeclare(exchange, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
+        case None =>
+          log.error(s"no valid rabbit connection")
       }
 
-    case dq@DeclareQueue(exchange, queue, constructor, routingKey, durable, exclusive, autoDelete, arguments) =>
-      log.info(s"declaring queue $queue on exchange $exchange")
-      connCh.foreach{ case (_, channel) =>
-        queues = queues + ((exchange, queue) -> dq)
-        val w = context.actorOf(Props(constructor()), queueName(exchange,queue))
-        workers = workers + (w -> (exchange, queue))
-        channel.queueDeclare(queue, durable, exclusive, autoDelete, arguments)
-        channel.queueBind(queue, exchange, routingKey)
+    case dq@DeclareQueue(exchange, queue, routingKey, durable, exclusive, autoDelete, arguments) =>
+      connCh match {
+        case Some((_, channel)) =>
+          log.info(s"declaring queue $queue on exchange $exchange")
+          queues = queues + ((exchange, queue) -> dq)
+          channel.queueDeclare(queue, durable, exclusive, autoDelete, arguments)
+          self ! BindQueue(exchange, queue, routingKey)
+        case None =>
+          log.error(s"no valid rabbit connection")
+      }
+
+    case bq@BindQueue(exchange, queue, routingKey) =>
+      connCh match {
+        case Some((_, channel)) =>
+          log.info(s"binding queue $queue on exchange $exchange with routing key $routingKey")
+          channel.queueBind(queue, exchange, routingKey)
+        case None =>
+          log.error(s"no valid rabbit connection")
       }
 
   }: Receive).orElse(onError)
+
+  lazy val onError: Receive = {
+    case e: ShutdownSignalException =>
+      log.warning(s"connection lost due to: ${e} - reconnecting")
+      disconnected()
+      reconnect(reconnectRetryInterval)
+  }
+
+  override def postStop(): Unit = {
+    close()
+  }
+
+
+
 
   def connected() = {
     state match {
@@ -109,20 +135,7 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
     idle()
   }
 
-  lazy val onError: Receive = {
-    case e: ShutdownSignalException =>
-      log.warning(s"connection lost due to: ${e} - reconnecting")
-      disconnected()
-      reconnect(reconnectRetryInterval)
-  }
-
-
-
-  override def postStop(): Unit = {
-    close()
-  }
-
-  protected def reconnect(t: FiniteDuration) = state match {
+  def reconnect(t: FiniteDuration) = state match {
     case Connected(_) =>
     case Disconnected(since) if (System.currentTimeMillis - since).millis > maxDisconnectedDuration =>
       log.warning("exceeded maxDisconnectedDuration - idling")
@@ -133,7 +146,7 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
   }
 
 
-  protected def connect(): Unit = {
+  def connect(): Unit = {
     try {
       connCh = connCh.map{ x =>
         log.debug(s"already connected to ${connCh}")
