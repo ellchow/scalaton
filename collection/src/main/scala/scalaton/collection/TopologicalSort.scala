@@ -18,9 +18,11 @@ package scalaton.collection.immutable
 
 import scalaz._, Scalaz._
 
+sealed trait TopologicalSortException
+
 class TopologicalSort[A] private (val independents: Set[A], val dependencyMap: Map[A,Set[A]]) extends Iterable[A] { self =>
   if(independents.isEmpty && dependencyMap.nonEmpty) // prevent immediate construction of invalid graph (has cycle)
-    throw new IllegalStateException("unreachable elements in topological sort graph")
+    throw new IllegalStateException("unreachable elements in topological sort graph") with TopologicalSortException
 
   def +(a: A) = if (dependencyMap.contains(a)) this else new TopologicalSort(independents + a, dependencyMap)
 
