@@ -47,6 +47,7 @@ object Dependencies{
     "com.netflix.rxjava" % "rxjava-scala" % "0.17.1",
     "com.typesafe.play" %% "play-iteratees" % "2.2.0",
     "com.typesafe.akka" %% "akka-actor" % "2.3.0",
+    "com.rabbitmq" % "amqp-client" % "3.3.4",
     "com.github.nscala-time" %% "nscala-time" % "0.2.0"
   )
 

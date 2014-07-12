@@ -18,7 +18,9 @@ package scalaton.collection
 
 import scalaz.stream._, Process._
 import scalaz.concurrent._
-
+import argonaut._, Argonaut._
+import scalaton.util._
+import scalaton.util.paths._
 
 object process {
   def grouped[I](n: Int): Process.Process1[I,Vector[I]] = {
@@ -36,6 +38,21 @@ object process {
       }
 
     await1[I].flatMap(i => go(Vector(i), i))
+  }
+
+  implicit class ProcessOps[F[_],A](p: Process[F, A]) {
+    def grouped(n: Int) = p |> process.grouped(n)
+    def group(pr: (A,A) => Boolean) = p |> process.group(pr)
+  }
+  implicit class ProcessTaskOps[A](p: Process[Task, A]) {
+    def sort(groupSize: Int, tmp: Path)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A]) =
+      ExternalSort.sortBy(p, groupSize, tmp)(identity)
+
+    def sort(groupSize: Int)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A], osSpecific: OSSpecific) =
+      ExternalSort.sort(p, groupSize, Filesystem.mkTempDir())
+
+    def sortBy[K : Ordering](groupSize: Int)(key: A => K)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A], osSpecific: OSSpecific) =
+      ExternalSort.sortBy(p, groupSize, Filesystem.mkTempDir())(key)
   }
 
 }
