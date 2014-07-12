@@ -8,7 +8,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scalaton.async.akka._
 import scalaz._, Scalaz._
-
+import argonaut._, Argonaut._
 
 object AMQP {
   case class Ack()
@@ -27,7 +27,7 @@ object RabbitManager {
 
   case object Connect
   case class DeclareExchange(exchange: String, exchangeType: ExchangeType = ExchangeType.Direct, isDurable: Boolean = false, autoDelete: Boolean = true, isInternal: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
-  case class DeclareQueue(exchange: String, queue: String, constructor: () => RabbitWorker, routingKey: String = "", durable: Boolean = false, exclusive: Boolean = false, autoDelete: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
+  case class DeclareQueue[A : EncodeJson : DecodeJson](exchange: String, queue: String, constructor: () => RabbitQueue[A], routingKey: String = "", durable: Boolean = false, exclusive: Boolean = false, autoDelete: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
 
   case class ExchangeDeclared(exchange: String)
   case class QueueDeclared(exchange: String, queue: String)
@@ -37,27 +37,7 @@ object RabbitManager {
   case class Disconnected(since: Long = System.currentTimeMillis) extends State
   case object Idle extends State
 
-  def workerName(exchange: String, queue: String) = s"${exchange}+${queue}+worker"
-}
-
-trait RabbitWorker extends Actor with ActorLogging {
-  lazy val receive: Receive = {
-    case msg => log.info(s"rabbit worker receive message $msg")
-  }
-}
-
-object Main extends App {
-  import scala.concurrent.ExecutionContext.Implicits.global
-
-  val system = ActorSystem("rabbit")
-  val manager = system.actorOf(Props(new RabbitManager(new ConnectionFactory)))
-  manager ! RabbitManager.Connect
-
-  akka.pattern.after(30.seconds, system.scheduler)(Future{
-    println("shutting down system...")
-    system.shutdown
-  })
-
+  def queueName(exchange: String, queue: String) = s"${exchange}+${queue}+queue"
 }
 
 class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
@@ -70,7 +50,7 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
 
   private var connCh: Option[(Connection, Channel)] = None
   private var exchanges: Map[String,DeclareExchange] = Map.empty // exchange name -> exchange declaration
-  private var queues: Map[(String,String),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
+  private var queues: Map[(String,String),DeclareQueue[_]] = Map.empty // (exchange name, queue name) -> queue declaration
   private var workers: Map[ActorRef, (String,String)] = Map.empty // rabbit worker -> (exchange name, queue name)
   private var state: State = Idle
 
@@ -90,7 +70,7 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
       log.info(s"declaring queue $queue on exchange $exchange")
       connCh.foreach{ case (_, channel) =>
         queues = queues + ((exchange, queue) -> dq)
-        val w = context.actorOf(Props(constructor()), workerName(exchange,queue))
+        val w = context.actorOf(Props(constructor()), queueName(exchange,queue))
         workers = workers + (w -> (exchange, queue))
         channel.queueDeclare(queue, durable, exclusive, autoDelete, arguments)
         channel.queueBind(queue, exchange, routingKey)
@@ -181,4 +161,32 @@ class RabbitManager(connF: ConnectionFactory) extends Actor with ActorLogging {
         reconnect(reconnectRetryInterval)
     }
   }
+}
+
+abstract class RabbitQueue[Msg : EncodeJson : DecodeJson] extends Actor with ActorLogging {
+  def akkaReceive: Receive
+  def processMessage(msg: Msg): Unit
+
+  lazy val receive: Receive = rabbitReceive.orElse(akkaReceive)
+
+  lazy val rabbitReceive: Receive = {
+    case s: String => s.decodeEither[Msg] match {
+      case \/-(msg) => processMessage(msg)
+      case -\/(_) => akkaReceive(s)
+    }
+  }
+}
+
+object Main extends App {
+  import scala.concurrent.ExecutionContext.Implicits.global
+
+  val system = ActorSystem("rabbit")
+  val manager = system.actorOf(Props(new RabbitManager(new ConnectionFactory)))
+  manager ! RabbitManager.Connect
+
+  akka.pattern.after(30.seconds, system.scheduler)(Future{
+    println("shutting down system...")
+    system.shutdown
+  })
+
 }
