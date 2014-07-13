@@ -42,6 +42,7 @@ object Manager {
   case class PublisherFor(actor: ActorRef, exchange: Exchange)
 
   private[rabbit] case object GetChannel
+  private[rabbit] case class SetChannel (channel: Channel)
 
   // case class GetQueue(exchange: String, queue: String)
   // case class Queue(actorRef: ActorRef)
@@ -54,14 +55,13 @@ object Manager {
 }
 
 class Manager(connP: Amqp.ConnectionParams,
+  reconnectRetryInterval: FiniteDuration = 500.millis,
+  maxDisconnectedDuration: FiniteDuration = 20.seconds,
   publisherExecutionContext: ExecutionContext = ExecutionContext.Implicits.global,
   consumerExecutionContext: ExecutionContext = ExecutionContext.Implicits.global) extends Actor with ActorLogging {
 
   import Amqp._
   import Manager._
-
-  val reconnectRetryInterval = 500.millis
-  val maxDisconnectedDuration = 5.seconds
 
   val connF = connP.factory
 
@@ -93,8 +93,7 @@ class Manager(connP: Amqp.ConnectionParams,
   }
 
   def connected: Receive = {
-    log.debug(s"connected to ${connCh}")
-
+    log.info(s"connected to ${connCh}")
     state match {
       case Connected(_) =>
       case _ =>
@@ -136,10 +135,15 @@ class Manager(connP: Amqp.ConnectionParams,
         }
 
       case GetPublisher(exchange) =>
+        log.debug(s"request for publisher on $exchange from ${sender.path.name}")
         publishers.get(exchange) match {
           case Some(a) => sender ! PublisherFor(a, exchange)
           case None => sender ! NoSuchExchangeDeclared(exchange)
         }
+
+      case GetChannel =>
+        println((sender.path.name, connCh))
+        connCh.foreach{ case (_, ch) => sender ! SetChannel(ch) }
 
     })
   }
@@ -200,8 +204,13 @@ class Manager(connP: Amqp.ConnectionParams,
         })
 
         val channel = connection.createChannel
-          (connection, channel).some
+        (publishers.values ++ listeners.values).foreach(_ ! SetChannel(channel))
+
+        (connection, channel).some
       }
+
+
+
       context.become(connected)
     } catch {
       case _: java.net.ConnectException =>
@@ -227,16 +236,18 @@ class Manager(connP: Amqp.ConnectionParams,
 object Publisher {
   import Amqp._
 
-  case class SetChannel private (channel: Channel)
-  case class Publish(msg: WEJson, routingKey: RoutingKey, mandatory: Boolean = false, immediate: Boolean = false, props: AMQP.BasicProperties)
-  case class PublishOk(pub: Publish)
-  case class PublishFailed(pub: Publish)
+  case class Publish[A : EncodeJson](msg: A, routingKey: RoutingKey, mandatory: Boolean = false, immediate: Boolean = false, props: AMQP.BasicProperties = null) {
+    def json = msg.asJson
+  }
+  case class PublishOk(pub: Publish[_])
+  case class PublishFailed(pub: Publish[_])
 }
 class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit executionContext: ExecutionContext) extends Actor with ActorLogging {
   import Publisher._
+  import Manager._
 
   private var counter = 0L // used for request id generation
-  private var requests: Map[Long, (Publish, ActorRef)] = Map.empty // request id -> (publish message, requester)
+  private var requests: Map[Long, (Publish[_], ActorRef)] = Map.empty // request id -> (publish message, requester)
 
   lazy val receive: Receive = {
     case SetChannel(ch) =>
@@ -247,10 +258,10 @@ class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit 
       requests = requests + (id -> (p, sender))
 
       context.actorOf(Props(new FutureRetrier(id,{
-        channel.basicPublish(exchange.name, routingKey.id, mandatory, immediate, props, msg.asJson.toString.getBytes)
+        channel.basicPublish(exchange.name, routingKey.id, mandatory, immediate, props, p.json.toString.getBytes)
       }, List.fill(3)(1.seconds))))
 
-    case (id: Long, Success(_)) =>
+    case Retrier.Result(id, Success(_)) =>
       requests.get(id) match {
         case Some((p, a)) =>
           a ! PublishOk(p)
@@ -258,7 +269,7 @@ class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit 
         case None =>
       }
 
-    case (id: Long, Failure(e)) =>
+    case Retrier.Result(id, Failure(e)) =>
       requests.get(id) match {
         case Some((p, a)) =>
           a ! PublishFailed(p)
@@ -277,7 +288,6 @@ class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit 
 
 object Listener {
   import Amqp._
-  case class SetChannel(channel: Channel)
 
   case class Delivery[A : DecodeJson] private[rabbit] (delivery: QueueingConsumer.Delivery) {
     lazy val message = new String(delivery.getBody).decodeEither[A]
@@ -285,6 +295,7 @@ object Listener {
     def exchange = delivery.getEnvelope.getExchange
     def routingKey = delivery.getEnvelope.getRoutingKey
     def isRedeliver = delivery.getEnvelope.isRedeliver
+    override def toString = s"Delivery($exchange, $routingKey, $tag)"
   }
 
   sealed trait ProcessStatus[A]{
@@ -297,14 +308,13 @@ object Listener {
   def props[A](
     rabbitManager: ActorRef,
     queue: Queue,
-    routingKey: RoutingKey,
     consumerTag: ConsumerTag = ConsumerTag(UUID.randomUUID.toString),
     autoAck: Boolean = false,
     exclusive: Boolean = false,
     arguments: Map[String,java.lang.Object] = Map.empty,
     noLocal: Boolean = false
   )(f: Delivery[A] => ProcessStatus[A])(implicit dec: DecodeJson[A], ec: ExecutionContext) =
-    Props(new Listener[A](rabbitManager, queue, routingKey, consumerTag, autoAck, exclusive, arguments, noLocal){
+    Props(new Listener[A](rabbitManager, queue, consumerTag, autoAck, exclusive, arguments, noLocal){
       def processDelivery(d: Delivery[A]) = f(d) }
     )
 }
@@ -312,7 +322,6 @@ object Listener {
 abstract class Listener[A : DecodeJson](
   rabbitManager: ActorRef,
   queue: Amqp.Queue,
-  routingKey: Amqp.RoutingKey,
   consumerTag: Amqp.ConsumerTag = Amqp.ConsumerTag(UUID.randomUUID.toString),
   autoAck: Boolean = false,
   exclusive: Boolean = false,
@@ -326,7 +335,7 @@ abstract class Listener[A : DecodeJson](
   private var consumer: Option[QueueingConsumer] = None
 
   override def preStart(): Unit = {
-    context.system.scheduler.scheduleOnce(500.millis, rabbitManager, GetChannel)(context.dispatcher)
+    context.system.scheduler.scheduleOnce(500.millis, rabbitManager, GetChannel)(context.dispatcher, self)
   }
 
   def setChannel: Receive = {
@@ -335,6 +344,8 @@ abstract class Listener[A : DecodeJson](
       channel = ch.some
       makeConsumer()
       awaitDelivery()
+      context.become(listening)
+
   }
 
   lazy val receive: Receive = idle
@@ -356,6 +367,10 @@ abstract class Listener[A : DecodeJson](
       }
       awaitDelivery()
 
+    case Failure(e: ShutdownSignalException) =>
+      log.error(e.stackTrace)
+      context.become(idle)
+
     case Failure(e) =>
       log.error(e.stackTrace)
       awaitDelivery()
@@ -366,40 +381,65 @@ abstract class Listener[A : DecodeJson](
 
   def awaitDelivery(): Unit =
     consumer.foreach{ qc =>
-      log.debug(s"awaiting next delivery")
-
-      val f = Future(qc.nextDelivery)(ec)
-      f.map(d => Delivery[A](d)).onComplete{ res => self ! res }
+      // log.debug(s"awaiting next delivery")
+      Future(Delivery[A](qc.nextDelivery))(ec).onComplete{ res => self ! res }
     }
 
 
   def makeConsumer(): Unit = {
-    consumer match {
-      case Some(_) =>
-      case None =>
-        consumer = channel.map{ ch =>
-          val qc = new QueueingConsumer(ch)
-          ch.basicConsume(queue.name, autoAck, consumerTag.tag, noLocal, exclusive, arguments, qc)
-          qc
-        }
+    log.info(s"setting up consumer $consumerTag of queue $queue on $channel")
+    consumer = channel.map{ ch =>
+      val qc = new QueueingConsumer(ch)
+      ch.basicConsume(queue.name, autoAck, consumerTag.tag, noLocal, exclusive, arguments, qc)
+      qc
     }
   }
 }
 
-
-
-
-
+/*
 object Main extends App {
   import scala.concurrent.ExecutionContext.Implicits.global
+  import Amqp._
+  import scalaton.util.Json._
 
   val system = ActorSystem("rabbit")
   val manager = system.actorOf(Props(new Manager(Amqp.ConnectionParams())))
   manager ! Manager.Connect
 
+  val exch = Exchange("exch")
+  val qq = Queue("qq")
+  val rk = RoutingKey("xxx")
+
+  system.actorOf(Props(new Actor with ActorLogging {
+
+    manager ! Manager.DeclareExchange(exch)
+    manager ! Manager.DeclareQueue(exch, qq, rk)
+    context.system.scheduler.scheduleOnce(1.second, manager, Manager.GetPublisher(exch))
+
+    lazy val consumer = context.actorOf(Listener.props[String](manager, qq){ d =>
+      println(d.message)
+      Listener.Ack(d)
+    })
+
+    val receive: Receive = {
+      case Manager.PublisherFor(pub, _) =>
+        context.become(processing(pub))
+    }
+
+    def processing(pub: ActorRef): Receive = {
+      log.debug(s"begin publishing")
+      consumer
+
+      Future((1 to 20).foreach{ i => Thread.sleep(1000) ; pub ! Publisher.Publish(s"    hello world $i", rk) })
+
+      { case x => log.info(x.toString) }
+    }
+
+  }))
+
   akka.pattern.after(30.seconds, system.scheduler)(Future{
     println("shutting down system...")
     system.shutdown
   })
-
 }
+*/
