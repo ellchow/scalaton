@@ -6,6 +6,7 @@ import scala.collection.JavaConversions._
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
 import scalaton.async.akka._
+import scalaton.util._
 import scalaton.util.Json._
 import scalaz._, Scalaz._
 import argonaut._, Argonaut._
@@ -293,14 +294,11 @@ object Listener {
   case class Reject[A](delivery: Delivery[A], requeue: Boolean) extends ProcessStatus[A]
 }
 
-abstract class Listener[A : DecodeJson](implicit ec: ExecutionContext) extends Actor with ActorLogging {
+abstract class Listener[A : DecodeJson](rabbitManager: ActorRef, queue: Amqp.Queue, routingKey: Amqp.RoutingKey)(implicit ec: ExecutionContext) extends Actor with ActorLogging {
   import Amqp._
   import Manager._
   import Listener._
 
-  val rabbitManager: ActorRef
-  val queue: Queue
-  val routingKey: RoutingKey
   val consumerTag: ConsumerTag = ConsumerTag(UUID.randomUUID.toString)
 
   val autoAck = false
@@ -322,8 +320,15 @@ abstract class Listener[A : DecodeJson](implicit ec: ExecutionContext) extends A
       channel = ch.some
       makeConsumer()
       awaitDelivery()
-    case Success(d: Delivery[_]) =>
+
+    case Success(d: Delivery[A]) =>
+      processDelivery(d)
+
+    case Failure(e) =>
+      log.error(e.stackTrace)
   }
+
+  def processDelivery(d: Delivery[A]): Unit
 
   def awaitDelivery(): Unit =
     consumer.foreach{ qc =>
