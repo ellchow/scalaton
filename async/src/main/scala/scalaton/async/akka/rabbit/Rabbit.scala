@@ -14,8 +14,25 @@ object Manager {
   import Amqp._
 
   case object Connect
-  case class DeclareExchange(exchange: String, exchangeType: ExchangeType = ExchangeType.Direct, isDurable: Boolean = false, autoDelete: Boolean = true, isInternal: Boolean = false, arguments: Map[String,java.lang.Object] = Map.empty)
-  case class DeclareQueue(exchange: String, queue: String, routingKey: String = "", durable: Boolean = false, exclusive: Boolean = false, autoDelete: Boolean = true, arguments: Map[String,java.lang.Object] = Map.empty)
+  case class DeclareExchange(
+    exchange: String,
+    exchangeType: ExchangeType = ExchangeType.Direct,
+    isDurable: Boolean = false,
+    autoDelete: Boolean = true,
+    isInternal: Boolean = false,
+    arguments: Map[String,java.lang.Object] = Map.empty
+  )
+
+  case class DeclareQueue(
+    exchange: String,
+    queue: String,
+    routingKey: String = "",
+    durable: Boolean = false,
+    exclusive: Boolean = false,
+    autoDelete: Boolean = true,
+    arguments: Map[String,java.lang.Object] = Map.empty
+  )
+
   case class BindQueue(exchange: String, queue: String, routingKey: String)
 
   case class GetQueue(exchange: String, queue: String)
