@@ -15,7 +15,7 @@ object Manager {
 
   case object Connect
   case class DeclareExchange(
-    exchange: String,
+    exchange: Exchange,
     exchangeType: ExchangeType = ExchangeType.Direct,
     isDurable: Boolean = false,
     autoDelete: Boolean = true,
@@ -24,19 +24,18 @@ object Manager {
   )
 
   case class DeclareQueue(
-    exchange: String,
-    queue: String,
-    routingKey: String = "",
+    exchange: Exchange,
+    queue: Queue,
+    routingKey: RoutingKey = RoutingKey(""),
     durable: Boolean = false,
     exclusive: Boolean = false,
     autoDelete: Boolean = true,
     arguments: Map[String,java.lang.Object] = Map.empty
   )
+  case class BindQueue(exchange: Exchange, queue: Queue, routingKey: RoutingKey)
 
-  case class BindQueue(exchange: String, queue: String, routingKey: String)
-
-  case class GetQueue(exchange: String, queue: String)
-  case class Queue(actorRef: ActorRef)
+  // case class GetQueue(exchange: String, queue: String)
+  // case class Queue(actorRef: ActorRef)
 
   sealed trait State
   case class Connected(since: Long = System.currentTimeMillis) extends State
@@ -54,11 +53,11 @@ class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
   val maxDisconnectedDuration = 5.seconds
 
   private var connCh: Option[(Connection, Channel)] = None
-  private var exchanges: Map[String,DeclareExchange] = Map.empty // exchange name -> exchange declaration
-  private var queues: Map[(String,String),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
+  private var exchanges: Map[Exchange,DeclareExchange] = Map.empty // exchange name -> exchange declaration
+  private var queues: Map[(Exchange,Queue),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
   private var state: State = Idle
-  private var publishers: Map[String,ActorRef] = Map.empty // exchange name -> publisher actor
-  private var listeners: Map[(String,String),ActorRef] = Map.empty // (exchange name, queue name) -> listener actor
+  private var publishers: Map[Exchange,ActorRef] = Map.empty // exchange name -> publisher actor
+  private var listeners: Map[(Exchange,Queue),ActorRef] = Map.empty // (exchange name, queue name) -> listener actor
 
   // receive
 
@@ -71,7 +70,7 @@ class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
           log.info(s"declaring exchange $exchange")
           exchanges = exchanges + (exchange -> de)
           log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
-          channel.exchangeDeclare(exchange, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
+          channel.exchangeDeclare(exchange.name, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
         case None =>
           log.error(s"no valid rabbit connection")
       }
@@ -81,7 +80,7 @@ class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
         case Some((_, channel)) =>
           log.info(s"declaring queue $queue on exchange $exchange")
           queues = queues + ((exchange, queue) -> dq)
-          channel.queueDeclare(queue, durable, exclusive, autoDelete, arguments)
+          channel.queueDeclare(queue.name, durable, exclusive, autoDelete, arguments)
           self ! BindQueue(exchange, queue, routingKey)
         case None =>
           log.error(s"no valid rabbit connection")
@@ -91,7 +90,7 @@ class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
       connCh match {
         case Some((_, channel)) =>
           log.info(s"binding queue $queue on exchange $exchange with routing key $routingKey")
-          channel.queueBind(queue, exchange, routingKey)
+          channel.queueBind(queue.name, exchange.name, routingKey.id)
         case None =>
           log.error(s"no valid rabbit connection")
       }
