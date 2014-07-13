@@ -62,91 +62,100 @@ class Manager(connP: Amqp.ConnectionParams,
   val maxDisconnectedDuration = 5.seconds
 
   val connF = connP.factory
-  private var connCh: Option[(Connection, Channel)] = None
+
   private var exchanges: Map[Exchange,DeclareExchange] = Map.empty // exchange name -> exchange declaration
   private var queues: Map[(Exchange,Queue),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
-  private var state: State = Idle
   private var publishers: Map[Exchange,ActorRef] = Map.empty // exchange name -> publisher actor
   private var listeners: Map[(Exchange,Queue),ActorRef] = Map.empty // (exchange name, queue name) -> listener actor
 
+
+  private var connCh: Option[(Connection, Channel)] = None
+  private var state: State = Idle
+
   // receive
-
-  lazy val receive = ({
-    case Connect => connect()
-
-    case de@DeclareExchange(exchange, exchangeType, isDurable, autoDelete, isInternal, arguments) =>
-      connCh match {
-        case Some((_, channel)) =>
-          log.info(s"declaring exchange $exchange")
-          exchanges = exchanges + (exchange -> de)
-          log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
-          channel.exchangeDeclare(exchange.name, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
-          makePublisher(exchange)
-
-        case None =>
-          log.error(s"no valid rabbit connection")
-      }
-
-    case dq@DeclareQueue(exchange, queue, routingKey, durable, exclusive, autoDelete, arguments) =>
-      connCh match {
-        case Some((_, channel)) =>
-          log.info(s"declaring queue $queue on exchange $exchange")
-          queues = queues + ((exchange, queue) -> dq)
-          channel.queueDeclare(queue.name, durable, exclusive, autoDelete, arguments)
-          self ! BindQueue(exchange, queue, routingKey)
-        case None =>
-          log.error(s"no valid rabbit connection")
-      }
-
-    case bq@BindQueue(exchange, queue, routingKey) =>
-      connCh match {
-        case Some((_, channel)) =>
-          log.info(s"binding queue $queue on exchange $exchange with routing key $routingKey")
-          channel.queueBind(queue.name, exchange.name, routingKey.id)
-        case None =>
-          log.error(s"no valid rabbit connection")
-      }
-
-    case GetPublisher(exchange) =>
-      publishers.get(exchange) match {
-        case Some(a) => sender ! PublisherFor(a, exchange)
-        case None => sender ! NoSuchExchangeDeclared(exchange)
-      }
-
-  }: Receive).orElse(onError)
+  lazy val receive: Receive = idled
 
   lazy val onError: Receive = {
     case e: ShutdownSignalException =>
       log.warning(s"connection lost due to: ${e} - reconnecting")
-      disconnected()
+      context.become(disconnected)
       reconnect(reconnectRetryInterval)
   }
+  def withErrorHandler(r: Receive) = r.orElse(onError)
 
-  override def postStop(): Unit = {
-    close()
+  def idled: Receive = {
+    log.info(s"rabbit connection ${connP.uri()} is idle")
+    state = Idle
+
+    withErrorHandler({ case Connect => connect() })
   }
 
-  // set states
+  def connected: Receive = {
+    log.debug(s"connected to ${connCh}")
 
-  def connected() = {
     state match {
       case Connected(_) =>
       case _ =>
         state = Connected()
     }
+
+    withErrorHandler({
+      case de@DeclareExchange(exchange, exchangeType, isDurable, autoDelete, isInternal, arguments) =>
+        connCh match {
+          case Some((_, channel)) =>
+            log.info(s"declaring exchange $exchange")
+            exchanges = exchanges + (exchange -> de)
+            log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
+            channel.exchangeDeclare(exchange.name, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
+            makePublisher(exchange)
+
+          case None =>
+            log.error(s"no valid rabbit connection")
+        }
+
+      case dq@DeclareQueue(exchange, queue, routingKey, durable, exclusive, autoDelete, arguments) =>
+        connCh match {
+          case Some((_, channel)) =>
+            log.info(s"declaring queue $queue on exchange $exchange")
+            queues = queues + ((exchange, queue) -> dq)
+            channel.queueDeclare(queue.name, durable, exclusive, autoDelete, arguments)
+            self ! BindQueue(exchange, queue, routingKey)
+          case None =>
+            log.error(s"no valid rabbit connection")
+        }
+
+      case bq@BindQueue(exchange, queue, routingKey) =>
+        connCh match {
+          case Some((_, channel)) =>
+            log.info(s"binding queue $queue on exchange $exchange with routing key $routingKey")
+            channel.queueBind(queue.name, exchange.name, routingKey.id)
+          case None =>
+            log.error(s"no valid rabbit connection")
+        }
+
+      case GetPublisher(exchange) =>
+        publishers.get(exchange) match {
+          case Some(a) => sender ! PublisherFor(a, exchange)
+          case None => sender ! NoSuchExchangeDeclared(exchange)
+        }
+
+    })
   }
 
-  def disconnected() = {
-    state = Disconnected()
+  def disconnected: Receive = {
+    state match {
+      case Disconnected(_) =>
+      case _ =>
+        state = Disconnected()
+    }
     connCh = None
+
+    withErrorHandler({ case Connect => connect() })
   }
 
-  def idle() = {
-    state = Idle
-    connCh = None
+  override def postStop(): Unit = {
+    close()
   }
-
-  // connection handling
 
   def close() = {
     log.info("closing rabbit connections")
@@ -158,13 +167,13 @@ class Manager(connP: Amqp.ConnectionParams,
         case _: Throwable =>
       }
     }
-    idle()
+    context.become(idled)
   }
 
   def reconnect(t: FiniteDuration) = state match {
     case Connected(_) =>
     case Disconnected(since) if (System.currentTimeMillis - since).millis > maxDisconnectedDuration =>
-      log.warning("exceeded maxDisconnectedDuration - idling")
+      log.warning("exceeded maximum disconnected duration of ${maxDisconnectedDuration}")
       close()
     case _ =>
       if (state != Idle) log.info(s"reconnecting in $t")
@@ -191,10 +200,7 @@ class Manager(connP: Amqp.ConnectionParams,
         val channel = connection.createChannel
           (connection, channel).some
       }
-
-      connected()
-
-      log.debug(s"connected to ${connCh}")
+      context.become(connected)
     } catch {
       case _: java.net.ConnectException =>
         reconnect(reconnectRetryInterval)
