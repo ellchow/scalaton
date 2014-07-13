@@ -254,19 +254,26 @@ class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit 
   }
 }
 
-// abstract class RabbitQueue[Msg : EncodeJson : DecodeJson] extends Actor with ActorLogging {
-//   def akkaReceive: Receive
-//   def processMessage(msg: Msg): Unit
 
-//   lazy val receive: Receive = rabbitReceive.orElse(akkaReceive)
 
-//   lazy val rabbitReceive: Receive = {
-//     case s: String => s.decodeEither[Msg] match {
-//       case \/-(msg) => processMessage(msg)
-//       case -\/(_) => akkaReceive(s)
-//     }
-//   }
-// }
+class Listener(exchange: Amqp.Exchange, routingKey: Amqp.RoutingKey, private var channel: Channel) extends Actor with ActorLogging {
+
+  override def preStart(): Unit = {
+    log.info(s"listening to routing key $routingKey on exchange $exchange")
+    channel
+
+  }
+
+  lazy val receive: Receive = ???
+
+
+  // lazy val rabbitReceive: Receive = {
+  //   case s: String => s.decodeEither[Msg] match {
+  //     case \/-(msg) => processMessage(msg)
+  //     case -\/(_) => akkaReceive(s)
+  //   }
+  // }
+}
 
 object Main extends App {
   import scala.concurrent.ExecutionContext.Implicits.global
