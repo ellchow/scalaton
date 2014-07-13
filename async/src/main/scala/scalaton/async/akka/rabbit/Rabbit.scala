@@ -49,7 +49,7 @@ object Manager {
 
 }
 
-class Manager(connF: ConnectionFactory,
+class Manager(connP: Amqp.ConnectionParams,
   publisherExecutionContext: ExecutionContext = ExecutionContext.Implicits.global,
   consumerExecutionContext: ExecutionContext = ExecutionContext.Implicits.global) extends Actor with ActorLogging {
 
@@ -59,6 +59,7 @@ class Manager(connF: ConnectionFactory,
   val reconnectRetryInterval = 500.millis
   val maxDisconnectedDuration = 5.seconds
 
+  val connF = connP.factory
   private var connCh: Option[(Connection, Channel)] = None
   private var exchanges: Map[Exchange,DeclareExchange] = Map.empty // exchange name -> exchange declaration
   private var queues: Map[(Exchange,Queue),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
@@ -279,7 +280,7 @@ object Main extends App {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val system = ActorSystem("rabbit")
-  val manager = system.actorOf(Props(new Manager(new ConnectionFactory)))
+  val manager = system.actorOf(Props(new Manager(Amqp.ConnectionParams())))
   manager ! Manager.Connect
 
   akka.pattern.after(30.seconds, system.scheduler)(Future{
