@@ -34,6 +34,11 @@ object Manager {
   )
   case class BindQueue(exchange: Exchange, queue: Queue, routingKey: RoutingKey)
 
+  case class GetPublisher(exchange: Exchange)
+  case class NoSuchExchangeDeclared(exchange: Exchange)
+  case class PublisherFor(actor: ActorRef, exchange: Exchange)
+
+
   // case class GetQueue(exchange: String, queue: String)
   // case class Queue(actorRef: ActorRef)
 
@@ -42,10 +47,12 @@ object Manager {
   case class Disconnected(since: Long = System.currentTimeMillis) extends State
   case object Idle extends State
 
-  def queueName(exchange: String, queue: String) = s"${exchange}+${queue}+queue"
 }
 
-class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
+class Manager(connF: ConnectionFactory,
+  publisherExecutionContext: ExecutionContext = ExecutionContext.Implicits.global,
+  consumerExecutionContext: ExecutionContext = ExecutionContext.Implicits.global) extends Actor with ActorLogging {
+
   import Amqp._
   import Manager._
 
@@ -71,6 +78,8 @@ class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
           exchanges = exchanges + (exchange -> de)
           log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
           channel.exchangeDeclare(exchange.name, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
+          makePublisher(exchange)
+
         case None =>
           log.error(s"no valid rabbit connection")
       }
@@ -93,6 +102,12 @@ class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
           channel.queueBind(queue.name, exchange.name, routingKey.id)
         case None =>
           log.error(s"no valid rabbit connection")
+      }
+
+    case GetPublisher(exchange) =>
+      publishers.get(exchange) match {
+        case Some(a) => sender ! PublisherFor(a, exchange)
+        case None => sender ! NoSuchExchangeDeclared(exchange)
       }
 
   }: Receive).orElse(onError)
@@ -182,15 +197,31 @@ class Manager(connF: ConnectionFactory) extends Actor with ActorLogging {
         reconnect(reconnectRetryInterval)
     }
   }
+
+  // actor children
+
+  def makePublisher(exchange: Exchange): Unit = publishers.get(exchange) match {
+    case Some(_) =>
+    case None =>
+      connCh.foreach{ case (_, channel) =>
+        val a = context.actorOf(Props(new Publisher(exchange, channel)(publisherExecutionContext)))
+        context.watch(a)
+
+        publishers = publishers + (exchange -> a)
+      }
+  }
+
 }
 
 object Publisher {
+  import Amqp._
+
   case class SetChannel private (channel: Channel)
-  case class Publish(msg: WEJson, routingKey: String, mandatory: Boolean = false, immediate: Boolean = false, props: AMQP.BasicProperties)
+  case class Publish(msg: WEJson, routingKey: RoutingKey, mandatory: Boolean = false, immediate: Boolean = false, props: AMQP.BasicProperties)
   case class PublishOk(pub: Publish)
   case class PublishFailed(pub: Publish)
 }
-class Publisher(exchange: String, private var channel: Channel)(implicit executionContext: ExecutionContext) extends Actor with ActorLogging {
+class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit executionContext: ExecutionContext) extends Actor with ActorLogging {
   import Publisher._
 
   private var requests: Map[Publish, ActorRef] = Map.empty
@@ -201,7 +232,7 @@ class Publisher(exchange: String, private var channel: Channel)(implicit executi
 
     case p@Publish(msg, routingKey, mandatory, immediate, props) =>
       context.actorOf(Props(new FutureRetrier(123,{
-        channel.basicPublish(exchange, routingKey, mandatory, immediate, props, msg.asJson.toString.getBytes)
+        channel.basicPublish(exchange.name, routingKey.id, mandatory, immediate, props, msg.asJson.toString.getBytes)
         p
       }, List.fill(3)(1.seconds))))
 
