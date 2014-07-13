@@ -276,6 +276,7 @@ class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit 
 
 
 object Listener {
+  import Amqp._
   case class SetChannel(channel: Channel)
 
   case class Delivery[A : DecodeJson] private[rabbit] (delivery: QueueingConsumer.Delivery) {
@@ -292,20 +293,34 @@ object Listener {
   case class Ack[A](delivery: Delivery[A], multiple: Boolean = false) extends ProcessStatus[A]
   case class Nack[A](delivery: Delivery[A], requeue: Boolean, multiple: Boolean = false) extends ProcessStatus[A]
   case class Reject[A](delivery: Delivery[A], requeue: Boolean) extends ProcessStatus[A]
+
+  def props[A](
+    rabbitManager: ActorRef,
+    queue: Queue,
+    routingKey: RoutingKey,
+    consumerTag: ConsumerTag = ConsumerTag(UUID.randomUUID.toString),
+    autoAck: Boolean = false,
+    exclusive: Boolean = false,
+    arguments: Map[String,java.lang.Object] = Map.empty,
+    noLocal: Boolean = false
+  )(f: Delivery[A] => ProcessStatus[A])(implicit dec: DecodeJson[A], ec: ExecutionContext) =
+    Props(new Listener[A](rabbitManager, queue, routingKey, consumerTag, autoAck, exclusive, arguments, noLocal){
+      def processDelivery(d: Delivery[A]) = f(d) }
+    )
 }
 
-abstract class Listener[A : DecodeJson](rabbitManager: ActorRef, queue: Amqp.Queue, routingKey: Amqp.RoutingKey)(implicit ec: ExecutionContext) extends Actor with ActorLogging {
+abstract class Listener[A : DecodeJson](
+  rabbitManager: ActorRef,
+  queue: Amqp.Queue,
+  routingKey: Amqp.RoutingKey,
+  consumerTag: Amqp.ConsumerTag = Amqp.ConsumerTag(UUID.randomUUID.toString),
+  autoAck: Boolean = false,
+  exclusive: Boolean = false,
+  arguments: Map[String,java.lang.Object] = Map.empty,
+  noLocal: Boolean = false)(implicit ec: ExecutionContext) extends Actor with ActorLogging {
   import Amqp._
   import Manager._
   import Listener._
-
-  val consumerTag: ConsumerTag = ConsumerTag(UUID.randomUUID.toString)
-
-  val autoAck = false
-  val exclusive = false
-  val arguments = Map.empty[String,java.lang.Object]
-  val noLocal = false
-
 
   private var channel: Option[Channel] = None
   private var consumer: Option[QueueingConsumer] = None
@@ -314,26 +329,46 @@ abstract class Listener[A : DecodeJson](rabbitManager: ActorRef, queue: Amqp.Que
     context.system.scheduler.scheduleOnce(500.millis, rabbitManager, GetChannel)(context.dispatcher)
   }
 
-  lazy val receive: Receive = {
+  def setChannel: Receive = {
     case SetChannel(ch) =>
       log.info(s"setting rabbit channel to $ch")
       channel = ch.some
       makeConsumer()
       awaitDelivery()
+  }
 
+  lazy val receive: Receive = idle
+
+  def idle = setChannel
+
+  def listening = setChannel.orElse({
     case Success(d: Delivery[A]) =>
-      processDelivery(d)
+      processDelivery(d) match {
+        case Ack(d, multiple) =>
+          log.debug(s"ack-ing delivery ${d.tag}")
+          channel.foreach(_.basicAck(d.tag, multiple))
+        case Nack(d, requeue, multiple) =>
+          log.debug(s"nack-ing delivery ${d.tag}")
+          channel.foreach(_.basicNack(d.tag, multiple, requeue))
+        case Reject(d, requeue) =>
+          log.debug(s"rejecting delivery ${d.tag}")
+          channel.foreach(_.basicReject(d.tag, requeue))
+      }
+      awaitDelivery()
 
     case Failure(e) =>
       log.error(e.stackTrace)
-  }
+      awaitDelivery()
 
-  def processDelivery(d: Delivery[A]): Unit
+  }: Receive)
+
+  def processDelivery(d: Delivery[A]): ProcessStatus[A]
 
   def awaitDelivery(): Unit =
     consumer.foreach{ qc =>
-      val f = Future(qc.nextDelivery)(ec)
+      log.debug(s"awaiting next delivery")
 
+      val f = Future(qc.nextDelivery)(ec)
       f.map(d => Delivery[A](d)).onComplete{ res => self ! res }
     }
 
@@ -349,13 +384,6 @@ abstract class Listener[A : DecodeJson](rabbitManager: ActorRef, queue: Amqp.Que
         }
     }
   }
-
-  // lazy val rabbitReceive: Receive = {
-  //   case s: String => s.decodeEither[Msg] match {
-  //     case \/-(msg) => processMessage(msg)
-  //     case -\/(_) => akkaReceive(s)
-  //   }
-  // }
 }
 
 

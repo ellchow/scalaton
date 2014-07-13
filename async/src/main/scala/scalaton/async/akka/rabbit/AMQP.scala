@@ -4,9 +4,6 @@ import com.rabbitmq.client._
 import scala.concurrent.duration._
 
 object Amqp {
-  case class Ack()
-  case class Nack()
-
   case class Exchange(val name: String) extends AnyVal
   case class Queue(val name: String) extends AnyVal
   case class RoutingKey(val id: String) extends AnyVal
