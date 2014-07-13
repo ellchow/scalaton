@@ -44,8 +44,6 @@ object Manager {
   private[rabbit] case object GetChannel
   private[rabbit] case class SetChannel (channel: Channel)
 
-  // case class GetQueue(exchange: String, queue: String)
-  // case class Queue(actorRef: ActorRef)
 
   sealed trait State
   case class Connected(since: Long = System.currentTimeMillis) extends State
@@ -354,18 +352,20 @@ abstract class Listener[A : DecodeJson](
 
   def listening = setChannel.orElse({
     case Success(d: Delivery[A]) =>
-      processDelivery(d) match {
-        case Ack(d, multiple) =>
-          log.debug(s"ack-ing delivery ${d.tag}")
-          channel.foreach(_.basicAck(d.tag, multiple))
-        case Nack(d, requeue, multiple) =>
-          log.debug(s"nack-ing delivery ${d.tag}")
-          channel.foreach(_.basicNack(d.tag, multiple, requeue))
-        case Reject(d, requeue) =>
-          log.debug(s"rejecting delivery ${d.tag}")
-          channel.foreach(_.basicReject(d.tag, requeue))
-      }
-      awaitDelivery()
+      Future{
+        processDelivery(d) match {
+          case Ack(d, multiple) =>
+            log.debug(s"ack-ing delivery ${d.tag}")
+            channel.foreach(_.basicAck(d.tag, multiple))
+          case Nack(d, requeue, multiple) =>
+            log.debug(s"nack-ing delivery ${d.tag}")
+            channel.foreach(_.basicNack(d.tag, multiple, requeue))
+          case Reject(d, requeue) =>
+            log.debug(s"rejecting delivery ${d.tag}")
+            channel.foreach(_.basicReject(d.tag, requeue))
+        }
+        awaitDelivery()
+      }.onFailure{ case t: Throwable => self ! Failure(t)}
 
     case Failure(e: ShutdownSignalException) =>
       log.error(e.stackTrace)
@@ -442,4 +442,4 @@ object Main extends App {
     system.shutdown
   })
 }
-*/
+ */
