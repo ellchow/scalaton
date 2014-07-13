@@ -41,6 +41,27 @@ package object util {
     }
   }
 
+  implicit class ThrowableOps(t: Throwable) {
+      def stackTrace = {
+          val out = new ByteArrayOutputStream
+      val prs = new PrintStream(out)
+      t.printStackTrace(prs)
+      out.toString("UTF8")
+    }
+  }
+
+  private val pidRegex = "([0-9]+)[@].*".r
+
+  lazy val pid = {
+    val s = java.lang.management.ManagementFactory.getRuntimeMXBean().getName()
+    pidRegex.unapplySeq(s) match {
+      case Some(i :: _) => i.toInt
+      case _ => throw new RuntimeException(s"failed to parse pid")
+    }
+  }
+
+
+
   object Implicits {
     implicit val unixOsSpecific = new OSSpecific {
       val / = "/"

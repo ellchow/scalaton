@@ -76,6 +76,9 @@ object paths {
 
     def outputStream(p: Path) = new FileOutputStream(p.file)
 
+    def writePid(p: Option[Path] = None)(implicit osSpecific: OSSpecific) =
+      write(p.getOrElse(pwd / ".pid"), pid.toString)
+
     def listDir(root: Path, recurse: Boolean = false, unlink: Boolean = false)(implicit osSpecific: OSSpecific): Stream[Path] = {
       def lst(p: Path) =
         Option((if (unlink) p.unlinked else p).file.listFiles) match {
