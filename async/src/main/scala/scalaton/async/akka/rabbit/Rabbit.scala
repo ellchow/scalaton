@@ -10,6 +10,7 @@ import scalaton.util.Json._
 import scalaz._, Scalaz._
 import argonaut._, Argonaut._
 import java.util.UUID
+import scala.util.{ Try, Success, Failure }
 
 object Manager {
   import Amqp._
@@ -233,42 +234,66 @@ object Publisher {
 class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit executionContext: ExecutionContext) extends Actor with ActorLogging {
   import Publisher._
 
-  private var requests: Map[Publish, ActorRef] = Map.empty
+  private var counter = 0L // used for request id generation
+  private var requests: Map[Long, (Publish, ActorRef)] = Map.empty // request id -> (publish message, requester)
 
   lazy val receive: Receive = {
     case SetChannel(ch) =>
       channel = ch
 
     case p@Publish(msg, routingKey, mandatory, immediate, props) =>
-      context.actorOf(Props(new FutureRetrier(123,{
+      val id = nextId()
+      requests = requests + (id -> (p, sender))
+
+      context.actorOf(Props(new FutureRetrier(id,{
         channel.basicPublish(exchange.name, routingKey.id, mandatory, immediate, props, msg.asJson.toString.getBytes)
-        p
       }, List.fill(3)(1.seconds))))
 
-    case Success(p: Publish) =>
-      requests.get(p) match {
-        case Some(a) =>
+    case (id: Long, Success(_)) =>
+      requests.get(id) match {
+        case Some((p, a)) =>
           a ! PublishOk(p)
-          requests = requests - p
+          requests = requests - id
         case None =>
       }
 
-    case Failure(p: Publish) =>
-      requests.get(p) match {
-        case Some(a) =>
+    case (id: Long, Failure(e)) =>
+      requests.get(id) match {
+        case Some((p, a)) =>
           a ! PublishFailed(p)
-          requests = requests - p
+          requests = requests - id
         case None =>
       }
+  }
+
+  protected def nextId() = {
+    val id = counter
+    counter += 1
+    id
   }
 }
 
 
 object Listener {
   case class SetChannel(channel: Channel)
+
+  case class Delivery[A : DecodeJson] private[rabbit] (delivery: QueueingConsumer.Delivery) {
+    lazy val message = new String(delivery.getBody).decodeEither[A]
+    def tag = delivery.getEnvelope.getDeliveryTag
+    def exchange = delivery.getEnvelope.getExchange
+    def routingKey = delivery.getEnvelope.getRoutingKey
+    def isRedeliver = delivery.getEnvelope.isRedeliver
+  }
+
+  sealed trait ProcessStatus[A]{
+    val delivery: Delivery[A]
+  }
+  case class Ack[A](delivery: Delivery[A], multiple: Boolean = false) extends ProcessStatus[A]
+  case class Nack[A](delivery: Delivery[A], requeue: Boolean, multiple: Boolean = false) extends ProcessStatus[A]
+  case class Reject[A](delivery: Delivery[A], requeue: Boolean) extends ProcessStatus[A]
 }
 
-abstract class Listener(implicit ec: ExecutionContext) extends Actor with ActorLogging {
+abstract class Listener[A : DecodeJson](implicit ec: ExecutionContext) extends Actor with ActorLogging {
   import Amqp._
   import Manager._
   import Listener._
@@ -296,7 +321,16 @@ abstract class Listener(implicit ec: ExecutionContext) extends Actor with ActorL
       log.info(s"setting rabbit channel to $ch")
       channel = ch.some
       makeConsumer()
+      awaitDelivery()
+    case Success(d: Delivery[_]) =>
   }
+
+  def awaitDelivery(): Unit =
+    consumer.foreach{ qc =>
+      val f = Future(qc.nextDelivery)(ec)
+
+      f.map(d => Delivery[A](d)).onComplete{ res => self ! res }
+    }
 
 
   def makeConsumer(): Unit = {

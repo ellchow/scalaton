@@ -84,7 +84,7 @@ abstract class Retrier(id: Long, timeouts: List[FiniteDuration], autoStart: Opti
 
 class FutureRetrier(id: Long, block: =>Any, timeouts: List[FiniteDuration], autoStart: Option[FiniteDuration] = Some(0.millis))(implicit executionContext: ExecutionContext) extends Retrier(id, timeouts, autoStart) {
 
-  def run() = Future(block).onComplete(res => self ! res)
+  def run() = Future(block).onComplete(res => self ! (id, res))
 
 }
 
