@@ -222,7 +222,7 @@ class Manager(connP: Amqp.ConnectionParams,
     case Some(_) =>
     case None =>
       connCh.foreach{ case (_, channel) =>
-        val a = context.actorOf(Props(new Publisher(exchange, channel)(publisherExecutionContext)))
+        val a = context.actorOf(Props(new Publisher(exchange, channel)(publisherExecutionContext)), s"publisher+${exchange.name}")
         context.watch(a)
 
         publishers = publishers + (exchange -> a)
@@ -313,8 +313,8 @@ object Listener {
     noLocal: Boolean = false
   )(f: Delivery[A] => ProcessStatus[A])(implicit dec: DecodeJson[A], ec: ExecutionContext) =
     Props(new Listener[A](rabbitManager, queue, consumerTag, autoAck, exclusive, arguments, noLocal){
-      def processDelivery(d: Delivery[A]) = f(d) }
-    )
+      def processDelivery(d: Delivery[A]) = f(d)
+    })
 }
 
 abstract class Listener[A : DecodeJson](
@@ -403,12 +403,13 @@ object Main extends App {
   import scalaton.util.Json._
 
   val system = ActorSystem("rabbit")
-  val manager = system.actorOf(Props(new Manager(Amqp.ConnectionParams())))
+  val manager = system.actorOf(Props(new Manager(Amqp.ConnectionParams())), "manager")
   manager ! Manager.Connect
 
   val exch = Exchange("exch")
   val qq = Queue("qq")
   val rk = RoutingKey("xxx")
+  val consumerTag = ConsumerTag()
 
   system.actorOf(Props(new Actor with ActorLogging {
 
@@ -416,10 +417,10 @@ object Main extends App {
     manager ! Manager.DeclareQueue(exch, qq, rk)
     context.system.scheduler.scheduleOnce(1.second, manager, Manager.GetPublisher(exch))
 
-    lazy val consumer = context.actorOf(Listener.props[String](manager, qq){ d =>
+    lazy val consumer = context.actorOf(Listener.props[String](manager, qq, consumerTag = consumerTag){ d =>
       println(d.message)
       Listener.Ack(d)
-    })
+    }, s"${qq.name}+${consumerTag.tag}")
 
     val receive: Receive = {
       case Manager.PublisherFor(pub, _) =>
@@ -435,7 +436,7 @@ object Main extends App {
       { case x => log.info(x.toString) }
     }
 
-  }))
+  }), "main")
 
   akka.pattern.after(30.seconds, system.scheduler)(Future{
     println("shutting down system...")

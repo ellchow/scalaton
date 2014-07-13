@@ -2,12 +2,13 @@ package scalaton.async.akka.rabbit
 
 import com.rabbitmq.client._
 import scala.concurrent.duration._
+import java.util.UUID
 
 object Amqp {
   case class Exchange(val name: String) extends AnyVal
   case class Queue(val name: String) extends AnyVal
   case class RoutingKey(val id: String) extends AnyVal
-  case class ConsumerTag(val tag: String) extends AnyVal
+  case class ConsumerTag(val tag: String = UUID.randomUUID.toString) extends AnyVal
 
   sealed trait ExchangeType {
     def name: String
