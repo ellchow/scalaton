@@ -58,7 +58,9 @@ class Manager(connP: Amqp.ConnectionParams,
   reconnectRetryInterval: FiniteDuration = 500.millis,
   maxDisconnectedDuration: FiniteDuration = 20.seconds,
   publisherExecutionContext: ExecutionContext = ExecutionContext.Implicits.global,
-  consumerExecutionContext: ExecutionContext = ExecutionContext.Implicits.global) extends Actor with ActorLogging {
+  consumerExecutionContext: ExecutionContext = ExecutionContext.Implicits.global,
+  autoConnect: Boolean = true
+) extends Actor with ActorLogging {
 
   import Amqp._
   import Manager._
@@ -73,6 +75,11 @@ class Manager(connP: Amqp.ConnectionParams,
 
   private var connCh: Option[(Connection, Channel)] = None
   private var state: State = Idle
+
+  override def preStart(): Unit = {
+    if (autoConnect) context.system.scheduler.scheduleOnce(250.millis, self, Connect)(context.dispatcher)
+  }
+
 
   // receive
   lazy val receive: Receive = idled
@@ -248,7 +255,6 @@ object Main extends App {
 
   val system = ActorSystem("rabbit")
   val manager = system.actorOf(Props(new Manager(Amqp.ConnectionParams())), "manager")
-  manager ! Manager.Connect
 
   val exch = Exchange("exch")
   val qq = Queue("qq")
@@ -286,5 +292,4 @@ object Main extends App {
     println("shutting down system...")
     system.shutdown
   })
-}
- */
+} */
