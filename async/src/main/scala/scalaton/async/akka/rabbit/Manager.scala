@@ -36,10 +36,12 @@ object Manager {
     arguments: Map[String,java.lang.Object] = Map.empty
   )
   case class BindQueue(exchange: Exchange, queue: Queue, routingKey: RoutingKey)
+  case class Declared(request: Any)
 
   case class GetPublisher(exchange: Exchange)
   case class NoSuchExchangeDeclared(exchange: Exchange)
   case class PublisherFor(actor: ActorRef, exchange: Exchange)
+
 
   private[rabbit] case object GetChannel
   private[rabbit] case class SetChannel (channel: Channel)
@@ -98,6 +100,11 @@ class Manager(connP: Amqp.ConnectionParams,
         state = Connected()
     }
 
+    def bindQ(channel: Channel, exchange: Exchange, queue: Queue, routingKey: RoutingKey) = {
+      log.info(s"binding queue ${queue.name} on exchange ${exchange.name} with routing key ${routingKey.id}")
+      channel.queueBind(queue.name, exchange.name, routingKey.id)
+    }
+
     withErrorHandler({
       case de@DeclareExchange(exchange, exchangeType, isDurable, autoDelete, isInternal, arguments) =>
         connCh match {
@@ -107,6 +114,7 @@ class Manager(connP: Amqp.ConnectionParams,
             log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
             channel.exchangeDeclare(exchange.name, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
             makePublisher(exchange)
+            sender ! Declared(de)
 
           case None =>
             log.error(s"no valid rabbit connection")
@@ -118,7 +126,8 @@ class Manager(connP: Amqp.ConnectionParams,
             log.info(s"declaring queue $queue on exchange $exchange")
             queues = queues + ((exchange, queue) -> dq)
             channel.queueDeclare(queue.name, durable, exclusive, autoDelete, arguments)
-            self ! BindQueue(exchange, queue, routingKey)
+            bindQ(channel, exchange, queue, routingKey)
+            sender ! Declared(dq)
           case None =>
             log.error(s"no valid rabbit connection")
         }
@@ -127,7 +136,8 @@ class Manager(connP: Amqp.ConnectionParams,
         connCh match {
           case Some((_, channel)) =>
             log.info(s"binding queue $queue on exchange $exchange with routing key $routingKey")
-            channel.queueBind(queue.name, exchange.name, routingKey.id)
+            bindQ(channel, exchange, queue, routingKey)
+            sender ! Declared(bq)
           case None =>
             log.error(s"no valid rabbit connection")
         }
@@ -230,8 +240,6 @@ class Manager(connP: Amqp.ConnectionParams,
   }
 
 }
-
-
 /*
 object Main extends App {
   import scala.concurrent.ExecutionContext.Implicits.global
