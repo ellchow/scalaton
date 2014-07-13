@@ -52,6 +52,8 @@ object Manager {
   case class Disconnected(since: Long = System.currentTimeMillis) extends State
   case object Idle extends State
 
+  case object GetState
+
 }
 
 class Manager(connP: Amqp.ConnectionParams,
@@ -84,6 +86,10 @@ class Manager(connP: Amqp.ConnectionParams,
   // receive
   lazy val receive: Receive = idled
 
+  lazy val commonReceive: Receive = {
+    case GetState => sender ! state
+  }
+
   lazy val onError: Receive = {
     case e: ShutdownSignalException =>
       log.warning(s"connection lost due to: ${e} - reconnecting")
@@ -96,7 +102,7 @@ class Manager(connP: Amqp.ConnectionParams,
     log.info(s"rabbit connection ${connP.uri()} is idle")
     state = Idle
 
-    withErrorHandler({ case Connect => connect() })
+    withErrorHandler({ case Connect => connect() }).orElse(commonReceive)
   }
 
   def connected: Receive = {
@@ -151,16 +157,16 @@ class Manager(connP: Amqp.ConnectionParams,
 
       case GetPublisher(exchange) =>
         log.debug(s"request for publisher on $exchange from ${sender.path.name}")
+        println(publishers)
         publishers.get(exchange) match {
           case Some(a) => sender ! PublisherFor(a, exchange)
           case None => sender ! NoSuchExchangeDeclared(exchange)
         }
 
       case GetChannel =>
-        println((sender.path.name, connCh))
         connCh.foreach{ case (_, ch) => sender ! SetChannel(ch) }
 
-    })
+    }).orElse(commonReceive)
   }
 
   def disconnected: Receive = {
@@ -171,7 +177,7 @@ class Manager(connP: Amqp.ConnectionParams,
     }
     connCh = None
 
-    withErrorHandler({ case Connect => connect() })
+    withErrorHandler({ case Connect => connect() }).orElse(commonReceive)
   }
 
   override def postStop(): Unit = {
@@ -247,6 +253,7 @@ class Manager(connP: Amqp.ConnectionParams,
   }
 
 }
+
 /*
 object Main extends App {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -262,9 +269,10 @@ object Main extends App {
   val consumerTag = ConsumerTag()
 
   system.actorOf(Props(new Actor with ActorLogging {
-
-    manager ! Manager.DeclareExchange(exch)
-    manager ! Manager.DeclareQueue(exch, qq, rk)
+    // should wait properly for connection setup
+    context.system.scheduler.scheduleOnce(500.millis, manager, Manager.DeclareExchange(exch))
+    context.system.scheduler.scheduleOnce(500.millis, manager, Manager.DeclareQueue(exch, qq, rk))
+    // should wait properly for declarations to be done
     context.system.scheduler.scheduleOnce(1.second, manager, Manager.GetPublisher(exch))
 
     lazy val consumer = context.actorOf(Listener.props[String](manager, qq, consumerTag = consumerTag){ d =>
@@ -292,4 +300,5 @@ object Main extends App {
     println("shutting down system...")
     system.shutdown
   })
-} */
+}
+ */
