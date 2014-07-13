@@ -10,6 +10,7 @@ object Amqp {
   case class Exchange(val name: String) extends AnyVal
   case class Queue(val name: String) extends AnyVal
   case class RoutingKey(val id: String) extends AnyVal
+  case class ConsumerTag(val tag: String) extends AnyVal
 
   sealed trait ExchangeType {
     def name: String

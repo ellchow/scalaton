@@ -9,6 +9,7 @@ import scalaton.async.akka._
 import scalaton.util.Json._
 import scalaz._, Scalaz._
 import argonaut._, Argonaut._
+import java.util.UUID
 
 object Manager {
   import Amqp._
@@ -38,6 +39,7 @@ object Manager {
   case class NoSuchExchangeDeclared(exchange: Exchange)
   case class PublisherFor(actor: ActorRef, exchange: Exchange)
 
+  private[rabbit] case object GetChannel
 
   // case class GetQueue(exchange: String, queue: String)
   // case class Queue(actorRef: ActorRef)
@@ -176,7 +178,7 @@ class Manager(connP: Amqp.ConnectionParams,
         log.debug(s"already connected to ${connCh}")
         x.some
       }.getOrElse{
-        log.info(s"connecting to ${connF.toUri()}")
+        log.info(s"connecting to ${connP.uri()}")
 
         val connection = connF.newConnection
 
@@ -256,17 +258,52 @@ class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit 
 }
 
 
+object Listener {
+  case class SetChannel(channel: Channel)
+}
 
-class Listener(exchange: Amqp.Exchange, routingKey: Amqp.RoutingKey, private var channel: Channel) extends Actor with ActorLogging {
+abstract class Listener(implicit ec: ExecutionContext) extends Actor with ActorLogging {
+  import Amqp._
+  import Manager._
+  import Listener._
+
+  val rabbitManager: ActorRef
+  val queue: Queue
+  val routingKey: RoutingKey
+  val consumerTag: ConsumerTag = ConsumerTag(UUID.randomUUID.toString)
+
+  val autoAck = false
+  val exclusive = false
+  val arguments = Map.empty[String,java.lang.Object]
+  val noLocal = false
+
+
+  private var channel: Option[Channel] = None
+  private var consumer: Option[QueueingConsumer] = None
 
   override def preStart(): Unit = {
-    log.info(s"listening to routing key $routingKey on exchange $exchange")
-    channel
-
+    context.system.scheduler.scheduleOnce(500.millis, rabbitManager, GetChannel)(context.dispatcher)
   }
 
-  lazy val receive: Receive = ???
+  lazy val receive: Receive = {
+    case SetChannel(ch) =>
+      log.info(s"setting rabbit channel to $ch")
+      channel = ch.some
+      makeConsumer()
+  }
 
+
+  def makeConsumer(): Unit = {
+    consumer match {
+      case Some(_) =>
+      case None =>
+        consumer = channel.map{ ch =>
+          val qc = new QueueingConsumer(ch)
+          ch.basicConsume(queue.name, autoAck, consumerTag.tag, noLocal, exclusive, arguments, qc)
+          qc
+        }
+    }
+  }
 
   // lazy val rabbitReceive: Receive = {
   //   case s: String => s.decodeEither[Msg] match {
@@ -275,6 +312,10 @@ class Listener(exchange: Amqp.Exchange, routingKey: Amqp.RoutingKey, private var
   //   }
   // }
 }
+
+
+
+
 
 object Main extends App {
   import scala.concurrent.ExecutionContext.Implicits.global
