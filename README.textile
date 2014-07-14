@@ -77,3 +77,4 @@ h2. async
 
 * Enhancements on Scala Futures (timers/schedulers, retries, racing, ...)
 * Simple Akka Message Tracing
+* RabbitMQ client
