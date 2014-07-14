@@ -79,7 +79,7 @@ class Manager(connP: Amqp.ConnectionParams,
   private var state: State = Idle
 
   override def preStart(): Unit = {
-    if (autoConnect) context.system.scheduler.scheduleOnce(250.millis, self, Connect)(context.dispatcher)
+    if (autoConnect) context.system.scheduler.scheduleOnce(50.millis, self, Connect)(context.dispatcher)
   }
 
 
@@ -270,10 +270,10 @@ object Main extends App {
 
   system.actorOf(Props(new Actor with ActorLogging {
     // should wait properly for connection setup
-    context.system.scheduler.scheduleOnce(500.millis, manager, Manager.DeclareExchange(exch))
-    context.system.scheduler.scheduleOnce(500.millis, manager, Manager.DeclareQueue(exch, qq, rk))
+    context.system.scheduler.scheduleOnce(750.millis, manager, Manager.DeclareExchange(exch))
+    context.system.scheduler.scheduleOnce(1000.millis, manager, Manager.DeclareQueue(exch, qq, rk))
     // should wait properly for declarations to be done
-    context.system.scheduler.scheduleOnce(1.second, manager, Manager.GetPublisher(exch))
+    context.system.scheduler.scheduleOnce(1500.millis, manager, Manager.GetPublisher(exch))
 
     lazy val consumer = context.actorOf(Listener.props[String](manager, qq, consumerTag = consumerTag){ d =>
       println(d.message)

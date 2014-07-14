@@ -39,9 +39,10 @@ object Listener {
     autoAck: Boolean = false,
     exclusive: Boolean = false,
     arguments: Map[String,java.lang.Object] = Map.empty,
-    noLocal: Boolean = false
-  )(f: Delivery[A] => ProcessStatus[A])(implicit dec: DecodeJson[A], ec: ExecutionContext) =
-    Props(new Listener[A](rabbitManager, queue, consumerTag, autoAck, exclusive, arguments, noLocal){
+    noLocal: Boolean = false,
+    ec: ExecutionContext = ExecutionContext.Implicits.global
+  )(f: Delivery[A] => ProcessStatus[A])(implicit dec: DecodeJson[A]) =
+    Props(new Listener[A](rabbitManager, queue, consumerTag, autoAck, exclusive, arguments, noLocal, ec){
       def processDelivery(d: Delivery[A]) = f(d)
     })
 }
@@ -53,7 +54,9 @@ abstract class Listener[A : DecodeJson](
   autoAck: Boolean = false,
   exclusive: Boolean = false,
   arguments: Map[String,java.lang.Object] = Map.empty,
-  noLocal: Boolean = false)(implicit ec: ExecutionContext) extends Actor with ActorLogging {
+  noLocal: Boolean = false,
+  ec: ExecutionContext = ExecutionContext.Implicits.global
+) extends Actor with ActorLogging {
   import Amqp._
   import Manager._
   import Listener._
@@ -94,7 +97,8 @@ abstract class Listener[A : DecodeJson](
             channel.foreach(_.basicReject(d.tag, requeue))
         }
         awaitDelivery()
-      }.onFailure{ case t: Throwable => self ! Failure(t)}
+      }(ec)
+        .onFailure{ case t: Throwable => self ! Failure(t)}(ec)
 
     case Failure(e: ShutdownSignalException) =>
       log.error(e.stackTrace)
@@ -111,7 +115,7 @@ abstract class Listener[A : DecodeJson](
   def awaitDelivery(): Unit =
     consumer.foreach{ qc =>
       // log.debug(s"awaiting next delivery")
-      Future(Delivery[A](qc.nextDelivery))(ec).onComplete{ res => self ! res }
+      Future(Delivery[A](qc.nextDelivery))(ec).onComplete{ res => self ! res }(ec)
     }
 
 
