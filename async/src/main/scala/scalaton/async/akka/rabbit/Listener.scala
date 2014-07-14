@@ -106,6 +106,7 @@ abstract class Listener[A : DecodeJson](
 
     case Failure(e) =>
       log.error(e.stackTrace)
+      rabbitManager ! GetChannel
       awaitDelivery()
 
   }: Receive)
@@ -114,7 +115,6 @@ abstract class Listener[A : DecodeJson](
 
   def awaitDelivery(): Unit =
     consumer.foreach{ qc =>
-      // log.debug(s"awaiting next delivery")
       Future(Delivery[A](qc.nextDelivery))(ec).onComplete{ res => self ! res }(ec)
     }
 

@@ -22,7 +22,7 @@ object Publisher {
   case class PublishOk(pub: Publish[_])
   case class PublishFailed(pub: Publish[_])
 }
-class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit executionContext: ExecutionContext) extends Actor with ActorLogging {
+class Publisher(exchange: Amqp.Exchange, private var channel: Channel, publishRetrySchedule: List[FiniteDuration] = List.fill(3)(5.second))(implicit executionContext: ExecutionContext) extends Actor with ActorLogging {
   import Publisher._
   import Manager._
 
@@ -31,17 +31,22 @@ class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit 
 
   lazy val receive: Receive = {
     case SetChannel(ch) =>
+      log.debug(s"setting channel ${channel} to ${ch}")
       channel = ch
 
     case p@Publish(msg, routingKey, mandatory, immediate, props) =>
       val id = nextId()
       requests = requests + (id -> (p, sender))
 
-      context.actorOf(Props(new FutureRetrier(id,{
+      Future{
         channel.basicPublish(exchange.name, routingKey.id, mandatory, immediate, props, p.json.toString.getBytes)
-      }, List.fill(3)(1.seconds))))
+        id
+      }.onComplete{
+        case s@Success(_) => self ! s
+        case f@Failure(_) => self ! (id, f)
+      }
 
-    case Retrier.Result(id, Success(_)) =>
+    case Success(id: Long) =>
       requests.get(id) match {
         case Some((p, a)) =>
           a ! PublishOk(p)
@@ -49,11 +54,14 @@ class Publisher(exchange: Amqp.Exchange, private var channel: Channel)(implicit 
         case None =>
       }
 
-    case Retrier.Result(id, Failure(e)) =>
+    case (id: Long, Failure(e)) =>
+      log.error(e.stackTrace)
+
       requests.get(id) match {
         case Some((p, a)) =>
           a ! PublishFailed(p)
           requests = requests - id
+
         case None =>
       }
   }

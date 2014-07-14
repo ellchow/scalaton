@@ -57,8 +57,8 @@ object Manager {
 }
 
 class Manager(connP: Amqp.ConnectionParams,
-  reconnectRetryInterval: FiniteDuration = 500.millis,
-  maxDisconnectedDuration: FiniteDuration = 20.seconds,
+  reconnectRetryInterval: FiniteDuration = 3.seconds,
+  maxDisconnectedDuration: FiniteDuration = 30.seconds,
   publisherExecutionContext: ExecutionContext = ExecutionContext.Implicits.global,
   consumerExecutionContext: ExecutionContext = ExecutionContext.Implicits.global,
   autoConnect: Boolean = true
@@ -67,12 +67,12 @@ class Manager(connP: Amqp.ConnectionParams,
   import Amqp._
   import Manager._
 
-  val connF = connP.factory
+  def connF = connP.factory
 
   private var exchanges: Map[Exchange,DeclareExchange] = Map.empty // exchange name -> exchange declaration
   private var queues: Map[(Exchange,Queue),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
   private var publishers: Map[Exchange,ActorRef] = Map.empty // exchange name -> publisher actor
-  private var listeners: Map[(Exchange,Queue),ActorRef] = Map.empty // (exchange name, queue name) -> listener actor
+  private var listeners: Set[ActorRef] = Set.empty // listener actor
 
 
   private var connCh: Option[(Connection, Channel)] = None
@@ -101,6 +101,7 @@ class Manager(connP: Amqp.ConnectionParams,
   def idled: Receive = {
     log.info(s"rabbit connection ${connP.uri()} is idle")
     state = Idle
+    connCh = None
 
     withErrorHandler({ case Connect => connect() }).orElse(commonReceive)
   }
@@ -164,6 +165,7 @@ class Manager(connP: Amqp.ConnectionParams,
         }
 
       case GetChannel =>
+        listeners = listeners + sender
         connCh.foreach{ case (_, ch) => sender ! SetChannel(ch) }
 
     }).orElse(commonReceive)
@@ -225,12 +227,13 @@ class Manager(connP: Amqp.ConnectionParams,
         })
 
         val channel = connection.createChannel
-        (publishers.values ++ listeners.values).foreach(_ ! SetChannel(channel))
+
+        (exchanges.values ++ queues.values).foreach(self ! _)
+
+        (publishers.values ++ listeners).foreach(a => context.system.scheduler.scheduleOnce(500.millis, a, SetChannel(channel))(context.dispatcher))
 
         (connection, channel).some
       }
-
-
 
       context.become(connected)
     } catch {
@@ -276,7 +279,9 @@ object Main extends App {
     context.system.scheduler.scheduleOnce(1500.millis, manager, Manager.GetPublisher(exch))
 
     lazy val consumer = context.actorOf(Listener.props[String](manager, qq, consumerTag = consumerTag){ d =>
-      println(d.message)
+      println(("start", d.message))
+      // Thread.sleep(3000)
+      // println(("end", d.message))
       Listener.Ack(d)
     }, s"${qq.name}+${consumerTag.tag}")
 

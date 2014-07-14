@@ -61,7 +61,7 @@ abstract class Retrier(id: Long, timeouts: List[FiniteDuration], autoStart: Opti
     case s: Success[_] if responders.contains(sender) =>
       notifyParentAndFinish(s)
 
-    case f: Failure[_] if responders.contains(sender) =>
+    case f@Failure(_) if responders.contains(sender) =>
       remainingTimeouts match {
         case t :: _ => self ! Go
 
@@ -83,7 +83,6 @@ abstract class Retrier(id: Long, timeouts: List[FiniteDuration], autoStart: Opti
 }
 
 class FutureRetrier(id: Long, block: =>Any, timeouts: List[FiniteDuration], autoStart: Option[FiniteDuration] = Some(0.millis))(implicit executionContext: ExecutionContext) extends Retrier(id, timeouts, autoStart) {
-
   def run() = Future(block).onComplete(res => self ! res)
 
 }

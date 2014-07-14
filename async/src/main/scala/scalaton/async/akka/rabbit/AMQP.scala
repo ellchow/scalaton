@@ -35,7 +35,7 @@ object Amqp {
     frameMax: Int = ConnectionFactory.DEFAULT_FRAME_MAX
 
   ) {
-    lazy val factory = {
+    def factory = {
       val f = new ConnectionFactory
       f.setHost(host)
       f.setPort(port)
