@@ -69,19 +69,18 @@ class Manager(connP: Amqp.ConnectionParams,
 
   def connF = connP.factory
 
-  private var exchanges: Map[Exchange,DeclareExchange] = Map.empty // exchange name -> exchange declaration
-  private var queues: Map[(Exchange,Queue),DeclareQueue] = Map.empty // (exchange name, queue name) -> queue declaration
-  private var publishers: Map[Exchange,ActorRef] = Map.empty // exchange name -> publisher actor
-  private var listeners: Set[ActorRef] = Set.empty // listener actor
+  private var exchanges: Map[Exchange,(ActorRef, DeclareExchange)] = Map.empty // exchange name -> exchange declaration
+  private var queues: Map[(Exchange,Queue),(ActorRef, DeclareQueue)] = Map.empty // (exchange name, queue name) -> queue declaration
+  private var publishers: Map[Exchange,(ActorRef, Channel)] = Map.empty // exchange name -> publisher actor
+  private var listeners: Map[ActorRef,Channel] = Map.empty // listener actor -> channel
 
 
-  private var connCh: Option[(Connection, Channel)] = None
+  private var conn: Option[Connection] = None
   private var state: State = Idle
 
   override def preStart(): Unit = {
     if (autoConnect) context.system.scheduler.scheduleOnce(50.millis, self, Connect)(context.dispatcher)
   }
-
 
   // receive
   lazy val receive: Receive = idled
@@ -101,13 +100,26 @@ class Manager(connP: Amqp.ConnectionParams,
   def idled: Receive = {
     log.info(s"rabbit connection ${connP.uri()} is idle")
     state = Idle
-    connCh = None
+    conn = None
 
     withErrorHandler({ case Connect => connect() }).orElse(commonReceive)
   }
 
+  def getOrElseCreateChannel(a: ActorRef) = {
+    listeners.get(a) match {
+      case l@Some(_) => l
+      case None =>
+        log.info(s"creating channel for ${a.path.name}")
+        conn.foreach{ c =>
+          listeners = listeners + (a -> c.createChannel)
+        }
+        listeners.get(a)
+    }
+  }
+
+
   def connected: Receive = {
-    log.info(s"connected to ${connCh}")
+    log.info(s"connected to ${conn}")
     state match {
       case Connected(_) =>
       case _ =>
@@ -115,17 +127,17 @@ class Manager(connP: Amqp.ConnectionParams,
     }
 
     def bindQ(channel: Channel, exchange: Exchange, queue: Queue, routingKey: RoutingKey) = {
-      log.info(s"binding queue ${queue.name} on exchange ${exchange.name} with routing key ${routingKey.id}")
+      log.info(s"binding queue ${queue.name} to exchange ${exchange.name} with routing key ${routingKey.id} on ${channel}")
       channel.queueBind(queue.name, exchange.name, routingKey.id)
     }
 
     withErrorHandler({
       case de@DeclareExchange(exchange, exchangeType, isDurable, autoDelete, isInternal, arguments) =>
-        connCh match {
-          case Some((_, channel)) =>
-            log.info(s"declaring exchange $exchange")
-            exchanges = exchanges + (exchange -> de)
-            log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
+        getOrElseCreateChannel(sender) match {
+          case Some(channel) =>
+            log.info(s"declaring exchange $exchange on $channel")
+            exchanges = exchanges + (exchange -> (sender, de))
+            // log.debug(s"""exchanges (${exchanges.size}): ${exchanges.keys.toSeq.sorted.mkString(",")}""")
             channel.exchangeDeclare(exchange.name, exchangeType.name, isDurable, autoDelete, isInternal, arguments)
             makePublisher(exchange)
             sender ! Declared(de)
@@ -135,10 +147,10 @@ class Manager(connP: Amqp.ConnectionParams,
         }
 
       case dq@DeclareQueue(exchange, queue, routingKey, durable, exclusive, autoDelete, arguments) =>
-        connCh match {
-          case Some((_, channel)) =>
-            log.info(s"declaring queue $queue on exchange $exchange")
-            queues = queues + ((exchange, queue) -> dq)
+        getOrElseCreateChannel(sender) match {
+          case Some(channel) =>
+            log.info(s"declaring queue $queue on exchange $exchange on ${channel}")
+            queues = queues + ((exchange, queue) -> (sender, dq))
             channel.queueDeclare(queue.name, durable, exclusive, autoDelete, arguments)
             bindQ(channel, exchange, queue, routingKey)
             sender ! Declared(dq)
@@ -147,9 +159,9 @@ class Manager(connP: Amqp.ConnectionParams,
         }
 
       case bq@BindQueue(exchange, queue, routingKey) =>
-        connCh match {
-          case Some((_, channel)) =>
-            log.info(s"binding queue $queue on exchange $exchange with routing key $routingKey")
+        getOrElseCreateChannel(sender) match {
+          case Some(channel) =>
+            log.info(s"binding queue $queue on exchange $exchange with routing key $routingKey on ${channel}")
             bindQ(channel, exchange, queue, routingKey)
             sender ! Declared(bq)
           case None =>
@@ -158,20 +170,29 @@ class Manager(connP: Amqp.ConnectionParams,
 
       case GetPublisher(exchange) =>
         log.debug(s"request for publisher on $exchange from ${sender.path.name}")
-        println(publishers)
         publishers.get(exchange) match {
-          case Some(a) => sender ! PublisherFor(a, exchange)
+          case Some((a, _)) => sender ! PublisherFor(a, exchange)
           case None => sender ! NoSuchExchangeDeclared(exchange)
         }
 
       case GetChannel =>
-        listeners = listeners + sender
+        getOrElseCreateChannel(sender)
         context.watch(sender)
-        connCh.foreach{ case (_, ch) => sender ! SetChannel(ch) }
+        listeners.get(sender).foreach(ch => sender ! SetChannel(ch))
 
       case Terminated(a) =>
-        if (listeners.contains(a))
-          listeners = listeners - a
+        listeners.get(a) match {
+          case Some(ch) =>
+            try { ch.close } catch { case _: Throwable => }
+            listeners = listeners - a
+          case None =>
+        }
+        publishers.values.find(_._1 == a) match {
+          case Some((_, ch)) =>
+            try { ch.close } catch { case _: Throwable => }
+            publishers = publishers.filter(_._2._1 != a)
+          case None =>
+        }
 
     }).orElse(commonReceive)
   }
@@ -182,7 +203,7 @@ class Manager(connP: Amqp.ConnectionParams,
       case _ =>
         state = Disconnected()
     }
-    connCh = None
+    conn = None
 
     withErrorHandler({ case Connect => connect() }).orElse(commonReceive)
   }
@@ -192,14 +213,18 @@ class Manager(connP: Amqp.ConnectionParams,
   }
 
   def close() = {
-    log.info("closing rabbit connections")
-    connCh.foreach{ case (connection, channel) =>
-      try {
-        channel.close()
-        connection.close()
-      } catch {
-        case _: Throwable =>
-      }
+    log.info("closing rabbit channels and connection")
+    listeners.foreach{ case (_, ch) =>
+      try { ch.close() }
+      catch { case _: Throwable => }
+    }
+    publishers.foreach{ case (_, (_, ch)) =>
+      try { ch.close() }
+      catch { case _: Throwable => }
+    }
+    conn.foreach{ c =>
+      try { c.close() }
+      catch { case _: Throwable => }
     }
     context.become(idled)
   }
@@ -217,9 +242,9 @@ class Manager(connP: Amqp.ConnectionParams,
 
   def connect(): Unit = {
     try {
-      connCh = connCh.map{ x =>
-        log.debug(s"already connected to ${connCh}")
-        x.some
+      conn = conn.map{ c =>
+        log.debug(s"already connected to ${c}")
+        c.some
       }.getOrElse{
         log.info(s"connecting to ${connP.uri()}")
 
@@ -231,13 +256,15 @@ class Manager(connP: Amqp.ConnectionParams,
           }
         })
 
-        val channel = connection.createChannel
+        // recreate all pre-existing channels
+        publishers = publishers.map{ case (ex, (a, _)) => (ex, (a, connection.createChannel)) }
+        listeners = listeners.map{ case (a, _) => (a, connection.createChannel) }
+        // re-declare exchanges and queues - note: independent bindings are currently not tracked
+        (exchanges.values ++ queues.values).foreach{ case (a, decl) => self.tell(decl, a) }
+        // notify subscribers of new channels to be used
+        (publishers.map(_._2) ++ listeners).foreach{ case (a, ch) => context.system.scheduler.scheduleOnce(250.millis, a, SetChannel(ch))(context.dispatcher) }
 
-        (exchanges.values ++ queues.values).foreach(self ! _)
-
-        (publishers.values ++ listeners).foreach(a => context.system.scheduler.scheduleOnce(500.millis, a, SetChannel(channel))(context.dispatcher))
-
-        (connection, channel).some
+        connection.some
       }
 
       context.become(connected)
@@ -252,11 +279,11 @@ class Manager(connP: Amqp.ConnectionParams,
   def makePublisher(exchange: Exchange): Unit = publishers.get(exchange) match {
     case Some(_) =>
     case None =>
-      connCh.foreach{ case (_, channel) =>
+      conn.foreach{ c =>
+        val channel = c.createChannel
         val a = context.actorOf(Props(new Publisher(exchange, channel)(publisherExecutionContext)), s"publisher+${exchange.name}")
         context.watch(a)
-
-        publishers = publishers + (exchange -> a)
+        publishers = publishers + (exchange -> (a, channel))
       }
   }
 
