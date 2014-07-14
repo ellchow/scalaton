@@ -166,7 +166,12 @@ class Manager(connP: Amqp.ConnectionParams,
 
       case GetChannel =>
         listeners = listeners + sender
+        context.watch(sender)
         connCh.foreach{ case (_, ch) => sender ! SetChannel(ch) }
+
+      case Terminated(a) =>
+        if (listeners.contains(a))
+          listeners = listeners - a
 
     }).orElse(commonReceive)
   }
