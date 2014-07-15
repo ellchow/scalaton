@@ -131,7 +131,7 @@ object ProjectBuild extends Build{
       scalacOptions := compilerOptions,
       publishArtifact := false
     )
-  ) aggregate(utilProject, aggregateProject, collectionProject)
+  ) aggregate(utilProject, aggregateProject, collectionProject, asyncProject)
 
 
 }
