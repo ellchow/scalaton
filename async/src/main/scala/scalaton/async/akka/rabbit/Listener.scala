@@ -21,7 +21,7 @@ object Listener {
     def tag = delivery.getEnvelope.getDeliveryTag
     def exchange = delivery.getEnvelope.getExchange
     def routingKey = delivery.getEnvelope.getRoutingKey
-    def isRedeliver = delivery.getEnvelope.isRedeliver
+    def redelivered = delivery.getEnvelope.isRedeliver
     override def toString = s"Delivery($exchange, $routingKey, $tag)"
   }
 
