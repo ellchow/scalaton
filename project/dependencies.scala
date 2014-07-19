@@ -24,8 +24,6 @@ object Dependencies{
   val common = Seq(
     "org.scalaz" % "scalaz-core_2.10" % "7.0.6",
     "org.scalaz" % "scalaz-concurrent_2.10" % "7.0.6",
-    "org.scalaz.stream" % "scalaz-stream_2.10" % "0.4.1",
-    "com.fasterxml.jackson.module" % "jackson-module-scala_2.10" % "2.3.2",
 
     "ch.qos.logback" % "logback-classic" % "1.0.9",
     "com.typesafe" %% "scalalogging-slf4j" % "1.0.1",
@@ -35,14 +33,18 @@ object Dependencies{
   )
 
   val util = common ++ Seq(
-    "org.scalaz" % "scalaz-effect_2.10" % "7.0.5",
+    "org.scalaz" % "scalaz-effect_2.10" % "7.0.6",
     "com.github.nscala-time" %% "nscala-time" % "0.2.0",
     "commons-io" % "commons-io" % "2.4",
     "io.argonaut" %% "argonaut" % "6.0.2",
-    "com.chuusai" % "shapeless_2.10.4" % "2.0.0"
+    "com.chuusai" % "shapeless_2.10.4" % "2.0.0",
+    "org.scalaz.stream" % "scalaz-stream_2.10" % "0.4.1",
+    "com.fasterxml.jackson.module" % "jackson-module-scala_2.10" % "2.3.2"
   )
 
-  val collection = common
+  val collection = common ++ Seq(
+    "org.scalaz.stream" % "scalaz-stream_2.10" % "0.4.1"
+  )
 
   val async = common ++ Seq(
     "io.netty" % "netty-all" % "4.0.17.Final",
