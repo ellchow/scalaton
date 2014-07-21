@@ -1,4 +1,4 @@
-package scalaton.async.actor
+package scalaton.async
 
 import com.rabbitmq.client._
 

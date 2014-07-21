@@ -6,6 +6,7 @@ import scala.collection.JavaConversions._
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
 import scalaton.async.actor._
+import scalaton.async.rabbit._
 import scalaton.util._
 import scalaton.util.Json._
 import scalaz._, Scalaz._
