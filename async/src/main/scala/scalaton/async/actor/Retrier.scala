@@ -14,7 +14,7 @@
  limitations under the License.
 */
 
-package scalaton.async.akka
+package scalaton.async.actor
 
 import akka.actor._
 import scala.concurrent._, duration._

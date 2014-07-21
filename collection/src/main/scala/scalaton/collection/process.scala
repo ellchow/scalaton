@@ -40,6 +40,7 @@ object process {
     await1[I].flatMap(i => go(Vector(i), i))
   }
 
+
   implicit class ProcessOps[F[_],A](p: Process[F, A]) {
     def grouped(n: Int) = p |> process.grouped(n)
     def group(pr: (A,A) => Boolean) = p |> process.group(pr)

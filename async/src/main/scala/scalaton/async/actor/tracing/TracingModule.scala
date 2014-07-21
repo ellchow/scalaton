@@ -14,11 +14,11 @@
  limitations under the License.
  */
 
-package scalaton.async.akka.tracing
+package scalaton.async.actor.tracing
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
-import scalaton.async.akka._
+import scalaton.async.actor._
 import scalaz._, Scalaz._
 import scala.collection.mutable
 

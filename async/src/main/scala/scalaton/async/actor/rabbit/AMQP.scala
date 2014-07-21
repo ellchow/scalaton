@@ -1,4 +1,4 @@
-package scalaton.async.akka.rabbit
+package scalaton.async.actor.rabbit
 
 import com.rabbitmq.client._
 import scala.concurrent.duration._
