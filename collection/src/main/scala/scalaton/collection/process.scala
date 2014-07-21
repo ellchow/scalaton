@@ -16,6 +16,7 @@
 
 package scalaton.collection
 
+import scalaz.{ Ordering => _, _ }, Scalaz._
 import scalaz.stream._, Process._
 import scalaz.concurrent._
 import argonaut._, Argonaut._
@@ -40,20 +41,27 @@ object process {
     await1[I].flatMap(i => go(Vector(i), i))
   }
 
+  def iterator[A](iterator: =>Iterator[A], close: =>Unit = ()): Process[Task,A] =
+    io.resource(Task.delay(\/.fromTryCatch(iterator)))(
+      _ => Task.delay(close))(
+      disj => Task.delay{ disj.fold(e => throw e , iter => if (iter.hasNext) iter.next else throw Process.End )})
 
-  implicit class ProcessOps[F[_],A](p: Process[F, A]) {
-    def grouped(n: Int) = p |> process.grouped(n)
-    def group(pr: (A,A) => Boolean) = p |> process.group(pr)
-  }
-  implicit class ProcessTaskOps[A](p: Process[Task, A]) {
-    def sort(groupSize: Int, tmp: Path)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A]) =
-      ExternalSort.sortBy(p, groupSize, tmp)(identity)
 
-    def sort(groupSize: Int)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A], osSpecific: OSSpecific) =
-      ExternalSort.sort(p, groupSize, Filesystem.mkTempDir())
+  object Implicits {
+    implicit class ProcessOps[F[_],A](p: Process[F, A]) {
+      def grouped(n: Int) = p |> process.grouped(n)
+      def group(pr: (A,A) => Boolean) = p |> process.group(pr)
+    }
+    implicit class ProcessTaskOps[A](p: Process[Task, A]) {
+      def sort(groupSize: Int, tmp: Path)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A]) =
+        ExternalSort.sortBy(p, groupSize, tmp)(identity)
 
-    def sortBy[K : Ordering](groupSize: Int)(key: A => K)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A], osSpecific: OSSpecific) =
-      ExternalSort.sortBy(p, groupSize, Filesystem.mkTempDir())(key)
+      def sort(groupSize: Int)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A], osSpecific: OSSpecific) =
+        ExternalSort.sort(p, groupSize, Filesystem.mkTempDir())
+
+      def sortBy[K : Ordering](groupSize: Int)(key: A => K)(implicit e: EncodeJson[A], d: DecodeJson[A], o: Ordering[A], osSpecific: OSSpecific) =
+        ExternalSort.sortBy(p, groupSize, Filesystem.mkTempDir())(key)
+    }
   }
 
 }

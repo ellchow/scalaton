@@ -12,7 +12,10 @@ object ProjectBuild extends Build{
     version      := Version,
     scalaVersion := ScalaVersion,
     shellPrompt  := ShellPrompt.buildShellPrompt,
-    resolvers := Dependencies.resolvers
+    resolvers := Dependencies.resolvers,
+    fork in run := true,
+    fork in test := true,
+    fork in console := true
   )
 
   val publishSettings = Seq(

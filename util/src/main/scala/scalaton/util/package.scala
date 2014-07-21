@@ -60,7 +60,8 @@ package object util {
     }
   }
 
-
+  def onJvmShutdown(f: =>Unit): Unit =
+    Runtime.getRuntime.addShutdownHook(new Thread { override def run(): Unit = f});
 
   object Implicits {
     implicit val unixOsSpecific = new OSSpecific {
