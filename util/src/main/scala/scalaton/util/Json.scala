@@ -20,6 +20,31 @@ object Json {
   def byteArrayDecodeJson[A](f: Array[Byte] => A): DecodeJson[A] =
     jdecode1L((x: List[Byte]) => x.toArray)("bytes").map(f)
 
+  def makeDateTimeCodecJson(name: String): CodecJson[org.joda.time.DateTime] = CodecJson(
+    dt => ("type" := name) ->: ("timestamp" := dt.getMillis) ->: jEmptyObject,
+    c => for {
+      dtString <- (c --\ "timestamp").as[Long]
+      t <- (c --\ "type").as[String]
+      _ <- if (t == name) DecodeResult.ok(()) else DecodeResult.fail(name, c.history)
+      res <- \/.fromTryCatch(new org.joda.time.DateTime(dtString)) match {
+        case \/-(a) => DecodeResult.ok(a)
+        case -\/(err) => DecodeResult.fail(name, c.history)
+      }
+    } yield res
+  )
+
+  implicit val DateTimeCodecJson: CodecJson[org.joda.time.DateTime] = makeDateTimeCodecJson("datetime")
+
+  implicit val localDateCodecJson: CodecJson[org.joda.time.LocalDate] = {
+    val dtc = makeDateTimeCodecJson("localdate")
+    val lt = new org.joda.time.LocalTime(0,0,0,0)
+    CodecJson(ld => ld.toDateTime(lt).asJson(dtc), c => dtc.decode(c).map(_.toLocalDate))
+  }
+  implicit val LocalDateTimeCodecJson: CodecJson[org.joda.time.LocalDateTime] = {
+    val dtc = makeDateTimeCodecJson("localdatetime")
+    CodecJson(ldt => ldt.toDateTime.asJson(dtc), c => dtc.decode(c).map(_.toLocalDateTime))
+  }
+
   implicit def wrapInAWEJson[A : EncodeJson](a: A) = WEJson(a)
   implicit def wrapInFAWEJson[F[_], A](fa: F[A])(implicit e: EncodeJson[F[A]]) = WEJson(fa)
   implicit val weJsonEncodeJson = EncodeJson((w: WEJson) => w.json)
