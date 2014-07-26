@@ -11,11 +11,14 @@ object Json {
   implicit def genericMapDecodeJson[K: DecodeJson, V: DecodeJson]: DecodeJson[Map[K,V]] =
     implicitly[DecodeJson[List[(K,V)]]].map(_.toMap)
 
+  implicit val ByteEncodeJson = EncodeJson((x: Byte) => x.toInt.asJson)
+  implicit val ByteDecodeJson = implicitly[DecodeJson[Int]].map(_.toByte)
+
   implicit def byteArrayEncodeJson: EncodeJson[Array[Byte]] =
-    jencode1L((x: Array[Byte]) => new String(x))("bytes")
+    jencode1L((x: Array[Byte]) => x.toList.asJson)("bytes")
 
   def byteArrayDecodeJson[A](f: Array[Byte] => A): DecodeJson[A] =
-    jdecode1L((x: String) => x.getBytes)("bytes").map(f)
+    jdecode1L((x: List[Byte]) => x.toArray)("bytes").map(f)
 
   implicit def wrapInAWEJson[A : EncodeJson](a: A) = WEJson(a)
   implicit def wrapInFAWEJson[F[_], A](fa: F[A])(implicit e: EncodeJson[F[A]]) = WEJson(fa)
