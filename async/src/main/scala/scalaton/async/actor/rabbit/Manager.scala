@@ -37,7 +37,7 @@ object Manager {
     arguments: Map[String,java.lang.Object] = Map.empty
   )
   case class BindQueue(exchange: Exchange, queue: Queue, routingKey: RoutingKey)
-  case class Declared(request: Any)
+  case class Declared[A](request: A)
 
   case class GetPublisher(exchange: Exchange)
   case class NoSuchExchangeDeclared(exchange: Exchange)

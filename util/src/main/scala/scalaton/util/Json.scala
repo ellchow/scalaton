@@ -17,33 +17,33 @@ object Json {
   def byteArrayDecodeJson[A](f: Array[Byte] => A): DecodeJson[A] =
     jdecode1L((x: String) => x.getBytes)("bytes").map(f)
 
-  implicit def wrapInAWEJson[A : EncodeJson](a: A) = WEJson(a)
-  implicit def wrapInFAWEJson[F[_], A](fa: F[A])(implicit e: EncodeJson[F[A]]) = WEJson(fa)
-  implicit val weJsonEncodeJson = EncodeJson((w: WEJson) => w.json)
+  implicit def wrapInAJsonEncodeable[A : EncodeJson](a: A) = JsonEncodeable(a)
+  implicit def wrapInFAJsonEncodeable[F[_], A](fa: F[A])(implicit e: EncodeJson[F[A]]) = JsonEncodeable(fa)
+  implicit val JsonEncodeableEncodeJson = EncodeJson((w: JsonEncodeable) => w.json)
 
-  private[scalaton] trait WEJson {
+  private[scalaton] trait JsonEncodeable {
     type A
     val value: A
     def json: Json
   }
-  object WEJson {
-    def apply[AA : EncodeJson](v: AA): WEJson = new WEJson {
+  object JsonEncodeable {
+    def apply[AA : EncodeJson](v: AA): JsonEncodeable = new JsonEncodeable {
       type A = AA
       val value = v
       lazy val json = v.asJson
     }
   }
   sealed trait BuildWithJson {
-    def w: WEJson
+    def w: JsonEncodeable
     def build[A : DecodeJson]: (String, CursorHistory) \/ A = w.json.as[A].toDisjunction
   }
   object BuildWithJson {
-    def apply(m: Map[String,WEJson] = Map.empty) = MapBuildWithJson(m)
-    def apply(w: WEJson) = LeafBuildWithJson(w)
+    def apply(m: Map[String,JsonEncodeable] = Map.empty) = MapBuildWithJson(m)
+    def apply(w: JsonEncodeable) = LeafBuildWithJson(w)
   }
-  case class MapBuildWithJson(m: Map[String,WEJson]) extends BuildWithJson {
-    def + [A <% WEJson](kv: (String, A)) = MapBuildWithJson(m + (kv._1 -> kv._2))
-    def w = WEJson(m)
+  case class MapBuildWithJson(m: Map[String,JsonEncodeable]) extends BuildWithJson {
+    def + [A <% JsonEncodeable](kv: (String, A)) = MapBuildWithJson(m + (kv._1 -> kv._2))
+    def w = JsonEncodeable(m)
   }
-  case class LeafBuildWithJson(w: WEJson) extends BuildWithJson
+  case class LeafBuildWithJson(w: JsonEncodeable) extends BuildWithJson
 }

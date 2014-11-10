@@ -27,7 +27,7 @@ trait OSSpecific {
 }
 
 
-case class Path private[util] (val file: File)(implicit osSpecific: OSSpecific) {
+case class Path private[util] (val file: File)(implicit osSpecific: OSSpecific = defaultOSSpecific) {
   def /(s: String) = osSpecific.path(file, s)
 
   def parent: Option[Path] = Option(file.getParentFile).map(pf => Path(pf))
