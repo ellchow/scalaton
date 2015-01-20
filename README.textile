@@ -4,7 +4,7 @@ built on scala 2.10.2
 
 hosted on sonatype
 
-some revamping of this code is [here](https://github.com/ellchow/scaramouch)
+some revamping of this code is "here":https://github.com/ellchow/scaramouch
 
 <pre>
 
